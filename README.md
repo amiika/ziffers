@@ -311,3 +311,21 @@ n = zparse("~1~2")
 print zindex(n,4)
 # Prints [true,false]
 ```
+
+# Using ziffers with Sonic Pi methods
+
+Ziffers is meant to provide easy way to write and experiment with melodies. By using **znotes** or **zindex** you can easily use ziffers with other Sonic Pi methods such as **play_pattern_timed**
+
+Example of using Ziffers with default Sonic Pi methods:
+```
+ievanpolka = \
+  "|:q1e11q12|q3113;q2-77+2|q31h1;q.5e4q32|q31h1:|"\
+  "|:q5e55q43|q2-77+2;q4e44q32|q3113;q4e44q32|q31h1:|"
+
+n = zparse(ievanpolka,:g, :minor)
+
+notes = znotes(n)
+durations = zsleeps(n)
+
+play_pattern_timed notes, durations
+```
