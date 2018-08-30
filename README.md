@@ -24,14 +24,14 @@ Use 0 to create silence in melodies
 
 ## Sharp and flat
 
-**\*** is flat
-**\#** is sharp
+- **\*** is flat
+- **\#** is sharp
 
 Sharps and flats are not sticky so you have to use it every time before the note number. For example in key of C: #1 = C#
 
 ## Note lengths
 
-Default note length is Half note, meaning 0.5 sleep after the note plays.
+Default note length is Half note, meaning 0.5 sleep after the note plays. Note lengths are sticky.
 
 Blue bird example using default Half notes then Whole and Quarter notes:
 ```
