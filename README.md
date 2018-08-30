@@ -167,13 +167,13 @@ Use % to change the octave randomly
 The heart of ziffers. Parses string and returns nested array.
 
 For example:
-´´´
+```
 print zparse("|: 1231 :|: 34w5 :|: q5654h31 :|: 1-5+w1 :|")
-´´´
+```
 Prints:
-´´´
+```
 [[60, 0.5, 0, 0, false], [62, 0.5, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [62, 0.5, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [64, 0.5, 0, 0, false], [65, 0.5, 0, 0, false], [67, 1.0, 0, 0, false], [64, 0.5, 0, 0, false], [65, 0.5, 0, 0, false], [67, 1.0, 0, 0, false], [67, 0.25, 0, 0, false], [69, 0.25, 0, 0, false], [67, 0.25, 0, 0, false], [65, 0.25, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [67, 0.25, 0, 0, false], [69, 0.25, 0, 0, false], [67, 0.25, 0, 0, false], [65, 0.25, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [55, 0.5, 0, 0, false], [60, 1.0, 0, 0, false], [60, 0.5, 0, 0, false], [55, 0.5, 0, 0, false], [60, 1.0, 0, 0, false]]
-´´´
+```
 
 ## zplay
 
