@@ -5,6 +5,9 @@ Writing and playing melodies in any key or scale will be as simple as:
 ```
 zplay("4q11h21034",:f,:major)
 ```
+
+Check out other useful functions and info how to use ziffer generated melodies with other Sonic features from [here](#ziffers-functions)
+
 # Basic notation
 
 ## Numbers 1-7 (and 8,9)
@@ -68,8 +71,6 @@ zplay("123",:e,:major,1)
 ### Custom lengths
 
 You can also use longer escaped notation, for example: '1.123
-
-[test](#basic-notation)
 
 ## Bars
 
