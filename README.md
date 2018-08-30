@@ -24,8 +24,8 @@ Use 0 to create silence in melodies
 
 ## Sharp and flat
 
-* is flat
-\# is sharp
+**\*** is flat
+**\#** is sharp
 
 Sharps and flats are not sticky so you have to use it every time before the note number. For example in key of C: #1 = C#
 
