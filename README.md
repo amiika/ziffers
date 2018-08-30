@@ -5,7 +5,7 @@ Writing and playing melodies in any key or scale will be as simple as:
 ```
 zplay("4q11h21034",:f,:major)
 ```
-# [Basic notation](#test)
+# Basic notation
 
 ## Numbers 1-7 (and 8,9)
 
@@ -69,7 +69,7 @@ zplay("123",:e,:major,1)
 
 You can also use longer escaped notation, for example: '1.123
 
-[test](#test)
+[test](#basic-notation)
 
 ## Bars
 
