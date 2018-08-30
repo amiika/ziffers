@@ -64,30 +64,30 @@ zplay("123",:e,:major,1)
 
 ### Dotted notes
 
-. = dotted notes eg. h. or d...
+**.** for dotted notes. First dot increases the duration of the basic note by half of its original value. Second dot half of the half, third dot half of the half of the half ... and so on. For example dots added to Whole note "w." will change the duration to 1.5, second dot "w.." to 1.75, third dot to 1.875.
 
 ### Custom lengths
 
-'1.123' = Any length with escaped numbered notation
-
+You can also use longer escaped notation, for example: '1.123
+'
 ## Bars
 
-| Bars are just nice. You can use double bars || to restart octave additions and note lengths to default.
+**|** Bars are just nice. You can use double bars || to restart octave additions and note lengths to default.
 
 ## Repeats
 
 ### : Basic repeat
 
-Use : as basic repeat, for example in Frere Jacques:
+Use **:** as basic repeat, for example in Frere Jacques:
 
 ```
 # Repeat every bar
 zplay("|: 1231 :|: 34w5 :|: q5654h31 :|: 1-5+w1 :|")
 ```
 
-### ; Alternative sections or numbered endings
+### Alternative sections or numbered endings
 
-Use ; in repeats for alternative sections, like "|: 123 ; 432 ; 543 :|". 
+Use **;** in repeats for alternative sections, like "|: 123 ; 432 ; 543 :|". 
 
 Alternative endings in ievan polkka:
 
@@ -98,15 +98,15 @@ zplay("|:q1e11q12| q3113 |;q2-77+2 |q31h1;q.5e4q32|q31h1:|"\
 
 ### {..} D.S repeat
 
-Use { } to repeat multiple sections. For example this play row row row your boat 2 times and then the last section 2 times at the end:
+Use **{ }** to repeat multiple sections. For example this play row row row your boat 2 times and then the last section 2 times at the end:
 
 ```
 zplay("|:.1.1|1q2h.3|3q2h3q4|w.5|{q888555333111|5q4h3q2|w.1:}|")
 ```
 
-# &..@ Jump repeat, D.C:ish
+### Jump repeat, D.C:ish
 
-Use & to start from beginning and continue until @. If & is at the end it works like D.C, otherwise the song will continue after the & character. For example:
+Use **&** to start from beginning and continue until **@**. If & is at the end it works like D.C, otherwise the song will continue after the & character. For example:
 
 ```
 zplay("| 7162 @| 6354 |&")
@@ -116,8 +116,8 @@ zplay("| 7162 @| 6354 |&")
 
 ### < Volume up and down >
 
-< Volume up
-> Volume down
+**<** Volume up
+**>** Volume down
 
 Default volume or amp is 1. Volume characters changes the amp 0.25 by default. You can also change the amp treshold, for example:
 
