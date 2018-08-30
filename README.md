@@ -248,7 +248,6 @@ def zplay(melody,key=:c, scale=:major,d=0.5, a=0.25)
             control c, note: note, amp: 1+a, pan: p
             slide = melody[n][4]
           end
-          print s
           sleep s
           n=n+1
         end
