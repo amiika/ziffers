@@ -5,8 +5,6 @@ Writing and playing melodies in any key or scale will be as simple as:
 ```
 zplay("4q11h21034",:f,:major)
 ```
-[test](#test)
-
 # [Basic notation](#test)
 
 ## Numbers 1-7 (and 8,9)
@@ -70,7 +68,9 @@ zplay("123",:e,:major,1)
 ### Custom lengths
 
 You can also use longer escaped notation, for example: '1.123
-'
+
+[test](#test)
+
 ## Bars
 
 **|** Bars are just nice. You can use double bars || to restart octave additions and note lengths to default.
