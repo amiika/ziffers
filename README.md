@@ -6,9 +6,11 @@ Writing and playing melodies in any key or scale will be as simple as:
 zplay("4q11h21034",:f,:major)
 ```
 
-Check out other useful functions and info how to use ziffer generated melodies with other Sonic features from [here](#ziffers-functions)
+Check out other useful functions and info how to use ziffer generated melodies with other Sonic features from [Supported methods](#ziffers-functions)
 
 # Basic notation
+
+Ziffers is a [numbered notation](https://en.wikipedia.org/wiki/Numbered_musical_notation) for music, meaning you write melodies using numbers that represent notes in some scale. Ziffers parses custom "ASCII" notation with **zparse** method and produces nested array that can be played or looped with the Sonic Pi.
 
 ## Numbers 1-7 (and 8,9)
 
@@ -33,22 +35,16 @@ Sharps and flats are not sticky so you have to use it every time before the note
 
 ## Note lengths
 
-Default note length is Half note, meaning 0.5 sleep after the note plays. Note lengths are sticky.
+Default note length is Half note, meaning 0.5 sleep after the note plays. Note length characters are sticky, so you only have to type note length when you need to change the following note lengths.
 
-Blue bird example using default Half notes then Whole and Quarter notes:
+For example Blue bird song using default Half notes then some characters **w** and **q** for Whole and Quarter notes:
 ```
 zplay("5353 5653 4242 4542 5353 5653 w5 q5432 w1")
 ```
 
-Exatly same song using different escape notation:
+Now exactly same song using different escape notation:
 ```
 zplay("5353 5653 4242 4542 5353 5653 '1' 5 '0.25' 5432 '1' 1")
-```
-
-Default note length can also be changed via parameter, for example:
-```
-# Plays efg notes for 1 note per beat.
-zplay("123",:e,:major,1)
 ```
 
 ### Standard note lengths
@@ -70,7 +66,13 @@ zplay("123",:e,:major,1)
 
 ### Custom lengths
 
-You can also use longer escaped notation, for example: '1.123
+You can also use longer escaped notation, for example: '1.123'
+
+Default note length can also be changed via parameter, for example:
+```
+# Plays efg notes for 1 note per beat.
+zplay("123",:e,:major,1)
+```
 
 ## Bars
 
@@ -163,6 +165,15 @@ Use % to change the octave randomly
 ## zparse
 
 The heart of ziffers. Parses string and returns nested array.
+
+For example:
+´´´
+print zparse("|: 1231 :|: 34w5 :|: q5654h31 :|: 1-5+w1 :|")
+´´´
+Prints:
+´´´
+[[60, 0.5, 0, 0, false], [62, 0.5, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [62, 0.5, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [64, 0.5, 0, 0, false], [65, 0.5, 0, 0, false], [67, 1.0, 0, 0, false], [64, 0.5, 0, 0, false], [65, 0.5, 0, 0, false], [67, 1.0, 0, 0, false], [67, 0.25, 0, 0, false], [69, 0.25, 0, 0, false], [67, 0.25, 0, 0, false], [65, 0.25, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [67, 0.25, 0, 0, false], [69, 0.25, 0, 0, false], [67, 0.25, 0, 0, false], [65, 0.25, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [55, 0.5, 0, 0, false], [60, 1.0, 0, 0, false], [60, 0.5, 0, 0, false], [55, 0.5, 0, 0, false], [60, 1.0, 0, 0, false]]
+´´´
 
 ## zplay
 
