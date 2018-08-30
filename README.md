@@ -10,7 +10,7 @@ or
 zloop("q44332233",:c, :chromatic)
 ```
 
-Check out the method usage from [Ziffers methods](#ziffers-methods)
+Just copy the source and run it in a free buffer or use **run_file** command. Check out the method usage from [Ziffers methods](#ziffers-methods)
 
 # Basic notation
 
