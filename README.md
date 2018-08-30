@@ -5,6 +5,10 @@ Writing and playing melodies in any key or scale will be as simple as:
 ```
 zplay("4q11h21034",:f,:major)
 ```
+or
+```
+zloop("q44332233",:c, :chromatic)
+```
 
 Check out other useful functions and info how to use ziffer generated melodies with other Sonic features from [Supported methods](#ziffers-functions)
 
@@ -175,14 +179,112 @@ Prints:
 [[60, 0.5, 0, 0, false], [62, 0.5, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [62, 0.5, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [64, 0.5, 0, 0, false], [65, 0.5, 0, 0, false], [67, 1.0, 0, 0, false], [64, 0.5, 0, 0, false], [65, 0.5, 0, 0, false], [67, 1.0, 0, 0, false], [67, 0.25, 0, 0, false], [69, 0.25, 0, 0, false], [67, 0.25, 0, 0, false], [65, 0.25, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [67, 0.25, 0, 0, false], [69, 0.25, 0, 0, false], [67, 0.25, 0, 0, false], [65, 0.25, 0, 0, false], [64, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [60, 0.5, 0, 0, false], [55, 0.5, 0, 0, false], [60, 1.0, 0, 0, false], [60, 0.5, 0, 0, false], [55, 0.5, 0, 0, false], [60, 1.0, 0, 0, false]]
 ```
 
+### Params
+
+zparse(ziffersNotation, key, scale, defaultDuration, ampStep)
+
+* ziffersNotation as presented in the first section
+* key as keys in Sonic Pi (:c, :d, :e ...)
+* scale as scales in Sonic Pi (:major, :minor, :gong ...)
+* defaultDuration as default note length (What length plain numbers are without any other character=
+* ampStep as how much volume is changed with < and >
+
+### Ziffer array cells
+
+1. Note
+2. Sleep (Note length)
+3. Amp
+4. Pan
+5. Slide
+
 ## zplay
+
+Plays the ziffers. Plays the result array from **zparse** or parses the string directly. Always use preparsed melody if you are using **zplay** inside **live_loop**! 
+
+Actual code:
+```
+def zplay(melody,key=:c, scale=:major,d=0.5, a=0.25)
+    if melody.is_a? String then
+      melody = zparse(melody,key, scale,d, a)
+    end
+    n=0
+    until n>=melody.length do
+        note = melody[n][0]
+        s = melody[n][1]
+        a = melody[n][2]
+        p = melody[n][3]
+        slide = melody[n][4]
+        c = play note, amp: (1+a < 0 ? 0 : 1+a), pan: p, note_slide: (slide ? s : 1), release: (slide ? s : 1)
+        while slide && n+1<melody.length do
+            n=n+1
+            note = melody[n][0]
+            s = melody[n][1]
+            a = melody[n][2]
+            p = melody[n][3]
+            control c, note: note, amp: 1+a, pan: p
+            slide = melody[n][4]
+          end
+          print s
+          sleep s
+          n=n+1
+        end
+      end
+```
 
 ## zloop
 
+Loops the ziffers. Uses result from **zparse** or parses the string.
+
+Actual code:
+```
+def zloop(melody,key=:c, scale=:major,d=0.5, a=0.25)
+  if melody.is_a? String then
+    melody = zparse(melody,key, scale,d, a)
+  end
+  melody = melody.flatten.ring
+  loop do
+    note = melody.tick
+    s = melody.tick
+    a = melody.tick
+    p = melody.tick
+    slide = melody.tick
+    c = play note, amp: (1+a < 0 ? 0 : 1+a), pan: p, note_slide: s, release: (slide ? s : 1)
+    while slide do
+        note = melody.tick
+        s = melody.tick
+        a = melody.tick
+        p = melody.tick
+        control c, note: note, amp: 1+a, pan: p
+        slide = melody.tick
+      end
+      sleep s
+    end
+  end
+```
+
 ## znotes
+
+Helper to get note array:
+```
+n = zparse("1")
+print znotes(n)
+# Prints [60]
+```
 
 ## zsleeps
 
+Helper to get sleep array:
+```
+n = zparse("q1")
+print znotes(n)
+# Prints [0.25]
+```
+
 ## zindex
 
-
+Helper to get any separate array from nested array, for example slide information:
+```
+n = zparse("~1~2")
+print zindex(n,4)
+# Prints [true,false]
+```
