@@ -1,6 +1,11 @@
 # Ziffers: Ziffersystem for Sonic Pi 
 Numbered musical notation for easier and faster composition of melodies in any key or scale. Additional notation for randomization, repeats, slides, panning and octave changes.
 
+Writing and playing melodies in any key or scale will be as simple as:
+```
+zplay("4q11h21034",:f,:major)
+```
+
 # Basic notation
 
 ## Numbers 1-7 (and 8,9)
@@ -46,16 +51,16 @@ zplay("123",:e,:major,1)
 
 ### Standard note lengths
 
-m = Max = 8/1 = 8 beats
-l = Long = 4/1 = 4 beats
-d = Double whole = 2/1 = 2 beats
-w = Whole = 1/1 = 1 beat
-h = Half = 1/2 = 0.5 beat
-q = Quarter = 1/4 = 0.25 beat
-e = Eighth = 1/8 = 0.125 beat
-s = Sixteenth = 1/16 = 0.0625 beat
-t = Thirty-second = 1/32 = 0.03125 beat
-f = Sixty-fourth = 1/64 = 0.015625 beat
+- **m** = Max = 8/1 = 8 beats
+- **l** = Long = 4/1 = 4 beats
+- **d** = Double whole = 2/1 = 2 beats
+- **w** = Whole = 1/1 = 1 beat
+- **h** = Half = 1/2 = 0.5 beat
+- **q** = Quarter = 1/4 = 0.25 beat
+- **e** = Eighth = 1/8 = 0.125 beat
+- **s** = Sixteenth = 1/16 = 0.0625 beat
+- **t** = Thirty-second = 1/32 = 0.03125 beat
+- **f** = Sixty-fourth = 1/64 = 0.015625 beat
 
 ### Dotted notes
 
