@@ -1,7 +1,7 @@
-# Ziffers: Ziffersystem for Sonic Pi 
-Numbered musical notation for easier and faster composition of melodies in any key or scale. Additional notation for randomization, repeats, slides, panning and octave changes.
+# Ziffers: Numbered musical notation for Sonic Pi 
+Ziffers is a numbered musical notation (aka. Ziffersystem) that makes composing melodies easier and faster for any key or scale. 
 
-Writing and playing melodies in any key or scale will be as simple as:
+Writing and playing melodies will be as simple as:
 ```
 zplay("4q11h21034",:f,:major)
 ```
@@ -10,7 +10,7 @@ or
 zloop("q44332233",:c, :chromatic)
 ```
 
-Check out other useful functions and info how to use ziffer generated melodies with other Sonic features from [Supported methods](#ziffers-functions)
+Check out the method usage from [Ziffers methods](#ziffers-methods)
 
 # Basic notation
 
@@ -140,6 +140,30 @@ C = Center
 R = Right
 L = Left
 
+# Slide
+
+**~** starts and ends the slide.
+
+Go crazy with the slide. This example uses slide to create bass sounds:
+
+```
+use_synth :blade
+
+live_loop :boom do
+  zplay("~1----7",:c,:minor)
+end
+
+live_loop :melody do
+  zplay("q?L??R?>?L?~?~<?~?~?R?L?>?~?~?R?<??",:c,:minor_pentatonic)
+end
+
+live_loop :bass do
+  zplay("--q223222",:c,:minor)
+end
+```
+
+Just remember to end the slide in long melodies, otherwise it will be slide all the way.
+
 # Randomization
 
 With randomization you can create random or semirandom melodies, for example:
@@ -148,23 +172,23 @@ With randomization you can create random or semirandom melodies, for example:
 #notes = " |: ???0???q(1,2)[6,7](1,2)[6,7]%(1,2)[6,7](1,2)[6,7] :| "
 ```
 
-## ? Random note
+## Random note
 
-Use ? for random note
+Use **?** for random note
 
-## (1,3) random between
+## Random between
 
 Use (1,5) for random numer between 1 and 5. (1,7) is same as ?.
 
-## [1,2,3] choose random
+## Choose random from array
 
-Use [a,n,y] for randomly selected number from the array
+Use [1,2,3] for randomly selected number from the array
 
-## % for random octave change
+## Random octave change
 
-Use % to change the octave randomly
+Use **%** to change the octave randomly
 
-# Ziffers functions
+# Ziffers methods
 
 ## zparse
 
@@ -181,13 +205,13 @@ Prints:
 
 ### Params
 
-zparse(ziffersNotation, key, scale, defaultDuration, ampStep)
+zparse(n, key, scale, d, a)
 
-* ziffersNotation as presented in the first section
+* n = ascii notation as presented in the first section
 * key as keys in Sonic Pi (:c, :d, :e ...)
 * scale as scales in Sonic Pi (:major, :minor, :gong ...)
-* defaultDuration as default note length (What length plain numbers are without any other character=
-* ampStep as how much volume is changed with < and >
+* d = default note length (What length plain numbers are without any other character)
+* a = how much amp/volume is changed with < and >
 
 ### Ziffer array cells
 
@@ -201,7 +225,7 @@ zparse(ziffersNotation, key, scale, defaultDuration, ampStep)
 
 Plays the ziffers. Plays the result array from **zparse** or parses the string directly. Always use preparsed melody if you are using **zplay** inside **live_loop**! 
 
-Actual code:
+Actual method (Useful if you want to implement your own play method):
 ```
 def zplay(melody,key=:c, scale=:major,d=0.5, a=0.25)
     if melody.is_a? String then
@@ -235,7 +259,7 @@ def zplay(melody,key=:c, scale=:major,d=0.5, a=0.25)
 
 Loops the ziffers. Uses result from **zparse** or parses the string.
 
-Actual code:
+Actual method (Useful if you want to implement your own loop method):
 ```
 def zloop(melody,key=:c, scale=:major,d=0.5, a=0.25)
   if melody.is_a? String then
