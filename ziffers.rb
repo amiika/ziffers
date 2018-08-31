@@ -1,12 +1,30 @@
-def zparse(n,key=:c, scale=:major,d=0.5, a=0.25)
-  notes, durations, noteBuffer, durationBuffer, rnd, chs = Array.new(6){ [] }
-  loop, rndRange, rndChoose, parseFloat = false,false,false,false
-  noteLength = d
+def defaultOpts
+  defaults = {
+    :key => :c,
+    :scale => :major,
+    :pan => 0,
+    :pan_slide => 1,
+    :attack => 0.0,
+    :decay => 0.0,
+    :release => 1.0,
+    :sustain => 0.0,
+    :sleep => 0.5,
+    :pitch => 0.0,
+    :amp => 1.0,
+    :amp_slide => 0,
+    :amp_step => 0.0,
+    :slide => false
+  }
+end
+
+def zparse(n,opts=nil)
+  notes, noteBuffer, rnd, chs = Array.new(4){ [] }
+  loop, rndRange, rndChoose, escape, dc, ds = false, false, false,false,false,false
   stringFloat = ""
   dotLength = 1.0
-  addition, sfaddition, dot, loopCount, vol, pan = 0, 0, 0, 0, 0, 0
+  addition, sfaddition, dot, loopCount = 0, 0, 0, 0
   slide = false
-  scaleDegrees = Array.new(scale(key,scale).length){ |i| (i+1) }.ring
+  escapeType = nil
   durs = {
     'm': 8.0,
     'l': 4.0,
@@ -19,20 +37,49 @@ def zparse(n,key=:c, scale=:major,d=0.5, a=0.25)
     't': 0.03125,
     'f': 0.015625
   }
+  defaults = defaultOpts
+  if opts!=nil then
+    defaults = defaults.merge(opts)
+  end
+  type = {
+    'A': :amp,
+    'C': :attack, # Chaaarge
+    'P': :pan,
+    'D': :decay,
+    'S': :sustain,
+    'R': :release,
+    'Z': :sleep, #Zzz
+    'T': :pitch
+  }
   durs.default = 0.25
-  n.each_char do |c|
+  ziff = defaults.clone
+  zkey = ziff.fetch(:key)
+  zscale = ziff.fetch(:scale)
+  print zkey
+  print zscale
+  scaleDegrees = Array.new(scale(zkey,zscale).length){ |i| (i+1) }.ring
+  chars = n.chars
+  chars.to_enum.each_with_index do |c, index|
     dgr = nil
     case c
-    when '\'' then
-      if parseFloat then
-        noteLength = stringFloat.to_f
-        parseFloat = !parseFloat
+    when '!' then
+      addition = 0
+      slide = false
+      ziff = ziff.merge(defaults)
+      print ziff
+    when /^[A-Z]+$/ then
+      if type.key?(c.to_sym) then
+        escape = true
+        escapeType = type[c.to_sym]
+      end
+    when ' '
+      if escape then
+        ziff[escapeType]=stringFloat.to_f
         stringFloat = ""
-      else
-        parseFloat = true
+        escape = false
       end
     when '.' then
-      if parseFloat then
+      if escape then
         stringFloat = stringFloat+c
       else
         dot+=1
@@ -40,7 +87,7 @@ def zparse(n,key=:c, scale=:major,d=0.5, a=0.25)
       end
     when /^[a-z]+$/ then
       # Set note length
-      noteLength = durs[c.to_sym]
+      ziff[:sleep] = durs[c.to_sym]
       #when '0' then
       # note = :r
     when /^[0-9]+$/ then
@@ -52,7 +99,7 @@ def zparse(n,key=:c, scale=:major,d=0.5, a=0.25)
         elsif rndChoose then
           chs.push(c.to_i)
         end
-      elsif parseFloat then
+      elsif escape then
         stringFloat = stringFloat+c
       else
         # Plain notes 1234 etc.
@@ -62,32 +109,26 @@ def zparse(n,key=:c, scale=:major,d=0.5, a=0.25)
       dgr = rrand_i(1,scaleDegrees.length)
     when '#' then
       sfaddition += 1
-    when '*' then
+    when '&' then
       sfaddition -= 1
     when '+' then
       addition += 12
     when '-' then
-      addition += -12
+      if escape then
+        stringFloat = stringFloat+c
+      else
+        addition += -12
+      end
     when '<' then
-      vol +=a
+      ziff[:amp] = ziff.fetch(:amp)+ziff.fetch(:amp_step)
     when '>' then
-      vol -=a
-    when 'C'
-      pan = 0
-    when 'L'
-      pan = -1
-    when 'R'
-      pan = 1
+      ziff[:amp] = ziff.fetch(:amp)-ziff.fetch(:amp_step)
     when '%' then
-      addition+=[12,-12].choose
+      ziff[:pan] = [1,-1,0].choose
     when '~' then
       slide = !slide
     when '|' then
-      noteLength = d
-      addition = 0
-      vol = 0
-      pan = 0
-      slide = false
+      # Do something
     when ':' then
       if noteBuffer.length > 0 then
         # Normal loop must be ending, add buffer to note list
@@ -122,14 +163,22 @@ def zparse(n,key=:c, scale=:major,d=0.5, a=0.25)
       rndChoose = false
       dgr = chs.choose
       chs = []
-    when '}' then
-      # Recursive call from { to }
-      again = zparse(n[/.*\{(.*)}/,1], key, scale)
-      notes = notes.concat(again)
-    when '&' then
+    when '@' then
+      # Recursive call from @ to @
+      if ds then
+        again = zparse(n[/\@(.*?)@/,1], ziff.clone)
+        notes = notes.concat(again)
+      else
+        ds = !ds
+      end
+    when '*' then
       # Recursive call from beginning to first !
-      again = zparse(n.split('@')[0], key, scale)
-      notes = notes.concat(again)
+      if dc then
+        again = zparse(n.split('*')[0], ziff.clone)
+        notes = notes.concat(again)
+      else
+        dc = !dc
+      end
     else
       # Spaces, commas and all other nonsense
     end
@@ -139,92 +188,77 @@ def zparse(n,key=:c, scale=:major,d=0.5, a=0.25)
       if dgr==0 then
         note = :r
       else
+        zkey = ziff.fetch(:key)
+        zscale = ziff.fetch(:scale)
         # Transpose if needed
         if dgr>scaleDegrees.length then
-          note = degree(scaleDegrees[dgr],key,scale)
+          note = degree(scaleDegrees[dgr],zkey,zscale)
           note+=12
         else
-          note = degree(dgr,key,scale)
+          note = degree(dgr,zkey,zscale)
         end
         # Add sharps and flats
         note = note + sfaddition
         sfaddition = 0
         # Add +- additions
         note = note + addition
+        
+        
       end
+      
+      ziff[:note] = note
+      ziff[:sleep] = ziff.fetch(:sleep)*dotLength
+      ziff[:slide] = slide
+      
       # Add note to buffer if looping with :
       if loop && loopCount<1 then
-        noteBuffer.push([note,noteLength*dotLength,vol, pan, slide])
+        noteBuffer.push(ziff)
       end
-      # Push note and duration to list
-      notes.push([note,noteLength*dotLength,vol, pan, slide])
+      
+      notes.push(ziff)
       dot = 0
       dotLength = 1.0
+      ziff = ziff.clone
     end
   end
   notes
 end
 
-def znotes(array)
-  zindex(array,0)
+def zparams(hash, name)
+  hash.map{|x| x[name]}
 end
 
-def zsleeps(array)
-  zindex(array,1)
-end
-
-def zindex(array, n)
-  array = array.flatten
-  (n...array.length).step(5).map { |i| array[i] }
-end
-
-def zloop(melody,key=:c, scale=:major,d=0.5, a=0.25)
+def zloop(melody,opts=nil)
   if melody.is_a? String then
-    melody = zparse(melody,key, scale,d, a)
+    melody = zparse(melody, opts)
   end
-  melody = melody.flatten.ring
+  melody = melody.ring
   loop do
-    note = melody.tick
-    s = melody.tick
-    a = melody.tick
-    p = melody.tick
-    slide = melody.tick
-    c = play note, amp: (1+a < 0 ? 0 : 1+a), pan: p, note_slide: s, release: (slide ? s : 1)
-    
-    while slide do
-        note = melody.tick
-        s = melody.tick
-        a = melody.tick
-        p = melody.tick
-        control c, note: note, amp: 1+a, pan: p
+    ziff = melody.tick
+    c = play ziff[:note], amp: ziff[:amp], pan: ziff[:pan], note_slide: ziff[:note_slide], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch]
+    while ziff[:slide] do
         slide = melody.tick
+        control c, note: slide[:note], amp: slide[:amp], pan: slide[:pan], attack: slide[:attack], release: slide[:release], sustain: slide[:sustain], decay: slide[:decay], pitch: slide[:pitch]
       end
-      sleep s
+      sleep ziff[:sleep]
     end
   end
   
-  def zplay(melody,key=:c, scale=:major,d=0.5, a=0.25)
+  def zplay(melody,opts=nil)
     if melody.is_a? String then
-      melody = zparse(melody,key, scale,d, a)
+      melody = zparse(melody,opts)
     end
     n=0
     until n>=melody.length do
-        note = melody[n][0]
-        s = melody[n][1]
-        a = melody[n][2]
-        p = melody[n][3]
-        slide = melody[n][4]
-        c = play note, amp: (1+a < 0 ? 0 : 1+a), pan: p, note_slide: (slide ? s : 1), release: (slide ? s : 1)
-        while slide && n+1<melody.length do
+        ziff = melody[n]
+        c = play ziff[:note], amp: ziff[:amp], pan: ziff[:pan], note_slide: ziff[:note_slide], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch]
+        while ziff[:slide] && n+1<melody.length do
             n=n+1
-            note = melody[n][0]
-            s = melody[n][1]
-            a = melody[n][2]
-            p = melody[n][3]
-            control c, note: note, amp: 1+a, pan: p
-            slide = melody[n][4]
+            slide = melody[n]
+            control c, note: slide[:note], amp: slide[:amp], pan: slide[:pan], attack: slide[:attack], release: slide[:release], sustain: slide[:sustain], decay: slide[:decay], pitch: slide[:pitch]
           end
-          sleep s
+          sleep ziff[:sleep]
           n=n+1
         end
       end
+      
