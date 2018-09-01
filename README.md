@@ -147,7 +147,7 @@ Use **%** to change the octave randomly
 For example:
 ```
 # Start slide with 0.4 speed, set release to 3, set sleep between slide notes to 0.4. 
-zplay("~0.4 R3 Z0.4 1232 ~1")
+zplay("~0.4 R3 Z0.4 12321~")
 ```
 
 Go crazy with the slide. This example uses slide to create bass sounds:
