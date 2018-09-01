@@ -142,7 +142,13 @@ Use **%** to change the octave randomly
 
 # Slide
 
-**~** starts and ends the slide.
+**~** starts and ends the slide. Remeber to add slide speed or/and space after the first slide marker.
+
+For example:
+```
+# Start slide with 0.4 speed, set release to 3, set sleep between slide notes to 0.4. 
+zplay("~0.4 R3 Z0.4 1232 ~1")
+```
 
 Go crazy with the slide. This example uses slide to create bass sounds:
 
@@ -150,11 +156,11 @@ Go crazy with the slide. This example uses slide to create bass sounds:
 use_synth :blade
 
 live_loop :boom do
-  zplay("~1----7")
+  zplay("Z0.25 ~0.2 1 T-71 7")
 end
 
 live_loop :melody do
-  zplay("q?L??R?>?L?~?~<?~?~?R?L?>?~?~?R?<??",{key:"c",scale:"minor_pentatonic"})
+  zplay("q? P-1 ?? P1 ?>? P-1 ?~??<?~?~? P1 ??>?~?~? P-1 ?<?~?",{key:"c",scale:"minor_pentatonic"})
 end
 
 live_loop :bass do
