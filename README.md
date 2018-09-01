@@ -150,15 +150,15 @@ Go crazy with the slide. This example uses slide to create bass sounds:
 use_synth :blade
 
 live_loop :boom do
-  zplay("~1----7",:c,:minor)
+  zplay("~1----7")
 end
 
 live_loop :melody do
-  zplay("q?L??R?>?L?~?~<?~?~?R?L?>?~?~?R?<??",:c,:minor_pentatonic)
+  zplay("q?L??R?>?L?~?~<?~?~?R?L?>?~?~?R?<??",{key:"c",scale:"minor_pentatonic"})
 end
 
 live_loop :bass do
-  zplay("--q223222",:c,:minor)
+  zplay("--q223222",{key:"c",scale:"minor"})
 end
 ```
 
