@@ -43,15 +43,16 @@ def zparse(n,opts=nil)
   end
   type = {
     'A': :amp, #Volume
+    'E': :env_curve,
     'V': :attack,
     'P': :pan,
     'D': :decay,
-    'K': :sustain, #Keep
+    'S': :sustain, #Keep
     'R': :release,
     'Z': :sleep, #Zzz
     'T': :pitch, # Tuning
     'K': :key,
-    'S': :scale,
+    '$': :scale,
     '~': :note_slide
   }
   durs.default = 0.25
@@ -61,6 +62,7 @@ def zparse(n,opts=nil)
   scaleDegrees = Array.new(scale(zkey,zscale).length){ |i| (i+1) }.ring
   chars = n.chars
   chars.to_enum.each_with_index do |c, index|
+    next_c = chars[index+1]
     dgr = nil
     case c
     when '!' then
@@ -142,17 +144,19 @@ def zparse(n,opts=nil)
     when '%' then
       ziff[:pan] = [1,-1,0].choose
     when '~' then
-      slideNext = !slideNext
       if slideNext then
+        slideNext = false
+      else
+        slideNext = true
         escape = true
         escapeType = type[c.to_sym]
-      else
-        escape = false
       end
     when '|' then
       # Do something
     when '$' then
-      ziff[:scale] = scale_names.choose
+      if next_c==' ' then
+        ziff[:scale] = scale_names.choose
+      end
     when ':' then
       if noteBuffer.length > 0 then
         # Normal loop must be ending, add buffer to note list
@@ -208,6 +212,7 @@ def zparse(n,opts=nil)
     end
     
     if dgr!=nil then
+      slideNext = false if next_c == nil || next_c == ' '
       note = nil
       if dgr==0 then
         note = :r
@@ -231,6 +236,7 @@ def zparse(n,opts=nil)
       ziff[:note] = note
       ziff[:sleep] = ziff.fetch(:sleep)*dotLength
       ziff[:slideNext] = slideNext
+      
       
       # Add note to buffer if looping with :
       if loop && loopCount<1 then
@@ -282,6 +288,7 @@ def zplay(melody,opts=nil)
     melody = zparse(melody,opts)
   end
   n=0
+  print zparams(melody, :slideNext)
   until n>=melody.length do
       ziff = melody[n]
       c = play ziff[:note], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
