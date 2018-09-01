@@ -76,7 +76,9 @@ def zparse(n,opts=nil)
       end
     when ' '
       if escape then
-        if escapeType == :scale then
+        if stringFloat == nil || stringFloat.length==0 then
+          ziff[escapeType] = defaults.fetch(escapeType)
+        elsif escapeType == :scale then
           if (Float(stringFloat) != nil rescue false) then
             ziff[escapeType] = scale_names[stringFloat.to_i]
           else
@@ -85,7 +87,7 @@ def zparse(n,opts=nil)
         elsif escapeType == :key then
           ziff[escapeType] = stringFloat.to_s
         else
-          ziff[escapeType]=stringFloat.to_f
+          ziff[escapeType] = stringFloat.to_f
         end
         stringFloat = ""
         escape = false
@@ -141,6 +143,12 @@ def zparse(n,opts=nil)
       ziff[:pan] = [1,-1,0].choose
     when '~' then
       slideNext = !slideNext
+      if slideNext then
+        escape = true
+        escapeType = type[c.to_sym]
+      else
+        escape = false
+      end
     when '|' then
       # Do something
     when '$' then
@@ -259,29 +267,33 @@ def zloop(melody,opts=nil)
   loop do
     ziff = melody.tick
     c = play ziff[:note], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
-    while ziff[:slideNext] do
-        slide = melody.tick
-        control c, note: slide[:note], amp: slide[:amp], pan: slide[:pan], pitch: slide[:pitch]
-      end
+    zz = ziff[:sleep]
+    while ziff[:slideNext]
+      ziff = melody.tick
+      control c, note: ziff[:note], amp: ziff[:amp], pan: ziff[:pan], pitch: ziff[:pitch]
       sleep ziff[:sleep]
     end
+    sleep zz
   end
-  
-  def zplay(melody,opts=nil)
-    if melody.is_a? String then
-      melody = zparse(melody,opts)
-    end
-    n=0
-    until n>=melody.length do
-        ziff = melody[n]
-        c = play ziff[:note], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
-        while ziff[:slideNext] && n+1<melody.length do
-            n=n+1
-            slide = melody[n]
-            control c, note: slide[:note], amp: slide[:amp], pan: slide[:pan], pitch: slide[:pitch]
-          end
-          sleep ziff[:sleep]
+end
+
+def zplay(melody,opts=nil)
+  if melody.is_a? String then
+    melody = zparse(melody,opts)
+  end
+  n=0
+  until n>=melody.length do
+      ziff = melody[n]
+      c = play ziff[:note], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
+      zz = ziff[:sleep]
+      while ziff[:slideNext] && n+1<melody.length do
           n=n+1
+          ziff = melody[n]
+          control c, note: ziff[:note], amp: ziff[:amp], pan: ziff[:pan], pitch: ziff[:pitch]
+          sleep ziff[:sleep]
         end
+        sleep zz
+        n=n+1
       end
-      
+    end
+    
