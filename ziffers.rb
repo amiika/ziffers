@@ -42,21 +42,21 @@ def zparse(n,opts=nil)
     defaults = defaults.merge(opts)
   end
   type = {
-    'A': :amp,
-    'C': :attack, # Chaaarge
+    'A': :amp, #Volume
+    'V': :attack,
     'P': :pan,
     'D': :decay,
-    'S': :sustain,
+    'K': :sustain, #Keep
     'R': :release,
     'Z': :sleep, #Zzz
-    'T': :pitch
+    'T': :pitch, # Tuning
+    'K': :key,
+    'S': :scale
   }
   durs.default = 0.25
   ziff = defaults.clone
   zkey = ziff.fetch(:key)
   zscale = ziff.fetch(:scale)
-  print zkey
-  print zscale
   scaleDegrees = Array.new(scale(zkey,zscale).length){ |i| (i+1) }.ring
   chars = n.chars
   chars.to_enum.each_with_index do |c, index|
@@ -66,15 +66,26 @@ def zparse(n,opts=nil)
       addition = 0
       slide = false
       ziff = ziff.merge(defaults)
-      print ziff
     when /^[A-Z]+$/ then
-      if type.key?(c.to_sym) then
+      if !escape && type.key?(c.to_sym) then
         escape = true
         escapeType = type[c.to_sym]
+      else
+        stringFloat+=c
       end
     when ' '
       if escape then
-        ziff[escapeType]=stringFloat.to_f
+        if escapeType == :scale then
+          if (Float(stringFloat) != nil rescue false) then
+            ziff[escapeType] = scale_names[stringFloat.to_i]
+          else
+            ziff[escapeType] = findScale stringFloat.to_s
+          end
+        elsif escapeType == :key then
+          ziff[escapeType] = stringFloat.to_s
+        else
+          ziff[escapeType]=stringFloat.to_f
+        end
         stringFloat = ""
         escape = false
       end
@@ -87,9 +98,11 @@ def zparse(n,opts=nil)
       end
     when /^[a-z]+$/ then
       # Set note length
-      ziff[:sleep] = durs[c.to_sym]
-      #when '0' then
-      # note = :r
+      if escape then
+        stringFloat+=c
+      else
+        ziff[:sleep] = durs[c.to_sym]
+      end
     when /^[0-9]+$/ then
       # Notes inside () or []
       if rndRange || rndChoose then
@@ -129,6 +142,8 @@ def zparse(n,opts=nil)
       slide = !slide
     when '|' then
       # Do something
+    when '$' then
+      ziff[:scale] = scale_names.choose
     when ':' then
       if noteBuffer.length > 0 then
         # Normal loop must be ending, add buffer to note list
@@ -202,8 +217,6 @@ def zparse(n,opts=nil)
         sfaddition = 0
         # Add +- additions
         note = note + addition
-        
-        
       end
       
       ziff[:note] = note
@@ -222,6 +235,15 @@ def zparse(n,opts=nil)
     end
   end
   notes
+end
+
+def findScale(query)
+  result = scale_names.find { |e| e.match( /\A#{Regexp.quote(query)}/)}
+  if result==nil
+    query
+  else
+    result
+  end
 end
 
 def zparams(hash, name)
