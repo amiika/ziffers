@@ -25,7 +25,7 @@ def defaultOpts
     :decay => 0.0,
     :release => 1.0,
     :sustain => 0.0,
-    :sleep => 0.5,
+    :sleep => 0.25,
     :pitch => 0.0,
     :amp => 1.0,
     :amp_slide => 0,
@@ -49,7 +49,8 @@ def getTypes
     'K': :key,
     '$': :scale,
     '~': :note_slide,
-    '^': :synth # Instrument
+    '^': :synth, # Instrument
+    'C': :chord,
   }
 end
 
@@ -61,7 +62,7 @@ def zparse(n,opts=nil)
   notes, noteBuffer, controlBuffer, rnd, chs = Array.new(5){ [] }
   loop, rndRange, rndChoose, escape, dc, ds = false, false, false,false,false,false
   stringFloat = ""
-  dotLength = 1.0
+  noteLength, dotLength = 0.25, 1.0
   addition, sfaddition, dot, loopCount = 0, 0, 0, 0
   slideNext = false
   escapeType = nil
@@ -95,7 +96,7 @@ def zparse(n,opts=nil)
       end
     when ' '
       if escape then
-        #print escapeType
+        #print escapeType.to_s+":"+stringFloat.to_s
         if stringFloat == nil || stringFloat.length==0 then
           ziff[escapeType] = defaults.fetch(escapeType)
         elsif escapeType == :scale then
@@ -107,6 +108,12 @@ def zparse(n,opts=nil)
           ziff[escapeType] = searchList(synth_names, stringFloat)
         elsif escapeType == :key then
           ziff[escapeType] = stringFloat.to_s
+        elsif escapeType == :chord then
+          zchord = chord_degree(stringFloat.to_i,zkey,zscale)
+          ziff[escapeType] = zchord
+        elsif escapeType == :sleep then
+          noteLength = stringFloat.to_f
+          ziff[escapeType] = stringFloat.to_f
         else
           ziff[escapeType] = stringFloat.to_f
         end
@@ -125,8 +132,7 @@ def zparse(n,opts=nil)
       if escape then
         stringFloat+=c
       else
-        ziff[:sleep] = durs[c.to_sym]
-        ziff[:release] = defaults[:release]*(durs[c.to_sym]*2)
+        noteLength = durs[c.to_sym]
       end
     when /^[0-9]+$/ then
       # Notes inside () or []
@@ -234,7 +240,7 @@ def zparse(n,opts=nil)
     
     # If any degree was parsed, parse note and add to hasharray
     if dgr!=nil then
-      #print "Parsed defree: "+dgr.to_s
+      #print "Parsed degree: "+dgr.to_s
       note = nil
       if dgr==0 then
         note = :r
@@ -273,39 +279,40 @@ def zparse(n,opts=nil)
           #print "Slide ends: "+controlBuffer.length.to_s
           slideNext = false
           ziff[:control] = controlBuffer
-          ziff[:release] = ziff[:sleep] * (ziff[:control].length)
+          ziff[:release] = ziff[:sleep] * (ziff[:control].length+1)
           controlBuffer = []
-          ziff = ziff.clone
         end
         
       else
         
         if escapeType==:note_slide then
-          # Start slide use same object
+          #print "Start slide"
           slideNext=true
           escapeType=nil
-        else
-          # Create new object
-          ziff[:control] = nil
-          ziff = ziff.clone
         end
         
-        # Add note and sleep only to this object
-        ziffClone = ziff.clone
-        ziffClone[:note] = note
-        ziffClone[:sleep] = ziffClone[:sleep]*dotLength
+        #print "Create new object"
+        ziff = ziff.clone
+        ziff[:control] = nil
+        ziff[:note] = note
+        ziff[:sleep] = noteLength*dotLength
+        ziff[:release] = defaults[:release]*(noteLength*2)
         
         # Add note to buffer if looping with :
         if loop && loopCount<1 then
-          noteBuffer.push(ziffClone)
+          noteBuffer.push(ziff.clone)
         end
         
-        notes.push(ziffClone)
+        notes.push(ziff)
         
       end
       
       dot = 0
       dotLength = 1.0
+      
+    elsif ziff[:chord]!=nil
+      notes.push(ziff.clone)
+      ziff.delete(:chord)
     end
     # Continues loop
   end
@@ -339,14 +346,15 @@ def zloop(melody,opts=nil)
   loop do
     ziff = melody.tick
     c = play ziff[:note], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
-    zz = ziff[:sleep]
+    
     if ziff[:control] != nil then
+      sleep ziff[:sleep]/3
       ziff[:control].each do |cziff|
         control c, note: cziff[:note], amp: cziff[:amp], pan: cziff[:pan], pitch: cziff[:pitch]
         sleep cziff[:sleep]
       end
-    else
-      sleep zz
+      else
+      sleep ziff[:sleep]
     end
   end
 end
@@ -359,39 +367,43 @@ def zplay(melody,opts=nil)
   until n>=melody.length do
       ziff = melody[n]
       c = play ziff[:note], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
-      zz = ziff[:sleep]
+
       if ziff[:control] != nil then
-        ziff[:control].each do |cziff|
-          control c, note: cziff[:note], amp: cziff[:amp], pan: cziff[:pan], pitch: cziff[:pitch]
-          sleep cziff[:sleep]
-        end
-      else
-        print zz
-        sleep zz
+      sleep ziff[:sleep]/3
+      ziff[:control].each do |cziff|
+        control c, note: cziff[:note], amp: cziff[:amp], pan: cziff[:pan], pitch: cziff[:pitch]
+        sleep cziff[:sleep]
       end
-      n=n+1
+    else
+      sleep ziff[:sleep]
     end
+    n=n+1
   end
-  
-  def zsynth(melody,opts=nil)
-    if melody.is_a? String then
-      melody = zparse(melody,opts)
-    end
-    n=0
-    until n>=melody.length do
-        ziff = melody[n]
+end
+
+def zsynth(melody,opts=nil)
+  if melody.is_a? String then
+    melody = zparse(melody,opts)
+  end
+  n=0
+  until n>=melody.length do
+      ziff = melody[n]
+      if ziff.has_key?(:chord) then
+        c = synth ziff[:synth], notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
+      else
         c = synth ziff[:synth], note: ziff[:note], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
-        zz = ziff[:sleep]
-        if ziff[:control] != nil then
-          ziff[:control].each do |cziff|
-            control c, note: cziff[:note], amp: cziff[:amp], pan: cziff[:pan], pitch: cziff[:pitch]
-            sleep cziff[:sleep]
-          end
-        else
-          sleep zz
-        end
-        n=n+1
       end
+      if ziff[:control] != nil then
+        sleep ziff[:sleep]/3
+      ziff[:control].each do |cziff|
+
+        control c, note: cziff[:note], amp: cziff[:amp], pan: cziff[:pan], pitch: cziff[:pitch]
+        sleep cziff[:sleep]
+      end
+    else
+      sleep ziff[:sleep]
     end
-    
-    
+    n=n+1
+  end
+end
+
