@@ -14,4 +14,13 @@ zplay("|:q.1.1|q1e2q.3|3e2q3e4|h.5|e888555333111|q5e4q3e2|h.1:|")
 zsynth("h3q323 q ~0.1 3666 h5.3 q ~0.25 3666 53 q ~0.2 3232222",{synth:"chipbass"})
 
 # Some drum sounds
-zplay("~1 1-7 ~0.5 +1--7 ~0.25 ++1---7")
+zdrums("1 2 3 4")
+
+# Synth test
+zsynth("|:C4 123 C3 234 C2 432 C1 123:|",{key: "e", scale: "mixolydian"})
+
+# Binaural twinkle
+m = zparse("q115566h5q443322h1 *|: q554433h2 :|*")
+zbin(m,{hz:10})
+
+
