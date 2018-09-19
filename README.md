@@ -1,3 +1,4 @@
+![Ziffers](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.svg)
 # Ziffers: Numbered musical notation for Sonic Pi 
 Ziffers is a numbered musical notation (aka. Ziffersystem) that makes composing melodies easier and faster for any key or scale. 
 
