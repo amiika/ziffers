@@ -5,11 +5,11 @@ Ziffers is a numbered musical notation (aka. Ziffersystem) that makes composing 
 
 Writing and playing melodies will be as simple as:
 ```
-zplay("4q11h21034",{key:"f",scale:"major"})
+zplay "q4e11q21034", key: "f", scale: "major"
 ```
 or
 ```
-zloop("44332233",{key:"c", scale:"chromatic", sleep:0.25})
+zplay "|:44332233:|.4..4", key: :c, scale: :chromatic, sleep: 0.2
 ```
 
 Just copy the [source](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.rb) and run it in a free buffer or use **run_file** command to include the ziffers.rb file. Check out the method usage from [Ziffers methods](#ziffers-methods)
