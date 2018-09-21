@@ -1,3 +1,19 @@
+use_synth :piano
+
+def testsingledegrees
+  (scale :gong).reflect.each do |k|
+    [1,6].each do |d|
+      zplay d, key: 40+k, scale: :blues_minor
+      sleep 0.1
+    end
+  end
+end
+
+def testarraydegrees
+  zplay [4,4,3,3,2,2,3,3,4,4,3,3,2,2,3,3], key: :c, scale: :chromatic, sleep: 0.12
+  zplay (scale :gong).reflect.to_a,  key: 60, scale: :blues_minor
+end
+
 def testzplay
   # frere jacques
   zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|")
@@ -28,19 +44,27 @@ end
 def testzbin
   # Binaural twinkle
   m = zparse("q115566h5q443322h1 *|: q554433h2 :|*")
-  zbin(m,{hz:10})
+  with_synth :sine do
+    zbin(m,{hz:10})
+  end
 end
 
 def testrandom
-  zplay("(1,7)[1,2]")
-  zplay("$ P? A0.? (1,2) P? A0.? (2,3) P? A0.? (3,4) $ [1,2,3] P? [4,5,6] P? [4,5,6] ~ ????????? ")
+  with_synth :beep do
+    zplay("$ P? A0.? (1,2) P? A0.? (2,3) P? A0.? (3,4) $ [1,2,3] P? [4,5,6] P? [4,5,6] ~ ????????? ")
+  end
 end
 
 def testzsample
-  zsample("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|")
+  n = zparse("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {sample:  :ambi_drone, sustain: 0.25, key: "c1"}, defaultSampleOpts)
+  zsample(n, {}, true)
+  zsample("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25})
+  zsample("h3q323 q ~0.1 3666 h5.3 q ~0.25 3666 53 q ~0.2 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c"})
   zsample("q115566h5q443322h1 *|: q554433h2 :|*", sample: :ambi_glass_rub, rate: 2.1, amp: 0.2)
 end
 
+testsingledegrees
+testarraydegrees
 testzplay
 testzsynth
 testzdrums
