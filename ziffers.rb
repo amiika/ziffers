@@ -7,7 +7,7 @@ def zkeys
 end
 
 def chordDefaults
-  defaults = { :chordSynth => :beep, :chordSleep => 0, :chordRelease => 1, :chordInvert => 0 }
+  defaults = { :chordSleep => 0, :chordRelease => 1, :chordInvert => 0 }
 end
 
 def defaultSampleOpts
@@ -109,7 +109,7 @@ def zparse(n,opts=nil,defaults=defaultOpts)
   # Clone defaults to current node
   ziff, controlZiff = defaults.clone
   # Merge synth options to defaults
-  defaults = synthDefaults.merge(defaults)
+  defaults = chordDefaults.merge(defaults)
   n = replaceRandomSyntax(n)
   # Loop chars
   chars = n.chars
@@ -385,7 +385,7 @@ def playDegrees(ziff)
   if ziff[:skip]
   elsif ziff.has_key?(:chord) then
     ziff = chordDefaults.merge(ziff)
-    synth ziff[:chordSynth], notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
+    synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
   else
     # Binaural panning
     bpan = ziff[:hz]==nil ? ziff[:pan] : (ziff[:pan]==0 ? 1 : ziff[:pan])
@@ -420,7 +420,7 @@ def zplay(melody,opts={})
         ziff = mergeOpts(ziff, opts) if opts[:parsed]!=nil
       end
       playDegrees(ziff)
-      sleep ziff[:sleep] if !ziff[:skip] && melody[index+1]!=nil
+      sleep ziff[:sleep] if !ziff[:skip]
     end
   end
 end
