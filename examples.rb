@@ -34,37 +34,42 @@ def testarraydegrees
   zplay (scale :gong).reflect.to_a,  key: 60, scale: :blues_minor
 end
 
-def testrandom
-  with_synth :beep do
-    zplay("$ P? A0.? (1,2) P? A0.? (2,3) P? A0.? (3,4) $ [1,2,3] P? [4,5,6] P? [4,5,6] ~ ????????? ")
-  end
-end
-
 def testzdrums
   # Some drum sounds
   zdrums("1 2 3 4")
+  zdrums("1234568765432123456787654321", synth: :sine)
 end
 
 def testchords
   # Chord synth test
   zplay("i ii iii iv v vi vii",{key: "e", scale: "major", chordSleep: 0.25, chordSynth: :piano})
   zplay("|:iv 123 iii 234 ii 432 i 123:|",{key: "e", scale: "mixolydian"})
+  zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chordSleep:1, scale: :aeolian)
+  zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chordSleep: 1)
 end
 
 def testbinaural
   with_synth :beep do zplay("q12345678") end
   with_synth :beep do zplay("q12345678",{hz:10}) end
-  zsample("q12345678",{sustain: 0.25, sample: :ambi_glass_rub})
-  zsample("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub})
-  zsample("q12345678",{sustain: 0.25, sample: :ambi_glass_rub},true)
-  zsample("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub},true)
+  zplay("q12345678",{sustain: 0.25, sample: :ambi_glass_rub})
+  zplay("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub})
+  zplay("q12345678",{sustain: 0.25, sample: :ambi_glass_rub}, rateBased: true)
+  zplay("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub}, rateBased: true)
+end
+
+def testrandom
+  with_synth :beep do
+    3.times do zplay("ii 554e56 iv 12323456 i q 334e56 v [q7765,e75645342,q????]") end
+    zplay("$ P? C0.? (1,2) P? C0.? (2,3) P? C0.? (3,4) $ [1,2,3] P? [4,5,6] P? [4,5,6] ~ ????????? ")
+  end
 end
 
 def testzsample
-  zsample("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25})
-  zsample("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25},true)
-  zsample("h3q323 q ~0.1 3666 h5.3 q ~0.25 3666 53 q ~0.2 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c"})
-  zsample("q115566h5q443322h1 *|: q554433h2 :|*", sample: :ambi_glass_rub, rate: 2.1, amp: 0.2)
+  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {hz: 10, sample:  :ambi_drone, key: "c1", sustain: 0.25})
+  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25}, rateBased: true)
+  zplay("h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})
+  zplay("h3q323 q ~0.1 3666 h5.3 q ~0.25 3666 53 q ~0.2 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})
+  zplay("q115566h5q443322h1 *|: q554433h2 :|*", sample: :ambi_glass_rub, rate: 2.1, amp: 0.2)
 end
 
 testzplay
