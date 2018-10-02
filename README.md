@@ -243,7 +243,7 @@ print zparams(n,:note)
 
 # Using ziffers with Sonic Pi methods
 
-Ziffers is meant to provide easy way to write and experiment with melodies. By **zparams** you can easily use ziffers with other Sonic Pi methods such as **play_pattern_timed**
+Ziffers is meant to provide easy way to write and experiment with melodies. By **zparams** you can easily use ziffers with other Sonic Pi methods such as **play_pattern_timed**. When using standard methods, remember to combine pitch to notes by transposing the arrays.
 
 Example of using Ziffers with default Sonic Pi methods:
 ```
@@ -252,8 +252,9 @@ ievanpolka = \
   "|:q5e55q43|q2-77+2;q4e44q32|q3113;q4e44q32|q31h1:|"
 
 n = zparse(ievanpolka,{key:"C", scale:"minor"})
-
 notes = zparams(n, :note)
+pitch = zparams(n, :pitch)
+notes = [notes,pitch].transpose.map {|x| x.reduce(:+)}
 durations = zparams(n, :sleep)
 
 play_pattern_timed notes, durations
