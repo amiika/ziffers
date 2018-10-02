@@ -12,32 +12,15 @@ or
 zplay "|:44332233:|.4h4", key: :c, scale: :chromatic
 ```
 
-Just copy the [source](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.rb) and run it in a free buffer or use **run_file** command to include the ziffers.rb file. Check out the method usage from [Ziffers methods](#ziffers-methods)
+Just copy the [source](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.rb) and run it in a free buffer or use **run_file** command to include the ziffers.rb file.
 
 # Basic notation
 
-Ziffers is a [numbered notation](https://en.wikipedia.org/wiki/Numbered_musical_notation) for music, meaning you write melodies using numbers that represent notes in some scale. Ziffers parses custom "ASCII" notation with **zparse** method and produces nested array that can be played or looped with the Sonic Pi.
+Ziffers is a [numbered notation](https://en.wikipedia.org/wiki/Numbered_musical_notation) for music, meaning you write melodies using numbers that represent notes in some scale. Ziffers parses custom "ASCII" notation with **zparse** method and produces array of hash objects that contains parameters which can be played using **zplay** method. You can also use **zparams** method to use produced notes in any other method.
 
 ## Numbers 1-7 (and 8,9)
 
 Notes are marked as numbers 1-7 representing the position in used scale. Default key is :c and scale :major making the numbers 1=C, 2=D, 3=E .. and so forth. 
-
-## Octave change
-
-To create higher notes you can use + which makes octave go up, for example +1 is gain C but one octave up. Numbers 8 and 9 is exactly same as +1 and +2. Use - to change the octave one step lower.
-
-Octave change is sticky, meaning it affects all of the notes that comes after the +/- character
-
-## Rest or silence
-
-Use 0 to create silence in melodies
-
-## Sharp and flat
-
-- **\&** is flat
-- **\#** is sharp
-
-Sharps and flats are not sticky so you have to use it every time before the note number. For example in key of C: #1 = C#
 
 ## Note lengths
 
@@ -79,6 +62,23 @@ Default note length can also be changed via parameter, for example:
 # Plays short efg notes for 1 note per beat.
 zplay("123",{release:0.5, sleep: 1})
 ```
+
+## Octave change
+
+To create higher notes you can use + which makes octave go up, for example +1 is gain C but one octave up. Numbers 8 and 9 is exactly same as +1 and +2. Use - to change the octave one step lower.
+
+Octave change is sticky, meaning it affects all of the notes that comes after the +/- character
+
+## Rest or silence
+
+Use 0 to create silence in melodies. 0 can be combined with note length, meaning it will sleep the length of the 0 note.
+
+## Sharp and flat
+
+- **\&** is flat
+- **\#** is sharp
+
+Sharps and flats are not sticky so you have to use it every time before the note number. For example in key of C: #1 = C#
 
 ## Bars
 
