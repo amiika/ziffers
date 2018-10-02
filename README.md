@@ -41,16 +41,16 @@ Sharps and flats are not sticky so you have to use it every time before the note
 
 ## Note lengths
 
-Default note length is Half note, meaning 0.5 sleep after the note plays. Note length characters are sticky, so you only have to type note length when you need to change the following note lengths.
+Default note length is quarter note, meaning 0.25 sleep after the note plays. Note length characters are sticky, so you only have to type note length when you need to change the following note lengths.
 
-For example Blue bird song using default Half notes then some characters **w** and **q** for Whole and Quarter notes:
+For example note lengths in Blue bird song can be encoded using characters **w** and **q** for Whole and Quarter notes:
 ```
 zplay("5353 5653 4242 4542 5353 5653 w5 q5432 w1")
 ```
 
 Now exactly same song using different escape notation:
 ```
-zplay("5353 5653 4242 4542 5353 5653 '1' 5 '0.25' 5432 '1' 1")
+zplay("5353 5653 4242 4542 5353 5653 Z1 5 Z0.25 5432 Z1 1")
 ```
 
 ### Standard note lengths
