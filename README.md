@@ -9,7 +9,7 @@ zplay "q4e11q21034", key: "f", scale: "major"
 ```
 or
 ```
-zplay "|:44332233:|.4..4", key: :c, scale: :chromatic, sleep: 0.2
+zplay "|:44332233:|.4h4", key: :c, scale: :chromatic
 ```
 
 Just copy the [source](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.rb) and run it in a free buffer or use **run_file** command to include the ziffers.rb file. Check out the method usage from [Ziffers methods](#ziffers-methods)
