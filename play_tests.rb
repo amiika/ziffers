@@ -44,8 +44,8 @@ def testchords
   # Chord synth test
   zplay("i ii iii iv v vi vii",{key: "e", scale: "major", chordSleep: 0.25, chordSynth: :piano})
   zplay("|:iv 123 iii 234 ii 432 i 123:|",{key: "e", scale: "mixolydian"})
-  zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chordSleep:1, scale: :aeolian)
-  zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chordSleep: 1)
+  zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chordSleep: 0.25, scale: :aeolian)
+  zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chordSleep: 0.25)
 end
 
 def testbinaural
@@ -65,7 +65,7 @@ def testrandom
 end
 
 def testzsample
-  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {hz: 10, sample:  :ambi_drone, key: "c1", sustain: 0.25})
+  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {hz: 4, sample:  :ambi_drone, key: "c1", sustain: 0.25})
   zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25}, rateBased: true)
   zplay("h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})
   zplay("h3q323 q ~0.1 3666 h5.3 q ~0.25 3666 53 q ~0.2 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})

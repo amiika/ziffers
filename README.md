@@ -200,7 +200,7 @@ Plays the ziffers. Plays the result array from **zparse** or parses the string d
 
 You can use zplay with strings, integers or integer arrays.
 
-Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/examples.rb) in buffer to see various ways to use zplay.
+Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/play_tests.rb) in buffer to see various ways to use zplay.
 
 ### Using samples
 

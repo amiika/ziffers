@@ -25,7 +25,6 @@ end
 def defaultOpts
   defaultOpts = {
     :key => :c,
-    :synth => :beep,
     :scale => :major,
     :release => 1.0,
     :sleep => 0.25,
@@ -307,6 +306,7 @@ def zparse(n,opts=nil,defaults=defaultOpts)
           ziff[:sleep] = noteLength*dotLength
           ziff[:release] = defaults[:release]*(noteLength*2)
           ziff[:pitch] = ziff[:pitch]+sfaddition
+          
           # Add note to buffer if looping with :
           if loop && loopCount<1 then
             noteBuffer.push(ziff.clone)
@@ -326,7 +326,7 @@ def zparse(n,opts=nil,defaults=defaultOpts)
         ziff = chordDefaults.merge(ziff)
         chordZiff = ziff.clone
         chordZiff[:control] = nil
-        chordZiff[:sleep] = ziff[:chordSleep]
+        chordZiff[:sleep] = chordZiff[:sleep]>0.0 ? ziff[:chordSleep] : chordZiff[:sleep]
         chordZiff[:release] = ziff[:chordRelease]
         notes.push(chordZiff)
         if loop && loopCount<1 then
@@ -358,7 +358,7 @@ def searchList(arr,query)
   (result == nil ? query : result)
 end
 
-def mergeOpts(ziff, opts)
+def mergeRates(ziff, opts)
   ziff.merge(opts) {|_,a,b| (a.is_a? Numeric) ? a * b : b }
 end
 
@@ -380,8 +380,21 @@ def binauralDegree(ziff,defaults={})
   bziff
 end
 
-def playDegrees(ziff,defaults={})
-  if ziff[:skip]
+def clean(ziff)
+  # Removes keys used in preprocessing
+  ziff.delete(:key)
+  ziff.delete(:scale)
+  ziff.delete(:chordSleep)
+  ziff.delete(:chordRelease)
+  ziff.delete(:chordInvert)
+  ziff.delete(:ampStep)
+  ziff.delete(:rateBased)
+  ziff
+end
+
+def playZiff(ziff,defaults={})
+  if ziff[:skip] then
+    print "Skipping note"
   elsif ziff.has_key?(:chord) then
     ziff = chordDefaults.merge(ziff)
     synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
@@ -390,9 +403,9 @@ def playDegrees(ziff,defaults={})
       ziff[:pan] = ziff[:pan]==0 ? 1 : ziff[:pan]
       bziff = binauralDegree(ziff,defaults)
       if bziff[:sample]!=nil then
-        bnote = sample bziff[:sample], bziff
+        bnote = sample bziff[:sample], clean(bziff)
       else
-        bnote = play bziff
+        bnote = play clean(bziff)
       end
     end
     slide = ziff[:control]
@@ -400,13 +413,12 @@ def playDegrees(ziff,defaults={})
     if ziff[:sample]!=nil && ziff[:degree]!=nil && ziff[:degree]!=0 then
       if defaults[:rateBased] then
         ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
-        print ziff[:rate]
       else
         ziff[:pitch] = (scale 1, ziff[:scale])[ziff[:degree]-1]+ziff[:pitch]-0.999
       end
-      c = sample ziff[:sample], ziff
+      c = sample ziff[:sample], clean(ziff)
     else
-      c = play ziff
+      c = play clean(ziff)
     end
     if slide != nil then
       sleep ziff[:sleep]*ziff[:note_slide]
@@ -414,12 +426,12 @@ def playDegrees(ziff,defaults={})
         if cziff[:hz]!=nil then
           cziff[:pan] = cziff[:pan]==0 ? 1 : cziff[:pan]
           bziff = binauralDegree(cziff,defaults)
-          control bnote, bziff
+          control bnote, clean(bziff)
         end
         if cziff[:sample]!=nil && cziff[:degree]!=nil && cziff[:degree]!=0 then
           cziff[:pitch] = (scale 1, cziff[:scale])[cziff[:degree]-1]+cziff[:pitch]-0.999
         end
-        control c, cziff
+        control c, clean(cziff)
         sleep cziff[:sleep]
       end
     end
@@ -430,20 +442,20 @@ def zplay(melody,opts={},defaults={})
   opts = defaultOpts.merge(opts)
   if melody.is_a? Numeric then
     opts[:note] = getNoteFromDgr(melody, opts[:key], opts[:scale])
-    playDegrees(opts,defaults)
+    playZiff(opts,defaults)
   else
     if melody.is_a? String
       melody = zparse(melody,opts)
-      opts[:parsed]==true
+      defaults[:parsed]==true
     end
     melody.each_with_index do |ziff,index|
       if ziff.is_a? Numeric then
         opts[:note] = getNoteFromDgr(ziff, opts[:key], opts[:scale])
-        ziff = opts
+        ziff = opts.clone
       else
-        ziff = mergeOpts(ziff, opts) if opts[:parsed]!=nil
+        ziff = mergeRates(ziff, defaults) if defaults[:parsed]==nil
       end
-      playDegrees(ziff,defaults)
+      playZiff(ziff,defaults)
       sleep ziff[:sleep] if !ziff[:skip]
     end
   end
@@ -452,11 +464,9 @@ end
 def zdrums(melody,opts={})
   if melody.is_a? String then
     melody = zparse(melody,opts)
-    opts[:parsed] = true
   end
   melody.each do |ziff|
-    ziff = mergeOpts(ziff, opts) if opts[:parsed]!=nil
-    c = synth ziff[:synth], ziff if ziff[:note]!=nil
+    c = synth ziff[:synth], clean(ziff) if ziff[:note]!=nil
     control c, note: 0, amp: ziff[:amp]*2
     sleep ziff[:sleep] if melody.length>1
   end
