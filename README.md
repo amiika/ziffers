@@ -194,6 +194,22 @@ Use [1,2,3] for randomly selected number from the array
 
 # Ziffers methods
 
+## zplay
+
+Plays the ziffers. Plays the result array from **zparse** or parses the string directly. You should consider using preparsed melody if you are using **zplay** inside **live_loop**.
+
+You can use zplay with strings, integers or integer arrays.
+
+Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/examples.rb) in buffer to see various ways to use zplay.
+
+### Using samples
+
+You can also use zplay with samples to create new "synths", for example:
+
+```
+zplay("554e56 12323456 q 334e56 e75645343", {sample: :guit_e_fifths, start: 0.2, finish: 0.25, amp: 3})
+```
+
 ## zparse
 
 The heart of ziffers. Parses string and returns hashmap that contains parameters to play single note
@@ -214,22 +230,6 @@ zparse(n, opts)
 
 * n = ascii notation as presented in the first section
 
-## zplay
-
-Plays the ziffers. Plays the result array from **zparse** or parses the string directly. Always use preparsed melody if you are using **zplay** inside **live_loop**! 
-
-Actual method (Useful if you want to implement your own play method):
-```
-... tbd
-```
-
-### Using samples
-
-You can also use zplay with samples to create new "synths", for example:
-
-```
-zplay("554e56 12323456 q 334e56 e75645343", {sample: :guit_e_fifths, start: 0.2, finish: 0.25, amp: 3})
-```
 
 ## zparams
 
