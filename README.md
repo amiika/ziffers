@@ -196,15 +196,16 @@ Use [1,2,3] for randomly selected number from the array
 
 ## zparse
 
-The heart of ziffers. Parses string and returns nested array.
+The heart of ziffers. Parses string and returns hashmap that contains parameters to play single note
 
 For example:
 ```
-print zparse("|: 1231 :|: 34w5 :|: q5654h31 :|: 1-5+w1 :|")
+print zparse "1,2", key: :d
 ```
 Prints:
 ```
-...
+[{:key=>:d, :scale=>:major, :release=>0.5, :sleep=>0.25, :pitch=>0.0, :amp=>1, :pan=>0, :amp_step=>0.5, :note_slide=>0.5, :control=>nil, :skip=>false, :pitch_slide=>0.25, :degree=>1, :note=>62}, {:key=>:d, :scale=>:major, :release=>0.5, :sleep=>0.25, :pitch=>0.0, :amp=>1, :pan=>0, :amp_step=>0.5, :note_slide=>0.5, :control=>nil, :skip=>false, :pitch_slide=>0.25, :degree=>2, :note=>64}]
+ 
 ```
 
 ### Params
@@ -222,22 +223,22 @@ Actual method (Useful if you want to implement your own play method):
 ... tbd
 ```
 
-## zloop
+### Using samples
 
-Loops the ziffers. Uses result from **zparse** or parses the string.
+You can also use zplay with samples to create new "synths", for example:
 
-Actual method (Useful if you want to implement your own loop method):
 ```
-... tbd
+zplay("554e56 12323456 q 334e56 e75645343", {sample: :guit_e_fifths, start: 0.2, finish: 0.25, amp: 3})
 ```
 
 ## zparams
 
-Helper to get any separate array from nested array, for example slide information:
+Helper that creates array from hash, for example:
+
 ```
-n = zparse("~1~2")
-print zindex(n,:slide)
-# Prints [true,false]
+n = zparse("1,2")
+print zparams(n,:note)
+# Prints [60,62]
 ```
 
 # Using ziffers with Sonic Pi methods
