@@ -32,12 +32,14 @@ end
 def testarraydegrees
   zplay [4,4,3,3,2,2,3,3,4,4,3,3,2,2,3,3], key: :c, scale: :chromatic, sleep: 0.12
   zplay (scale :gong).reflect.to_a,  key: 60, scale: :blues_minor
+  zplay [[1, 0.375], [1, 0.375], [1, 0.25], [2, 0.125], [3, 0.375], [3, 0.25], [2, 0.125], [3, 0.25], [4, 0.125], [5, 0.75], [8, 0.125], [8, 0.125], [8, 0.125], [5, 0.125], [5, 0.125], [5, 0.125], [3, 0.125], [3, 0.125], [3, 0.125], [1, 0.125], [1, 0.125], [1, 0.125], [5, 0.25], [4, 0.125], [3, 0.25], [2, 0.125], [1, 0.75]], scale: :aeolian
+  zplay [1,2,4,5,6,7].zip(0.1.step(0.7,0.1).to_a)
 end
 
 def testzdrums
   # Some drum sounds
-  zdrums("1 2 3 4")
-  zdrums("1234568765432123456787654321", synth: :sine)
+  zdrums("1 2 3 4", )
+  zdrums("12345687654321", synth: :sine)
 end
 
 def testchords
@@ -66,7 +68,7 @@ end
 
 def testzsample
   zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {hz: 4, sample:  :ambi_drone, key: "c1", sustain: 0.25})
-  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25}, rateBased: true)
+  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", {hz: 4, sample:  :ambi_drone, key: "c1", sustain: 0.25}, rateBased: true)
   zplay("h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})
   zplay("h3q323 q ~0.1 3666 h5.3 q ~0.25 3666 53 q ~0.2 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})
   zplay("q115566h5q443322h1 *|: q554433h2 :|*", sample: :ambi_glass_rub, rate: 2.1, amp: 0.2)
@@ -76,8 +78,8 @@ testzplay
 testslide
 testsingledegrees
 testarraydegrees
-testchords
 testzdrums
+testchords
 testbinaural
 testrandom
 testzsample

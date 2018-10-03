@@ -196,9 +196,16 @@ Use [1,2,3] for randomly selected number from the array
 
 ## zplay
 
-Plays the ziffers. Plays the result array from **zparse** or parses the string directly. You should consider using preparsed melody if you are using **zplay** inside **live_loop**.
+Plays degrees in some key and scale. Function plays the hash array from **zparse** or parses the string or array first. You should consider using preparsed melody if you are using **zplay** inside **live_loop**.
 
-You can use zplay with strings, integers or integer arrays.
+You can use zplay with strings, integers and arrays, for example:
+
+```
+zplay 1 # Plays in :c :major
+zplay [1,2,3], key: "f", sleep: 0.25
+zplay "w1h2q3"
+zplay [[1,1],[2,0.5],[3,0.25]] # Is same as w1h2q3
+```
 
 Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/play_tests.rb) in buffer to see various ways to use zplay.
 
@@ -222,6 +229,15 @@ Prints:
 ```
 [{:key=>:d, :scale=>:major, :release=>0.5, :sleep=>0.25, :pitch=>0.0, :amp=>1, :pan=>0, :amp_step=>0.5, :note_slide=>0.5, :control=>nil, :skip=>false, :pitch_slide=>0.25, :degree=>1, :note=>62}, {:key=>:d, :scale=>:major, :release=>0.5, :sleep=>0.25, :pitch=>0.0, :amp=>1, :pan=>0, :amp_step=>0.5, :note_slide=>0.5, :control=>nil, :skip=>false, :pitch_slide=>0.25, :degree=>2, :note=>64}]
  
+```
+
+## zarray
+
+Parses integer degree arrays to hash arrays
+
+```
+print zarray [1,2]
+# [{:key=>:c, :scale=>:major, :release=>1.0, :sleep=>0.25, :pitch=>0.0, :amp=>1, :pan=>0, :amp_step=>0.5, :note_slide=>0.5, :control=>nil, :skip=>false, :pitch_slide=>0.25, :note=>60}, {:key=>:c, :scale=>:major, :release=>1.0, :sleep=>0.25, :pitch=>0.0, :amp=>1, :pan=>0, :amp_step=>0.5, :note_slide=>0.5, :control=>nil, :skip=>false, :pitch_slide=>0.25, :note=>62}]
 ```
 
 ### Params
