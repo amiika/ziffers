@@ -2,10 +2,6 @@ def defaultDurs
   durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625 }
 end
 
-def zkeys
-  (ring "C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B")
-end
-
 def chordDefaults
   defaults = { :chordSleep => 0, :chordRelease => 1, :chordInvert => 0 }
 end
