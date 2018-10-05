@@ -397,10 +397,10 @@ def playZiff(ziff,defaults={})
     end
     slide = ziff[:control]
     ziff.delete(:control)
-    if ziff[:sample]!=nil && ziff[:degree]!=nil && ziff[:degree]!=0 then
-      if defaults[:rateBased] then
+    if ziff[:sample]!=nil then
+      if defaults[:rateBased] && ziff[:note]!=nil then
         ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
-      else
+      elsif ziff[:degree]!=nil && ziff[:degree]!=0 then
         ziff[:pitch] = (scale 1, ziff[:scale])[ziff[:degree]-1]+ziff[:pitch]-0.999
       end
       c = sample ziff[:sample], clean(ziff)
@@ -456,7 +456,12 @@ end
 def zplay(melody,opts={},defaults={})
   opts = defaultOpts.merge(opts)
   if melody.is_a? Numeric then
-    opts[:note] = getNoteFromDgr(melody, opts[:key], opts[:scale])
+    if defaults[:midi] then
+      opts[:note] = melody
+    else
+      opts[:note] = getNoteFromDgr(melody, opts[:key], opts[:scale])
+    end
+    print opts
     playZiff(opts,defaults)
   else
     if melody.is_a? String then
