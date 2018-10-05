@@ -148,36 +148,19 @@ Use **%** to change the octave randomly
 
 For example:
 ```
-# Start slide with 0.4 speed, set release to 3, set sleep between slide notes to 0.4. 
-zplay("~0.4 R3 Z0.4 12321~")
+zplay "~ 123456789"
+# Note slide set to 0.4 
+zplay("~0.4 12321 ")
 ```
 
-Go crazy with the slide. This example uses slide to create bass sounds:
-
-```
-use_synth :blade
-
-live_loop :boom do
-  zplay("Z0.25 ~0.2 1 T-71 7")
-end
-
-live_loop :melody do
-  zplay("q? P-1 ?? P1 ?>? P-1 ?~??<?~?~? P1 ??>?~?~? P-1 ?<?~?",{key:"c",scale:"minor_pentatonic"})
-end
-
-live_loop :bass do
-  zplay("--q223222",{key:"c",scale:"minor"})
-end
-```
-
-Just remember to end the slide in long melodies, otherwise it will be slide all the way.
+(TODO: release and sleep not working after the note_slide)
 
 # Randomization
 
 With randomization you can create random or semirandom melodies, for example:
 
 ```
-#notes = " |: ???0???q(1,2)[6,7](1,2)[6,7]%(1,2)[6,7](1,2)[6,7] :| "
+zplay " |: ???0???q(1,2)[6,7](1,2)[6,7] (1,2)[6,7](1,2)[6,7] :| "
 ```
 
 ## Random note
@@ -190,7 +173,7 @@ Use (1,5) for random numer between 1 and 5. (1,7) is same as ?.
 
 ## Choose random from array
 
-Use [1,2,3] for randomly selected number from the array
+Use [q1,e2345,h3] for randomly selected lengths and degree/degrees from the array.
 
 # Ziffers methods
 
@@ -208,6 +191,14 @@ zplay [[1,1],[2,0.5],[3,0.25]] # Is same as w1h2q3
 ```
 
 Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/play_tests.rb) in buffer to see various ways to use zplay.
+
+## zmidi
+
+Plays midi notes using space separated midi notation
+
+```
+zmidi "|: q 53 53 53 57 h 60 q 53 53 ; h 55 q 60 60 h 57 q 53 53 ; q 55 55 57 55 w 53 :|"
+```
 
 ### Using samples
 
