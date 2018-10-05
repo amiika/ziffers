@@ -16,6 +16,9 @@ end
 
 def testslide
   with_synth :chiplead do
+    zplay "|: ~ 91 ~ 61 :|"
+    zplay "~0.1 1234"
+    zplay " ~1 1234 "
     zplay("h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222")
   end
 end
@@ -74,6 +77,10 @@ def testzsample
   zplay("q115566h5q443322h1 *|: q554433h2 :|*", sample: :ambi_glass_rub, rate: 2.1, amp: 0.2)
 end
 
+def testzmidi
+  zmidi "|: q 53 53 53 57 h 60 q 53 53 ; h 55 q 60 60 h 57 q 53 53 ; q 55 55 57 55 w 53 :|"
+end
+
 testzplay
 testslide
 testsingledegrees
@@ -83,3 +90,4 @@ testchords
 testbinaural
 testrandom
 testzsample
+testzmidi

@@ -3,7 +3,7 @@ def defaultDurs
 end
 
 def chordDefaults
-  defaults = { :chordSleep => 0, :chordRelease => 1, :chordInvert => 0 }
+  defaults = { :chordSleep => 0, :chordRelease => 1, :chordInvert => 0, :sleep => 0 }
 end
 
 def defaultSampleOpts
@@ -35,16 +35,17 @@ def defaultOpts
   }
 end
 
-def getControlChars
+def controlChars
   controlChars = {
     'A': :amp,
     'E': :env_curve,
     'C': :attack,
     'P': :pan,
     'D': :decay,
-    'S': :sustain, #Keep
+    'S': :sustain,
     'R': :release,
     'Z': :sleep, #Zzz
+    'X': :chordSleep,
     'T': :pitch, # Tuning
     'K': :key,
     '~': :note_slide,
@@ -74,25 +75,18 @@ def replaceRandomSyntax(n)
   n
 end
 
-def zparse(n,opts=nil,defaults=defaultOpts)
+def zparse(n,opts={},shared={})
   notes, noteBuffer, controlBuffer = Array.new(3){ [] }
-  loop, escape, dc, ds = false, false, false,false
+  loop, dc, ds, escape, skip, slideNext = false, false, false, false, false, false
   stringFloat = ""
   noteLength, dotLength = 0.25, 1.0
-  sfaddition, dot, loopCount = 0, 0, 0, 0
-  skip, slideNext = false, false
+  sfaddition, dot, loopCount, note = 0, 0, 0, 0, 0
   escapeType = nil
-  durs = defaultDurs
-  if opts!=nil then
-    defaults = defaults.merge(opts)
-  end
-  controlChars = getControlChars
-  durs.default = 0.25
-  # Clone defaults to current nodes: ziff = degree node, controlZiff = slide node
-  ziff, controlZiff = defaults.clone
+  midi = shared[:midi] ? true : false
+  defaults = defaultOpts.merge(opts)
+  ziff, controlZiff = defaults.clone # Clone defaults to preliminary Hash objects
   n = replaceRandomSyntax(n)
-  # Loop chars
-  chars = n.chars
+  chars = n.chars # Loop chars
   chars.to_enum.each_with_index do |c, index|
     next_c = chars[index+1]
     dgr = nil
@@ -102,36 +96,43 @@ def zparse(n,opts=nil,defaults=defaultOpts)
       if !escape && controlChars.key?(c.to_sym)
         escape = true
         escapeType = controlChars[c.to_sym]
-        stringFloat+=c if(escapeType == :chord)
-        chars.push(" ") if(escapeType == :chord && next_c==nil)
-      elsif escape && (c==' ' || next_c==nil)
+        if controlChars[c.to_sym] == :chord
+          stringFloat+=c
+          chars.push(" ") if next_c==nil
+        end
+      elsif (escape || midi) && (c==' ' || next_c==nil)
         stringFloat+=c if next_c==nil && c!=' '
-        #print escapeType.to_s+": "+stringFloat.to_s
-        if stringFloat == nil || stringFloat.length==0 then
-          ziff[escapeType] = defaults.fetch(escapeType)
-        elsif escapeType == :scale then
-          ziff[:scale] = searchList(scale_names, stringFloat)
-        elsif escapeType == :synth then
-          ziff[:synth] = searchList(synth_names, stringFloat)
-        elsif escapeType == :key then
-          ziff[:key] = stringFloat.to_s
-        elsif escapeType == :chordInvert then
-          ziff[:chordInvert] = stringFloat.to_i
-        elsif escapeType == :chord then
-          ziff = chordDefaults.merge(ziff)
-          parsedChord = stringFloat.split("^")
-          if parsedChord.length>1 then
-            chordRoot = degree parsedChord[0].to_sym, ziff[:key], ziff[:scale]
-            ziff[:chord] = chord_invert chord(chordRoot, parsedChord[1]), ziff[:chordInvert]
+        if escape then
+          print escapeType.to_s+": "+stringFloat.to_s
+          if stringFloat == nil || stringFloat.length==0 then
+            ziff[escapeType] = defaults.fetch(escapeType)
+          elsif escapeType == :scale then
+            ziff[:scale] = searchList(scale_names, stringFloat)
+          elsif escapeType == :synth then
+            ziff[:synth] = searchList(synth_names, stringFloat)
+          elsif escapeType == :key then
+            ziff[:key] = stringFloat.to_s
+          elsif escapeType == :chordInvert then
+            ziff[:chordInvert] = stringFloat.to_i
+          elsif escapeType == :chord then
+            chordSets = chordDefaults.merge(ziff.clone)
+            parsedChord = stringFloat.split("^")
+            if parsedChord.length>1 then
+              chordRoot = degree parsedChord[0].to_sym, ziff[:key], ziff[:scale]
+              ziff[:chord] = chord_invert chord(chordRoot, parsedChord[1]), chordSets[:chordInvert]
+            else
+              ziff[:chord] = chord_invert chord_degree(parsedChord[0].to_sym,ziff[:key],ziff[:scale],3), chordSets[:chordInvert]
+            end
+          elsif escapeType == :sleep then
+            noteLength = stringFloat.to_f
+            ziff[:sleep] = noteLength
           else
-            ziff[:chord] = chord_invert chord_degree(parsedChord[0].to_sym,ziff[:key],ziff[:scale],3), ziff[:chordInvert]
+            # ~ and something else?
+            ziff[escapeType] = stringFloat.to_f
           end
-        elsif escapeType == :sleep then
-          noteLength = stringFloat.to_f
-          ziff[:sleep] = noteLength
         else
-          # ~ and something else?
-          ziff[escapeType] = stringFloat.to_f
+          note = stringFloat.to_f # MIDI note
+          print note
         end
         stringFloat = ""
         escape = false
@@ -160,11 +161,11 @@ def zparse(n,opts=nil,defaults=defaultOpts)
           if escape then
             stringFloat+=c
           else
-            noteLength = durs[c.to_sym]
+            noteLength = defaultDurs[c.to_sym]
           end
         when /^[0-9]+$/ then
           # Notes inside () or []
-          if escape then
+          if escape || midi then
             stringFloat = stringFloat+c
           else
             # Plain notes 1234 etc.
@@ -244,7 +245,7 @@ def zparse(n,opts=nil,defaults=defaultOpts)
         when '@' then
           # Recursive call from @ to @
           if ds then
-            again = zparse(n[/\@(.*?)@/,1], ziff.clone,defaults=defaults)
+            again = zparse(n[/\@(.*?)@/,1], ziff.clone,shared)
             notes = notes.concat(again)
           else
             ds = !ds
@@ -252,7 +253,7 @@ def zparse(n,opts=nil,defaults=defaultOpts)
         when '*' then
           # Recursive call from beginning to first *
           if dc then
-            again = zparse(n.split('*')[0], ziff.clone,defaults=defaults)
+            again = zparse(n.split('*')[0], ziff.clone,shared)
             notes = notes.concat(again)
           else
             dc = !dc
@@ -262,36 +263,33 @@ def zparse(n,opts=nil,defaults=defaultOpts)
         end
       end
       # If any degree was parsed, parse note and add to hasharray
-      if dgr!=nil then
+      if dgr!=nil || note!=0 then
         #print "Parsed degree: "+dgr.to_s
-        note = getNoteFromDgr(dgr, ziff[:key], ziff[:scale])
+        note = getNoteFromDgr(dgr, ziff[:key], ziff[:scale]) if dgr!=nil
         if slideNext then
           controlZiff[:degree] = dgr
           controlZiff[:note] = note
           controlZiff[:sleep] = noteLength*dotLength
           controlZiff[:pitch] = controlZiff[:pitch]+sfaddition
-          controlBuffer.push(controlZiff)
-          controlZiff = controlZiff.clone
           if sfaddition!=0 then
             controlZiff[:pitch] = controlZiff[:pitch]-sfaddition
             sfaddition=0
           end
+          controlBuffer.push(controlZiff.clone)
           if next_c == nil || next_c == ' ' then
-            #print "Slide ends: "+controlBuffer.length.to_s
-            slideNext = false
+            slideNext = false # Slide ends
             ziff[:control] = controlBuffer
             ziff[:release] = ziff[:sleep] * (ziff[:control].length+1)
-            ziff = ziff.clone
-            ziff[:control] = nil
+            noteBuffer.push(ziff.clone) if loop && loopCount<1 # : buffer
+            ziff = ziff.clone # Clone opts to next object
+            ziff.delete(:control)
             controlBuffer = []
           end
         else
           if escapeType==:note_slide then
-            #print "Start slide"
-            slideNext=true
+            slideNext=true # Slide starts
             escapeType=nil
-            # Remove nonmodulatable params
-            controlZiff = ziff.clone
+            controlZiff = ziff.clone # Create slidenode & delete nonmodulatable
             controlZiff.delete(:attack)
             controlZiff.delete(:release)
             controlZiff.delete(:sustain)
@@ -302,11 +300,7 @@ def zparse(n,opts=nil,defaults=defaultOpts)
           ziff[:sleep] = noteLength*dotLength
           ziff[:release] = defaults[:release]*(noteLength*2)
           ziff[:pitch] = ziff[:pitch]+sfaddition
-          
-          # Add note to buffer if looping with :
-          if loop && loopCount<1 then
-            noteBuffer.push(ziff.clone)
-          end
+          noteBuffer.push(ziff.clone) if !slideNext && loop && loopCount<1 # : buffer
           notes.push(ziff)
           if !slideNext then
             ziff = ziff.clone
@@ -318,16 +312,13 @@ def zparse(n,opts=nil,defaults=defaultOpts)
         end
         dot = 0
         dotLength = 1.0
+        note = 0
       elsif ziff[:chord]!=nil
-        ziff = chordDefaults.merge(ziff)
-        chordZiff = ziff.clone
-        chordZiff[:control] = nil
-        chordZiff[:sleep] = chordZiff[:sleep]>0.0 ? ziff[:chordSleep] : chordZiff[:sleep]
+        chordZiff = chordDefaults.merge(ziff.clone)
+        chordZiff[:sleep] = chordZiff.delete(:chordSleep)
         chordZiff[:release] = ziff[:chordRelease]
         notes.push(chordZiff)
-        if loop && loopCount<1 then
-          noteBuffer.push(chordZiff.clone)
-        end
+        noteBuffer.push(chordZiff.clone) if loop && loopCount<1 # : buffer
         ziff.delete(:chord)
       end
       # Continues loop
@@ -386,6 +377,7 @@ def clean(ziff)
   ziff.delete(:ampStep)
   ziff.delete(:rateBased)
   ziff.delete(:skip)
+  ziff.delete(:midi)
   ziff
 end
 
@@ -458,6 +450,11 @@ def arrayToHash(obj,opts=defaultOpts)
   opts.merge(Hash[arrayOpts.zip(defObj)])
 end
 
+def zmidi(melody,opts={},shared={})
+  shared[:midi] = true
+  zplay(melody,opts,shared)
+end
+
 def zplay(melody,opts={},defaults={})
   opts = defaultOpts.merge(opts)
   if melody.is_a? Numeric then
@@ -465,23 +462,24 @@ def zplay(melody,opts={},defaults={})
     playZiff(opts,defaults)
   else
     if melody.is_a? String then
-      melody = zparse(melody,opts)
+      melody = zparse(melody,opts,defaults)
       defaults[:parsed]==true
-    elsif melody.is_a? Array then
+    elsif (melody.is_a? Array) && !(melody[0].is_a? Hash) then
       melody = zarray(melody,opts)
       defaults[:parsed]==true
     end
     melody.each_with_index do |ziff,index|
       ziff = mergeRates(ziff, defaults) if defaults[:parsed]==nil
       playZiff(ziff,defaults)
+      print ziff
       sleep ziff[:sleep] if !ziff[:skip]
     end
   end
 end
 
-def zdrums(melody,opts={synth: :beep})
+def zdrums(melody,opts={synth: :beep},defaults={})
   if melody.is_a? String then
-    melody = zparse(melody,opts)
+    melody = zparse(melody,opts,defaults)
   end
   melody.each do |ziff|
     c = synth ziff[:synth], clean(ziff) if ziff[:note]!=nil
