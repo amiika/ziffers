@@ -103,7 +103,6 @@ def zparse(n,opts={},shared={})
       elsif (escape || midi) && (c==' ' || next_c==nil)
         stringFloat+=c if next_c==nil && c!=' '
         if escape then
-          print escapeType.to_s+": "+stringFloat.to_s
           if stringFloat == nil || stringFloat.length==0 then
             ziff[escapeType] = defaults.fetch(escapeType)
           elsif escapeType == :scale then
@@ -132,7 +131,6 @@ def zparse(n,opts={},shared={})
           end
         else
           note = stringFloat.to_f # MIDI note
-          print note
         end
         stringFloat = ""
         escape = false
@@ -471,7 +469,6 @@ def zplay(melody,opts={},defaults={})
     melody.each_with_index do |ziff,index|
       ziff = mergeRates(ziff, defaults) if defaults[:parsed]==nil
       playZiff(ziff,defaults)
-      print ziff
       sleep ziff[:sleep] if !ziff[:skip]
     end
   end
