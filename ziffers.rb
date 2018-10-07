@@ -7,15 +7,7 @@ def chordDefaults
 end
 
 def defaultSampleOpts
-  defaultSampleOpts = {
-    :key => :c,
-    :scale => :major,
-    :sample => :ambi_piano,
-    :rate => 1,
-    :scale => :major,
-    :pan => 0,
-    :release => 0.0
-  }
+  defaultSampleOpts = { :key => :c, :scale => :major, :sample => :ambi_piano, :rate => 1, :scale => :major, :pan => 0, :release => 0.0 }
 end
 
 def defaultOpts
@@ -60,8 +52,7 @@ def getScaleDegrees(zkey,zscale)
   scaleDegrees = Array.new(scale(zkey,zscale).length){ |i| (i+1) }.ring
 end
 
-def replaceRandomSyntax(n)
-  # Replace random values inside [] and ()
+def replaceRandomSyntax(n) # Replace random values inside [] and ()
   cArr = n.scan(/\[.*?\]/)
   cArr.each do |s|
     n = n.sub(s,s[1,s.length-2].split(",").choose)
@@ -70,7 +61,11 @@ def replaceRandomSyntax(n)
   rArr.each do |s|
     revl = s[1,s.length-2].split(",")
     if revl.length > 2 then raise 'Too many parameters' end
-    n = n.sub(s,(rrand_i revl[0].to_i, revl[1].to_i).to_s)
+    if (Integer(revl[0]) rescue false) then # If int then
+      n = n.sub(s,(rrand_i revl[0].to_i, revl[1].to_i).to_s)
+    else
+      n = n.sub(s,(rrand revl[0].to_f, revl[1].to_f).to_s)
+    end
   end
   n
 end
@@ -124,6 +119,7 @@ def zparse(n,opts={},shared={})
             end
           elsif escapeType == :sleep then
             noteLength = stringFloat.to_f
+            print noteLength
             ziff[:sleep] = noteLength
           else
             # ~ and something else?
@@ -152,8 +148,7 @@ def zparse(n,opts={},shared={})
             stringFloat = stringFloat+c
           else
             dot+=1
-            # https://en.wikipedia.org/wiki/Dotted_note
-            dotLength = (2.0-(1.0/(2**dot)))
+            dotLength = (2.0-(1.0/(2**dot))) # https://en.wikipedia.org/wiki/Dotted_note
           end
         when /^[a-z]+$/ then
           if escape then
@@ -162,12 +157,10 @@ def zparse(n,opts={},shared={})
             noteLength = defaultDurs[c.to_sym]
           end
         when /^[0-9]+$/ then
-          # Notes inside () or []
-          if escape || midi then
+          if escape || midi then  # Notes inside () or []
             stringFloat = stringFloat+c
           else
-            # Plain notes 1234 etc.
-            dgr = c.to_i
+            dgr = c.to_i # Plain degrees 1234 etc.
           end
         when '?' then
           if escape then
@@ -175,6 +168,8 @@ def zparse(n,opts={},shared={})
               ziff[:pan] = [1,-1,0].choose
               escapeType = nil
               escape = false
+            elsif escapeType == :sleep then
+              stringFloat = stringFloat+rrand_i(1,9).to_s
             else
               stringFloat = stringFloat+rrand_i(0,7).to_s
             end
@@ -211,25 +206,22 @@ def zparse(n,opts={},shared={})
             escape = true
           end
         when ':' then
-          if noteBuffer.length > 0 then
-            # Loop must be ending, add buffer notes to list
-            if loopCount<1 then
-              # Skip numbered repeat in ;-loop sections
+          if noteBuffer.length > 0 then # Loop is ending
+            if loopCount<1 then # If : loop
               if (Integer(next_c) rescue false) then
-                (next_c.to_i-1).times do
+                (next_c.to_i-1).times do # Numbered :3 loop
                   notes = notes.concat(noteBuffer)
                 end
-                skip = true # Skip next char
+                skip = true # Skip next
               else
-                notes = notes.concat(noteBuffer)
+                notes = notes.concat(noteBuffer) # Normal : loop
               end
             end
             loopCount = 0
             noteBuffer = []
             loop = false
           else
-            # Loop is starting
-            loop = true
+            loop = true # Loop is starting
           end
         when ";" then
           if noteBuffer.length > 0 then
@@ -379,12 +371,21 @@ def clean(ziff)
   ziff
 end
 
+def playMidiOut(md, ms, p, c)
+  midi md, {sustain: ms, port: p }.tap { |hash| hash[:channel] = c if c!=nil }
+end
+
 def playZiff(ziff,defaults={})
   if ziff[:skip] then
     print "Skipping note"
   elsif ziff.has_key?(:chord) then
-    ziff = chordDefaults.merge(ziff)
-    synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
+    if ziff[:port] then
+      ziff[:chord].each { |cnote| playMidiOut(cnote, ziff[:chordRelease],ziff[:port],ziff[:channel]) }
+    else
+      synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
+    end
+  elsif ziff[:port] then
+    playMidiOut(ziff[:note]+ziff[:pitch],ziff[:sleep]*0.9,ziff[:port], ziff[:channel])
   else
     if ziff[:hz]!=nil then
       ziff[:pan] = ziff[:pan]==0 ? 1 : ziff[:pan]
@@ -450,6 +451,8 @@ end
 
 def zmidi(melody,opts={},shared={})
   shared[:midi] = true
+  shared[:rateBased] = true if opts[:sample] && shared[:degreeBased]!=nil
+  opts[:degree] = melody-opts[:key] if shared[:degreeBased]
   zplay(melody,opts,shared)
 end
 
@@ -461,7 +464,6 @@ def zplay(melody,opts={},defaults={})
     else
       opts[:note] = getNoteFromDgr(melody, opts[:key], opts[:scale])
     end
-    print opts
     playZiff(opts,defaults)
   else
     if melody.is_a? String then
