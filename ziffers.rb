@@ -14,7 +14,7 @@ def defaultOpts
   defaultOpts = {
     :key => :c,
     :scale => :major,
-    :release => 1.0,
+    :release => 1,
     :sleep => 0.25,
     :pitch => 0.0,
     :amp => 1,
@@ -25,6 +25,7 @@ def defaultOpts
     :skip => false,
     :pitch_slide => 0.25
   }
+  defaultOpts.merge(Hash[current_synth_defaults.to_a])
 end
 
 def controlChars
@@ -119,8 +120,9 @@ def zparse(n,opts={},shared={})
             end
           elsif escapeType == :sleep then
             noteLength = stringFloat.to_f
-            print noteLength
             ziff[:sleep] = noteLength
+          elsif escapeType == :release then
+            defaults[:release] = stringFloat.to_f
           else
             # ~ and something else?
             ziff[escapeType] = stringFloat.to_f
@@ -235,7 +237,7 @@ def zparse(n,opts={},shared={})
         when '@' then
           # Recursive call from @ to @
           if ds then
-            again = zparse(n[/\@(.*?)@/,1], ziff.clone,shared)
+            again = zparse(n[/\@(.*?)@/,1], defaults, shared.clone)
             notes = notes.concat(again)
           else
             ds = !ds
@@ -243,7 +245,7 @@ def zparse(n,opts={},shared={})
         when '*' then
           # Recursive call from beginning to first *
           if dc then
-            again = zparse(n.split('*')[0], ziff.clone,shared)
+            again = zparse(n.split('*')[0], defaults, shared.clone)
             notes = notes.concat(again)
           else
             dc = !dc
@@ -269,7 +271,7 @@ def zparse(n,opts={},shared={})
           if next_c == nil || next_c == ' ' then
             slideNext = false # Slide ends
             ziff[:control] = controlBuffer
-            ziff[:release] = ziff[:sleep] * (ziff[:control].length+1)
+            ziff[:release] = (ziff[:sleep]==0 ? 1 : ziff[:sleep]) * (ziff[:control].length+1)
             noteBuffer.push(ziff.clone) if loop && loopCount<1 # : buffer
             ziff = ziff.clone # Clone opts to next object
             ziff.delete(:control)
@@ -288,7 +290,8 @@ def zparse(n,opts={},shared={})
           ziff[:degree] = dgr
           ziff[:note] = note
           ziff[:sleep] = noteLength*dotLength
-          ziff[:release] = defaults[:release]*(noteLength*2)
+          ziff[:sustain] = defaults[:sustain]*(ziff[:sleep]==0 ? 1 : ziff[:sleep]) if ziff[:sustain]!=nil
+          ziff[:release] = defaults[:release]*(ziff[:sleep]==0 ? 1 : ziff[:sleep])
           ziff[:pitch] = ziff[:pitch]+sfaddition
           noteBuffer.push(ziff.clone) if !slideNext && loop && loopCount<1 # : buffer
           notes.push(ziff)
@@ -385,7 +388,8 @@ def playZiff(ziff,defaults={})
       synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
     end
   elsif ziff[:port] then
-    playMidiOut(ziff[:note]+ziff[:pitch],ziff[:sleep]*0.9,ziff[:port], ziff[:channel])
+    sustain = ziff[:sustain]!=nil ? ziff[:sustain] :  ziff[:release]
+    playMidiOut(ziff[:note]+ziff[:pitch],sustain, ziff[:port], ziff[:channel])
   else
     if ziff[:hz]!=nil then
       ziff[:pan] = ziff[:pan]==0 ? 1 : ziff[:pan]

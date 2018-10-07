@@ -1,4 +1,6 @@
 use_synth :piano
+use_synth_defaults release: 1.5
+
 def testzplay
   # frere jacques
   zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|")
@@ -12,6 +14,11 @@ def testzplay
   zplay("s12345678987654321",{scale: "major_pentatonic"})
   # Numbered loops
   zplay("|:1234:3|616|:4321:3|")
+end
+
+def testcontrolchars
+  zplay("R3 Z0 123456789 Z1 000")
+  zplay("R1 1234 R2 1234 R3 1234 R4 1234")
 end
 
 def testslide
@@ -83,6 +90,7 @@ def testzmidi
 end
 
 testzplay
+testcontrolchars
 testslide
 testsingledegrees
 testarraydegrees
