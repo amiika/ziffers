@@ -361,17 +361,7 @@ def binauralDegree(ziff,defaults={})
 end
 
 def clean(ziff)
-  # Removes keys used in preprocessing
-  ziff.delete(:key)
-  ziff.delete(:scale)
-  ziff.delete(:chordSleep)
-  ziff.delete(:chordRelease)
-  ziff.delete(:chordInvert)
-  ziff.delete(:ampStep)
-  ziff.delete(:rateBased)
-  ziff.delete(:skip)
-  ziff.delete(:midi)
-  ziff
+  ziff.except(:key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi)
 end
 
 def playMidiOut(md, ms, p, c)
