@@ -157,7 +157,6 @@ def zparse(n,opts={},shared={})
             stringFloat+=c
           else
             noteLength = defaultDurs[c.to_sym]
-            print noteLength
           end
         when /^[0-9]+$/ then
           if escape || midi then  # Notes inside () or []
