@@ -1,5 +1,5 @@
 def defaultDurs
-  durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625 }
+  durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625, 'z': 0.0 }
 end
 
 def chordDefaults
@@ -157,6 +157,7 @@ def zparse(n,opts={},shared={})
             stringFloat+=c
           else
             noteLength = defaultDurs[c.to_sym]
+            print noteLength
           end
         when /^[0-9]+$/ then
           if escape || midi then  # Notes inside () or []
