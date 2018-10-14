@@ -54,8 +54,9 @@ end
 
 def testchords
   # Chord synth test
-  zplay("i ii iii iv v vi vii",{key: "e", scale: "major", chordSleep: 0.25, chordSynth: :piano})
-  zplay("|:iv 123 iii 234 ii 432 i 123:|",{key: "e", scale: "mixolydian"})
+  zplay("i ii iii iv v vi vii",{scale: "major", chordSleep: 0.25, chordSynth: :piano})
+  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: :e3, key: :e4, scale: "mixolydian"})
+  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: "f", key: "e", scale: "mixolydian"})
   zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chordSleep: 0.5, scale: :aeolian)
   zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chordSleep: 0.5)
 end

@@ -1,3 +1,5 @@
+print "Ziffers 0.1"
+
 def defaultDurs
   durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625, 'z': 0.0 }
 end
@@ -110,13 +112,14 @@ def zparse(n,opts={},shared={})
           elsif escapeType == :chordInvert then
             ziff[:chordInvert] = stringFloat.to_i
           elsif escapeType == :chord then
+            chordKey = (ziff[:chordKey] ? ziff[:chordKey] : ziff[:key])
             chordSets = chordDefaults.merge(ziff.clone)
             parsedChord = stringFloat.split("^")
             if parsedChord.length>1 then
-              chordRoot = degree parsedChord[0].to_sym, ziff[:key], ziff[:scale]
+              chordRoot = degree parsedChord[0].to_sym, chordKey, ziff[:scale]
               ziff[:chord] = chord_invert chord(chordRoot, parsedChord[1]), chordSets[:chordInvert]
             else
-              ziff[:chord] = chord_invert chord_degree(parsedChord[0].to_sym,ziff[:key],ziff[:scale],3), chordSets[:chordInvert]
+              ziff[:chord] = chord_invert chord_degree(parsedChord[0].to_sym,chordKey,ziff[:scale],3), chordSets[:chordInvert]
             end
           elsif escapeType == :sleep then
             noteLength = stringFloat.to_f
