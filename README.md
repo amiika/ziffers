@@ -122,7 +122,7 @@ Use **\*** to start from beginning and continue until first **\***. If & is at t
 zplay("| 7162 *| 6354 |*")
 ```
 
-## Volume and panning 
+## Volume 
 
 ### < Volume up and down >
 
@@ -136,11 +136,27 @@ Default volume or amp is 1. Volume characters changes the amp 0.25 by default. Y
 zplay("<1<2>1",:d,:minor,0.5,0.5)
 ```
 
-### Pan
+# Control characters
+
+Capitalized letters are used as control characters, to change properties of following degrees/notes.
+
+List of control characters:
+
+- **A** = :amp 
+- **E** = :env_curve 
+- **C** = :attack
+- **P** = :pan
+- **D** = :decay
+- **S** = :sustain
+- **R** = :release 
+- **Z** = :sleep 
+- **X** = :chordSleep
+- **T** = :pitch
+- **K** = :key 
+
+## Pan
 
 Use P1, P1 or P-1
-
-Use **%** to change the octave randomly
 
 # Slide
 
@@ -174,6 +190,14 @@ Use (1,5) for random numer between 1 and 5. (1,7) is same as ?.
 ## Choose random from array
 
 Use [q1,e2345,h3] for randomly selected lengths and degree/degrees from the array.
+
+# Chords
+
+Chords can be used within the notation using roman numerals: i ii iii iv v vi vii or by custom chord syntax {1,3,5}
+
+Chords can be customized with ^ like: vi^dim. See Sonic Pi:s chord_names list for supported chord names.
+
+Chords can also be inverted using % char, for example %1 to invert all following chords up by one.
 
 # Ziffers methods
 
