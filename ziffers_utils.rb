@@ -1,0 +1,96 @@
+# Requires ziffers.rb to run
+
+def zdrums(melody,opts={synth: :beep},defaults={})
+  if melody.is_a? String then
+    melody = zparse(melody,opts,defaults)
+  end
+  melody.each do |ziff|
+    c = synth ziff[:synth], clean(ziff) if ziff[:note]!=nil
+    control c, note: 0, amp: ziff[:amp]*2
+    sleep ziff[:sleep] if melody.length>1
+  end
+end
+
+def zbin(melody,opts={},defaults={})
+  opts = defaultOpts.merge(opts)
+  if melody.is_a? Numeric then
+    if defaults[:midi] then
+      opts[:note] = melody
+    else
+      opts[:note] = getNoteFromDgr(melody, opts[:key], opts[:scale])
+    end
+    playBin(opts,defaults)
+  else
+    if melody.is_a? String then
+      melody = zparse(melody,opts,defaults)
+      defaults[:parsed]==true
+    elsif (melody.is_a? Array) && !(melody[0].is_a? Hash) then
+      melody = zarray(melody,opts)
+      defaults[:parsed]==true
+    end
+    melody.each_with_index do |ziff,index|
+      ziff = mergeRates(ziff, defaults) if defaults[:parsed]==nil
+      playBin(ziff,defaults)
+      sleep ziff[:sleep] if !ziff[:skip]
+    end
+  end
+end
+
+def playBin(ziff,defaults={})
+  if ziff[:skip] then
+    print "Skipping note"
+  elsif ziff.has_key?(:chord) then
+    synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
+  else
+    if ziff[:hz]!=nil then
+      ziff[:pan] = ziff[:pan]==0 ? 1 : ziff[:pan]
+      bziff = binauralDegree(ziff,defaults)
+      if bziff[:sample]!=nil then
+        bnote = sample bziff[:sample], clean(bziff)
+      else
+        bnote = play clean(bziff)
+      end
+    end
+    slide = ziff.delete(:control)
+    if ziff[:sample]!=nil then
+      if defaults[:rateBased] && ziff[:note]!=nil then
+        ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
+      elsif ziff[:degree]!=nil && ziff[:degree]!=0 then
+        ziff[:pitch] = (scale 1, ziff[:scale])[ziff[:degree]-1]+ziff[:pitch]-0.999
+      end
+      c = sample ziff[:sample], clean(ziff)
+    else
+      c = play clean(ziff)
+    end
+    if slide != nil then
+      sleep ziff[:sleep]*ziff[:note_slide]
+      slide.each do |cziff|
+        if cziff[:hz]!=nil then
+          cziff[:pan] = cziff[:pan]==0 ? 1 : cziff[:pan]
+          bziff = binauralDegree(cziff,defaults)
+          control bnote, clean(bziff)
+        end
+        if cziff[:sample]!=nil && cziff[:degree]!=nil && cziff[:degree]!=0 then
+          cziff[:pitch] = (scale 1, cziff[:scale])[cziff[:degree]-1]+cziff[:pitch]-0.999
+        end
+        control c, clean(cziff)
+        sleep cziff[:sleep]
+      end
+    end
+  end
+end
+
+def binauralDegree(ziff,defaults={})
+  bziff = ziff.clone
+  bziff[:pan] = -(ziff[:pan])
+  bziff[:note] = hz_to_midi(midi_to_hz(bziff[:note])+bziff[:hz])
+  if ziff[:sample]!=nil then
+    if defaults[:rateBased] then
+      bziff[:rate] = (pitch_to_ratio(hz_to_midi(midi_to_hz(ziff[:note])+ziff[:hz])-note(ziff[:key])))
+    else
+      bziff[:pitch] = (scale 1, bziff[:scale])[bziff[:degree]-1]+bziff[:pitch]-0.9999+(hz_to_midi(midi_to_hz(60)+bziff[:hz])-60)
+    end
+  end
+  bziff
+end
+

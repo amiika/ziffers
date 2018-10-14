@@ -18,7 +18,9 @@ end
 
 def testcontrolchars
   zplay("R3 Z0 123456789 Z1 000")
-  zplay("R1 1234 R2 1234 R3 1234 R4 1234")
+  with_synth :beep do
+    zplay("R1 1234 R2 1234 R3 1234 R4 1234")
+  end
 end
 
 def testslide
@@ -46,12 +48,6 @@ def testarraydegrees
   zplay [1,2,4,5,6,7].zip(0.1.step(0.7,0.1).to_a)
 end
 
-def testzdrums
-  # Some drum sounds
-  zdrums("1 2 3 4", )
-  zdrums("12345687654321", synth: :sine)
-end
-
 def testchords
   # Chord synth test
   zplay("i ii iii iv v vi vii",{scale: "major", chordSleep: 0.25, chordSynth: :piano})
@@ -59,15 +55,6 @@ def testchords
   zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: "f", key: "e", scale: "mixolydian"})
   zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chordSleep: 0.5, scale: :aeolian)
   zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chordSleep: 0.5)
-end
-
-def testbinaural
-  with_synth :beep do zplay("q12345678") end
-  with_synth :beep do zplay("q12345678",{hz:10}) end
-  zplay("q12345678",{sustain: 0.25, sample: :ambi_glass_rub})
-  zplay("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub})
-  zplay("q12345678",{sustain: 0.25, sample: :ambi_glass_rub}, rateBased: true)
-  zplay("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub}, rateBased: true)
 end
 
 def testrandom
@@ -90,14 +77,29 @@ def testzmidi
   zmidi "|: q 53 53 53 57 h 60 q 53 53 ; h 55 q 60 60 h 57 q 53 53 ; q 55 55 57 55 w 53 :|"
 end
 
+def testbinaural
+  with_synth :beep do zbin("q12345678") end
+  with_synth :beep do zbin("q12345678",{hz:10}) end
+  zbin("q12345678",{sustain: 0.25, sample: :ambi_glass_rub})
+  zbin("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub})
+  zbin("q12345678",{sustain: 0.25, sample: :ambi_glass_rub}, rateBased: true)
+  zbin("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub}, rateBased: true)
+end
+
+def testzdrums
+  zdrums("1 2 3 4", )
+  zdrums("12345687654321", synth: :sine)
+end
+
 testzplay
 testcontrolchars
 testslide
 testsingledegrees
 testarraydegrees
-testzdrums
 testchords
-testbinaural
 testrandom
 testzsample
 testzmidi
+# Moved to ziffers_utils
+#testbinaural
+#testzdrums
