@@ -3,7 +3,7 @@ use_synth_defaults release: 1.5
 
 def testzplay
   # frere jacques
-  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|")
+  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", key: :c, scale: :major)
   # ode to joy
   zplay("|:q3345|5432|1123|;q32h2;q21h1:|q2231|2e34q31|2e34q32|q12h-5|+q3345|5432|1123|21h1|")
   # twinkle twinkle

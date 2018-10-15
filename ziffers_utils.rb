@@ -12,6 +12,14 @@ def zdrums(melody,opts={synth: :beep},defaults={})
 end
 
 def zbin(melody,opts={},defaults={})
+  zAlt(melody,opts,defaults)
+end
+
+def zharmony(melody,opts={},defaults={})
+  zAlt(melody,opts,defaults)
+end
+
+def zAlt(melody,opts={},defaults={})
   opts = defaultOpts.merge(opts)
   if melody.is_a? Numeric then
     if defaults[:midi] then
@@ -50,6 +58,9 @@ def playBin(ziff,defaults={})
       else
         bnote = play clean(bziff)
       end
+    elsif ziff[:harmony]!=nil then
+      hziff = harmonyDegree(ziff,defaults)
+      hnote = play clean(hziff)
     end
     slide = ziff.delete(:control)
     if ziff[:sample]!=nil then
@@ -69,6 +80,9 @@ def playBin(ziff,defaults={})
           cziff[:pan] = cziff[:pan]==0 ? 1 : cziff[:pan]
           bziff = binauralDegree(cziff,defaults)
           control bnote, clean(bziff)
+        elsif ziff[:harmony]!=nil then
+          hziff = harmonyDegree(ziff,defaults)
+          control hnote, clean(hziff)
         end
         if cziff[:sample]!=nil && cziff[:degree]!=nil && cziff[:degree]!=0 then
           cziff[:pitch] = (scale 1, cziff[:scale])[cziff[:degree]-1]+cziff[:pitch]-0.999
@@ -92,5 +106,12 @@ def binauralDegree(ziff,defaults={})
     end
   end
   bziff
+end
+
+def harmonyDegree(hziff,defaults={})
+  ziff = hziff.clone
+  ziff[:degree] = ziff[:harmony]!=nil ? ((ziff[:degree]+(ziff[:harmony])<=0) ? ziff[:degree]+ziff[:harmony]-1 : ziff[:degree]+ziff[:harmony]) : ziff[:degree]
+  ziff[:note] = getNoteFromDgr(ziff[:degree],ziff[:key],ziff[:scale])
+  return ziff
 end
 

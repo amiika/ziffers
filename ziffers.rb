@@ -240,7 +240,6 @@ def zparse(n,opts={},shared={})
       end
       # If any degree was parsed, parse note and add to hasharray
       if dgr!=nil || note!=0 then
-        #print "Parsed degree: "+dgr.to_s
         note = getNoteFromDgr(dgr, ziff[:key], ziff[:scale]) if dgr!=nil
         if slideNext then
           controlZiff[:degree] = dgr
@@ -309,7 +308,7 @@ def getNoteFromDgr(dgr, zkey, zscale)
     return :r
   else
     scaleDegrees = getScaleDegrees(zkey,zscale)
-    if dgr>scaleDegrees.length then
+    if dgr>scaleDegrees.length || dgr<0 then
       return degree(scaleDegrees[dgr],zkey,zscale)+dgr/scaleDegrees.length*12
     else
       return degree(dgr,zkey,zscale)
@@ -331,7 +330,7 @@ def zparams(hash, name)
 end
 
 def clean(ziff)
-  ziff.except(:key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi)
+  ziff.except(:key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi,:control)
 end
 
 def playMidiOut(md, ms, p, c)
