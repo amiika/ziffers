@@ -26,14 +26,21 @@ Notes are marked as numbers 1-7 representing the position in used scale. Default
 
 Default note length is quarter note, meaning 0.25 sleep after the note plays. Note length characters are sticky, so you only have to type note length when you need to change the following note lengths.
 
-For example note lengths in Blue bird song can be encoded using characters **w** and **q** for Whole and Quarter notes:
+For example note lengths in Blue bird song can be defined using characters **w** and **q** for Whole and Quarter notes:
 ```
 zplay("5353 5653 4242 4542 5353 5653 w5 q5432 w1")
 ```
 
-Now exactly same song using different escape notation:
+Same note lengths can also be defined using different escape notations:
+
+**Decimals:**
 ```
 zplay("5353 5653 4242 4542 5353 5653 Z1 5 Z0.25 5432 Z1 1")
+```
+
+**Fractions**
+```
+zplay("1/4 5353 5653 4242 4542 5353 5653 4/4 5 1/4 5432 4/4 1")
 ```
 
 ### Standard note lengths
@@ -55,12 +62,28 @@ zplay("5353 5653 4242 4542 5353 5653 Z1 5 Z0.25 5432 Z1 1")
 
 ### Custom lengths
 
-You can also use longer escaped notation, for example: "Z1.123 1"
+You can also use custom note lengths, for example: "Z1.123 1" or "23/123 1"
 
 Default note length can also be changed via parameter, for example:
 ```
 # Plays short efg notes for 1 note per beat.
 zplay("123",{release:0.5, sleep: 1})
+```
+
+### Parse degrees from note names
+
+You can also use notation based on note names to parse melody the ziffers notation. In order to use note names you have to use Z or fractions to define note lengths.
+
+Use zpreparse to parse note names to degrees:
+```
+print zpreparse "1/4 cdefg - abg", :e
+# Prints "1/4 67123 - 453"
+```
+
+You can also play with note names, by defining the **parsekey**. These two play exactly same melody:
+```
+zplay("|:1/4 1231:|:34 2/4 5:|@:1/8 5654 1/4 31:|:1 -5+ 2/4 1:@|", key: :e) 
+zplay("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|", parsekey: :c, key: :e)
 ```
 
 ## Octave change

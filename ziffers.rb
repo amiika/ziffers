@@ -1,4 +1,4 @@
-print "Ziffers 0.1"
+print "Ziffers 0.2"
 
 def defaultDurs
   durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625, 'z': 0.0 }
@@ -18,7 +18,7 @@ def defaultOpts
 end
 
 def controlChars
-  controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, '~': :note_slide, '^': :chord_name, 'i': :chord, 'v': :chord, '%': :chordInvert }
+  controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, '~': :note_slide, '^': :chord_name, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel }
 end
 
 def getScaleDegrees(zkey,zscale)
@@ -43,6 +43,14 @@ def replaceRandomSyntax(n) # Replace random values inside [] and ()
   n
 end
 
+def zpreparse(n,key)
+  noteList = ["c","d","e","f","g","a","b"]
+  key = (key.is_a? Symbol) ? key.to_s.chars[0].downcase : key.chars[0].downcase
+  ind = noteList.index(key)
+  noteList = noteList[ind...noteList.length]+noteList[0...ind]
+  n.chars.map { |c| noteList.index(c)!=nil ? noteList.index(c)+1 : c  }.join('')
+end
+
 def zparse(n,opts={},shared={})
   notes, noteBuffer, controlBuffer, customChord = Array.new(4){ [] }
   loop, dc, ds, escape, skip, slideNext, parseChord = false, false, false, false, false, false, false
@@ -51,6 +59,7 @@ def zparse(n,opts={},shared={})
   sfaddition, dot, loopCount, note = 0, 0, 0, 0, 0
   escapeType = nil
   midi = shared[:midi] ? true : false
+  n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
   defaults = defaultOpts.merge(opts)
   ziff, controlZiff = defaults.clone # Clone defaults to preliminary Hash objects
   n = replaceRandomSyntax(n)
@@ -79,8 +88,8 @@ def zparse(n,opts={},shared={})
             ziff[:synth] = searchList(synth_names, stringFloat)
           elsif escapeType == :key then
             ziff[:key] = stringFloat.to_s
-          elsif escapeType == :chordInvert then
-            ziff[:chordInvert] = stringFloat.to_i
+          elsif escapeType == :chordInvert || escapeType == :channel then
+            ziff[escapeType] = stringFloat.to_i
           elsif escapeType == :chord then
             chordKey = (ziff[:chordKey] ? ziff[:chordKey] : ziff[:key])
             chordSets = chordDefaults.merge(ziff.clone)
@@ -92,7 +101,12 @@ def zparse(n,opts={},shared={})
               ziff[:chord] = chord_invert chord_degree(parsedChord[0].to_sym,chordKey,ziff[:scale],3), chordSets[:chordInvert]
             end
           elsif escapeType == :sleep then
-            noteLength = stringFloat.to_f
+            if stringFloat.include? "/" then
+              sarr = stringFloat.split("/")
+              noteLength = sarr[0].to_f/sarr[1].to_f
+            else
+              noteLength = stringFloat.to_f
+            end
             ziff[:sleep] = noteLength
           elsif escapeType == :release then
             defaults[:release] = stringFloat.to_f
@@ -108,7 +122,11 @@ def zparse(n,opts={},shared={})
       else
         case c
         when '/' then
-          ziff[:skip]=!ziff[:skip]
+          if next_c=='/' then
+            ziff[:skip]=!ziff[:skip]
+          else
+            stringFloat+=c
+          end
         when '=' then
           stringFloat+=c
         when '!' then
@@ -134,6 +152,10 @@ def zparse(n,opts={},shared={})
         when /^[0-9]+$/ then
           if escape || midi || parseChord then
             stringFloat = stringFloat+c
+          elsif next_c=='/' then
+            escape = true
+            escapeType = :sleep
+            stringFloat = c
           else
             dgr = c.to_i # Plain degrees 1234 etc.
           end
@@ -402,6 +424,10 @@ def zmidi(melody,opts={},shared={})
   shared[:rateBased] = true if opts[:sample] && shared[:degreeBased]!=nil
   opts[:degree] = melody-opts[:key] if shared[:degreeBased]
   zplay(melody,opts,shared)
+end
+
+def zplay_notes(melody,opts={},defaults={})
+  zplay(zparse_notes(melody,opts[:key]),opts,defaults)
 end
 
 def zplay(melody,opts={},defaults={})
