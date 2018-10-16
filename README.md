@@ -43,6 +43,8 @@ zplay("5353 5653 4242 4542 5353 5653 Z1 5 Z0.25 5432 Z1 1")
 zplay("1/4 5353 5653 4242 4542 5353 5653 4/4 5 1/4 5432 4/4 1")
 ```
 
+**Note that only 1/1*n works. No support fractions where numerator is bigger than 9, eg. 12/64** 
+
 ### Standard note lengths
 
 - **m** = Max = 8/1 = 8 beats
