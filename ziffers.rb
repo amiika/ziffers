@@ -351,6 +351,10 @@ def zparams(hash, name)
   hash.map{|x| x[name]}
 end
 
+def zbeats(arr)
+  zparams(arr,:sleep).inject(0){|sum,x| sum+x }
+end
+
 def clean(ziff)
   ziff.except(:key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi,:control)
 end
