@@ -5,12 +5,12 @@ use_midi_logging false
 
 use_midi_defaults port: "casio_usb-midi", channel: 3
 
-live_loop :test do
+live_loop :low do
   zplay("%-3 i ???? ii e???? ????", key: :e3, scale: :octatonic, port: "casio_usb-midi", channel: 3)
   zplay("%-3 i ???? vi^7 e???? ???? vii ???? + v^7 ???? vi ???? iv^7 ???? ii ????", key: :e3, scale: :octatonic, port: "casio_usb-midi", channel: 3)
 end
 
-live_loop :tes2 do
+live_loop :high do
   zplay("[%+3 i e???? ???? ii ????, %+2 iv w ? iii ?]", key: :e, scale: :octatonic, port: "casio_usb-midi", channel: 3)
 end
 
@@ -26,7 +26,7 @@ live_loop :trough do
   end
 end
 
-live_loop :change do
+live_loop :change_sound do
   pc = rrand_i 1,127
   bank = rrand_i 0, 10
   print pc
