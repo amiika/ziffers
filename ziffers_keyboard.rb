@@ -60,7 +60,6 @@ live_loop :midi_piano_on do
   res = parse_sync_address "/midi/*/*/*/*"
   event = res[4]
   deg = ((s.index note)+1)
-  print note.to_s+ " -> "+deg.to_s
   
   if deg!=nil then
     case event
@@ -76,6 +75,8 @@ live_loop :midi_piano_on do
     when "note_off" then
       set :off_time, Time.now.to_f
     end
+  else
+    print note.to_s+" IS NOT MAPPED!"
   end
 end
 

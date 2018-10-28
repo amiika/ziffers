@@ -10,7 +10,8 @@ def testzplay
   zplay("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|", parsekey: :c, key: :e)
   # same using Z escape char
   zplay("|:Z0.25 cdec:|:ef Z0.5 g:|@:Z0.125 gagf Z0.25 ec:|:c -g+ Z0.5 c:@|", parsekey: :c, key: :e)
-  
+  # jericho
+  zplay "|:q1-7+12&32&345h550;q4h440q5h550;&q34h54&321:|", key: :c, scale: :major
   # ode to joy
   zplay("|:q3345|5432|1123|;q32h2;q21h1:|q2231|2e34q31|2e34q32|q12h-5|+q3345|5432|1123|21h1|")
   # twinkle twinkle
