@@ -100,6 +100,9 @@ def zparse(n,opts={},shared={})
             else
               ziff[:chord] = chord_invert chord_degree(parsedChord[0].to_sym,chordKey,ziff[:scale],3), chordSets[:chordInvert]
             end
+            if sfaddition > 0 then
+              ziff[:chord] = ziff[:chord]+sfaddition
+            end
           elsif escapeType == :sleep then
             if stringFloat.include? "/" then
               sarr = stringFloat.split("/")
@@ -318,6 +321,7 @@ def zparse(n,opts={},shared={})
         notes.push(chordZiff)
         noteBuffer.push(chordZiff.clone) if loop && loopCount<1 # : buffer
         ziff.delete(:chord)
+        sfaddition=0
       end
       # Continues loop
     end
