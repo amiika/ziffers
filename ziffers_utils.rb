@@ -1,5 +1,30 @@
 # Requires ziffers.rb to run
 
+def zarray(arr, opts=defaultOpts)
+  zmel=[]
+  arr.each do |item|
+    if item.is_a? Array then
+      zmel.push arrayToHash(item,opts)
+    elsif item.is_a? Numeric then
+      opts[:note] = getNoteFromDgr(item, opts[:key], opts[:scale])
+      zmel.push(opts.clone)
+    end
+  end
+  zmel
+end
+
+def arrayToHash(obj,opts=defaultOpts)
+  defObj = [0,opts[:sleep],opts[:key],opts[:scale],opts[:release]]
+  arrayOpts = [:note,:sleep,:key,:scale,:release]
+  obj.each_with_index { |item,index| defObj[index] = item }
+  defObj[0] = getNoteFromDgr(defObj[0], defObj[2], defObj[3])
+  opts.merge(Hash[arrayOpts.zip(defObj)])
+end
+
+def zbeats(arr)
+  zparams(arr,:sleep).inject(0){|sum,x| sum+x }
+end
+
 def zdrums(melody,opts={synth: :beep},defaults={})
   if melody.is_a? String then
     melody = zparse(melody,opts,defaults)

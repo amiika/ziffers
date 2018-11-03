@@ -1,4 +1,4 @@
-print "Ziffers 0.2"
+print "Ziffers 0.3"
 
 def defaultDurs
   durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625, 'z': 0.0 }
@@ -18,7 +18,7 @@ def defaultOpts
 end
 
 def controlChars
-  controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, '~': :note_slide, '^': :chord_name, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel }
+  controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, '~': :note_slide, '^': :chord_name, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio }
 end
 
 def getScaleDegrees(zkey,zscale)
@@ -26,12 +26,10 @@ def getScaleDegrees(zkey,zscale)
 end
 
 def replaceRandomSyntax(n) # Replace random values inside [] and ()
-  cArr = n.scan(/\[.*?\]/)
-  cArr.each do |s|
+  n.scan(/\[.*?\]/).each do |s|
     n = n.sub(s,s[1,s.length-2].split(",").choose)
   end
-  rArr = n.scan(/\(.*?\)/)
-  rArr.each do |s|
+  n.scan(/\(.*?\)/).each do |s|
     revl = s[1,s.length-2].split(",")
     if revl.length > 2 then raise 'Too many parameters' end
     if (Integer(revl[0]) rescue false) then # If int then
@@ -88,6 +86,8 @@ def zparse(n,opts={},shared={})
             ziff[:synth] = searchList(synth_names, stringFloat)
           elsif escapeType == :key then
             ziff[:key] = stringFloat.to_s
+          elsif escapeType == :arpeggio then
+            ziff[:arpeggio] = zparse stringFloat #stringFloat.each_char.map { |c| Integer(c) }
           elsif escapeType == :chordInvert || escapeType == :channel then
             ziff[escapeType] = stringFloat.to_i
           elsif escapeType == :chord then
@@ -181,7 +181,11 @@ def zparse(n,opts={},shared={})
         when '&' then
           sfaddition -= 1
         when '+' then
-          ziff[:pitch] += 12
+          if escape then
+            stringFloat = stringFloat+c
+          else
+            ziff[:pitch] += 12
+          end
         when '-' then
           if escape then
             stringFloat = stringFloat+c
@@ -232,16 +236,14 @@ def zparse(n,opts={},shared={})
           else
             raise "Use of : is mandatory before ;"
           end
-        when '@' then
-          # Recursive call from @ to @
+        when '@' then # Recursive call from @ to @
           if ds then
             again = zparse(n[/\@(.*?)@/,1], defaults, shared.clone)
             notes = notes.concat(again)
           else
             ds = !ds
           end
-        when '*' then
-          # Recursive call from beginning to first *
+        when '*' then # Recursive call from beginning to first *
           if dc then
             again = zparse(n.split('*')[0], defaults, shared.clone)
             notes = notes.concat(again)
@@ -298,8 +300,8 @@ def zparse(n,opts={},shared={})
           ziff[:degree] = dgr
           ziff[:note] = note
           ziff[:sleep] = noteLength*dotLength
-          ziff[:sustain] = defaults[:sustain]*(ziff[:sleep]==0 ? 1 : ziff[:sleep]) if ziff[:sustain]!=nil
-          ziff[:release] = defaults[:release]*(ziff[:sleep]==0 ? 1 : ziff[:sleep])
+          ziff[:sustain] = defaults[:sustain]*(ziff[:sleep]==0 ? 1 : ziff[:sleep]*2) if ziff[:sustain]!=nil
+          ziff[:release] = defaults[:release]*(ziff[:sleep]==0 ? 1 : ziff[:sleep]*2)
           ziff[:pitch] = ziff[:pitch]+sfaddition
           noteBuffer.push(ziff.clone) if !slideNext && loop && loopCount<1 # : buffer
           notes.push(ziff)
@@ -355,12 +357,8 @@ def zparams(hash, name)
   hash.map{|x| x[name]}
 end
 
-def zbeats(arr)
-  zparams(arr,:sleep).inject(0){|sum,x| sum+x }
-end
-
 def clean(ziff)
-  ziff.except(:key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi,:control)
+  ziff.except(:arpeggio, :key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi,:control)
 end
 
 def playMidiOut(md, ms, p, c)
@@ -370,11 +368,23 @@ end
 def playZiff(ziff,defaults={})
   if ziff[:skip] then
     print "Skipping note"
-  elsif ziff.has_key?(:chord) then
+  elsif ziff[:chord] then
     if ziff[:port] then
-      ziff[:chord].each { |cnote| playMidiOut(cnote, ziff[:chordRelease],ziff[:port],ziff[:channel]) }
+      if ziff[:arpeggio] then
+        ziff[:arpeggio].each { |cn|
+          playMidiOut(ziff[:chord][cn.to_i-1]+cn[:pitch], ziff[:chordRelease], ziff[:port],ziff[:channel]) if cn[:degree]!=0
+        sleep cn[:sleep] }
+      else
+        ziff[:chord].each { |cnote| playMidiOut(cnote, ziff[:chordRelease],ziff[:port],ziff[:channel]) }
+      end
     else
-      synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
+      if ziff[:arpeggio] then
+        ziff[:arpeggio].each { |cn|
+          synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, note: ziff[:chord][cn[:degree]-1], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: cn[:pitch] if cn[:degree]!=0
+        sleep cn[:sleep] }
+      else
+        synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide]
+      end
     end
   elsif ziff[:port] then
     sustain = ziff[:sustain]!=nil ? ziff[:sustain] :  ziff[:release]
@@ -404,38 +414,11 @@ def playZiff(ziff,defaults={})
   end
 end
 
-def zarray(arr, opts=defaultOpts)
-  zmel=[]
-  arr.each do |item|
-    if item.is_a? Array then
-      zmel.push arrayToHash(item,opts)
-    elsif item.is_a? Numeric then
-      opts[:note] = getNoteFromDgr(item, opts[:key], opts[:scale])
-      zmel.push(opts.clone)
-    end
-  end
-  zmel
-end
-
-def arrayToHash(obj,opts=defaultOpts)
-  defObj = [0,opts[:sleep],opts[:key],opts[:scale],opts[:release]]
-  arrayOpts = [:note,:sleep,:key,:scale,:release]
-  obj.each_with_index do |item,index|
-    defObj[index] = item
-  end
-  defObj[0] = getNoteFromDgr(defObj[0], defObj[2], defObj[3])
-  opts.merge(Hash[arrayOpts.zip(defObj)])
-end
-
 def zmidi(melody,opts={},shared={})
   shared[:midi] = true
   shared[:rateBased] = true if opts[:sample] && shared[:degreeBased]!=nil
   opts[:degree] = melody-opts[:key] if shared[:degreeBased]
   zplay(melody,opts,shared)
-end
-
-def zplay_notes(melody,opts={},defaults={})
-  zplay(zparse_notes(melody,opts[:key]),opts,defaults)
 end
 
 def zplay(melody,opts={},defaults={})
@@ -448,17 +431,15 @@ def zplay(melody,opts={},defaults={})
     end
     playZiff(opts,defaults)
   else
+    raise "Use zarray to parse degree arrays to hash array" if (melody.is_a? Array) && !(melody[0].is_a? Hash)
     if melody.is_a? String then
       melody = zparse(melody,opts,defaults)
-      defaults[:parsed]==true
-    elsif (melody.is_a? Array) && !(melody[0].is_a? Hash) then
-      melody = zarray(melody,opts)
       defaults[:parsed]==true
     end
     melody.each_with_index do |ziff,index|
       ziff = mergeRates(ziff, defaults) if defaults[:parsed]==nil
       playZiff(ziff,defaults)
-      sleep ziff[:sleep] if !ziff[:skip]
+      sleep ziff[:sleep] if !ziff[:skip] and !(ziff[:chord] and ziff[:arpeggio])
     end
   end
 end

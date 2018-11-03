@@ -1,5 +1,4 @@
 use_synth :piano
-use_synth_defaults release: 1.5
 
 def testzplay
   # frere jacques
@@ -11,7 +10,7 @@ def testzplay
   # same using Z escape char
   zplay("|:Z0.25 cdec:|:ef Z0.5 g:|@:Z0.125 gagf Z0.25 ec:|:c -g+ Z0.5 c:@|", parsekey: :c, key: :e)
   # jericho
-  zplay "|:q1-7+12&32&345h550;q4h440q5h550;&q34h54&321:|", key: :c, scale: :major
+  zplay "|:q1-7+12&32&345h550;q4h440q5h550;&q34h54&321:|", key: :d, scale: :major
   # ode to joy
   zplay("|:q3345|5432|1123|;q32h2;q21h1:|q2231|2e34q31|2e34q32|q12h-5|+q3345|5432|1123|21h1|")
   # twinkle twinkle
@@ -50,10 +49,10 @@ def testsingledegrees
 end
 
 def testarraydegrees
-  zplay [4,4,3,3,2,2,3,3,4,4,3,3,2,2,3,3], key: :c, scale: :chromatic, sleep: 0.12
-  zplay (scale :gong).reflect.to_a,  key: 60, scale: :blues_minor
-  zplay [[1, 0.375], [1, 0.375], [1, 0.25], [2, 0.125], [3, 0.375], [3, 0.25], [2, 0.125], [3, 0.25], [4, 0.125], [5, 0.75], [8, 0.125], [8, 0.125], [8, 0.125], [5, 0.125], [5, 0.125], [5, 0.125], [3, 0.125], [3, 0.125], [3, 0.125], [1, 0.125], [1, 0.125], [1, 0.125], [5, 0.25], [4, 0.125], [3, 0.25], [2, 0.125], [1, 0.75]], scale: :aeolian
-  zplay [1,2,4,5,6,7].zip(0.1.step(0.7,0.1).to_a)
+  zplay zarray [4,4,3,3,2,2,3,3,4,4,3,3,2,2,3,3], key: :c, scale: :chromatic, sleep: 0.12
+  zplay zarray((scale :gong).reflect.to_a),  key: 60, scale: :blues_minor
+  zplay zarray([[1, 0.375], [1, 0.375], [1, 0.25], [2, 0.125], [3, 0.375], [3, 0.25], [2, 0.125], [3, 0.25], [4, 0.125], [5, 0.75], [8, 0.125], [8, 0.125], [8, 0.125], [5, 0.125], [5, 0.125], [5, 0.125], [3, 0.125], [3, 0.125], [3, 0.125], [1, 0.125], [1, 0.125], [1, 0.125], [5, 0.25], [4, 0.125], [3, 0.25], [2, 0.125], [1, 0.75]]), scale: :aeolian
+  zplay zarray([1,2,4,5,6,7].zip(0.1.step(0.7,0.1).to_a))
 end
 
 def testchords
@@ -63,6 +62,8 @@ def testchords
   zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: "f", key: "e", scale: "mixolydian"})
   zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chordSleep: 0.5, scale: :aeolian)
   zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chordSleep: 0.5)
+  zplay "G1232 |: i^7 :4||: %-1 iv^dim :4|"
+  zplay "Gq12e+3212 |: i^7 :4||: %-1 iv^dim7 :4|", key: :d4, scale: :mixolydian  
 end
 
 def testrandom
@@ -99,15 +100,18 @@ def testzdrums
   zdrums("12345687654321", synth: :sine)
 end
 
+
 testzplay
 testcontrolchars
 testslide
 testsingledegrees
-testarraydegrees
+
 testchords
 testrandom
 testzsample
 testzmidi
-# Moved to ziffers_utils
+
+# These require ziffers_utils.rb
+#testarraydegrees
 #testbinaural
 #testzdrums
