@@ -372,7 +372,7 @@ def playZiff(ziff,defaults={})
     if ziff[:port] then
       if ziff[:arpeggio] then
         ziff[:arpeggio].each { |cn|
-          playMidiOut(ziff[:chord][cn.to_i-1]+cn[:pitch], ziff[:chordRelease], ziff[:port],ziff[:channel]) if cn[:degree]!=0
+          playMidiOut(ziff[:chord][cn[:degree]-1]+cn[:pitch], ziff[:chordRelease], ziff[:port],ziff[:channel]) if cn[:degree]!=0
         sleep cn[:sleep] }
       else
         ziff[:chord].each { |cnote| playMidiOut(cnote, ziff[:chordRelease],ziff[:port],ziff[:channel]) }
