@@ -1,4 +1,4 @@
-use_synth :piano
+use_synth :beep
 
 def testzplay
   # frere jacques
@@ -62,8 +62,9 @@ def testchords
   zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: "f", key: "e", scale: "mixolydian"})
   zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chordSleep: 0.5, scale: :aeolian)
   zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chordSleep: 0.5)
-  zplay "G1232 |: i^7 :4||: %-1 iv^dim :4|"
-  zplay "Gq12e+3212 |: i^7 :4||: %-1 iv^dim7 :4|", key: :d4, scale: :mixolydian  
+  zplay "G1232 |: i^7 :3||: %-1 iv^dim :3|"
+  zplay "Gq12e+3212 |: i^7 :3||: %-1 iv^dim7 :3|", key: :d4, scale: :mixolydian
+  zplay "N3 G987654321 %-1 ii^m9 v^add13 %2 i^maj9 %-2 vi^m9", key: :e3
 end
 
 def testrandom
@@ -105,8 +106,8 @@ testzplay
 testcontrolchars
 testslide
 testsingledegrees
-
 testchords
+
 testrandom
 testzsample
 testzmidi

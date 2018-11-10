@@ -5,7 +5,7 @@ def defaultDurs
 end
 
 def chordDefaults
-  defaults = { :chordSleep => 0, :chordRelease => 1, :chordInvert => 0, :sleep => 0 }
+  defaults = { :chordOctaves=>1, :chordSleep => 0, :chordRelease => 1, :chordInvert => 0, :sleep => 0 }
 end
 
 def defaultSampleOpts
@@ -18,7 +18,7 @@ def defaultOpts
 end
 
 def controlChars
-  controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, '~': :note_slide, '^': :chord_name, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio }
+  controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, '~': :note_slide, '^': :chord_name, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves }
 end
 
 def getScaleDegrees(zkey,zscale)
@@ -94,12 +94,8 @@ def zparse(n,opts={},shared={})
             chordKey = (ziff[:chordKey] ? ziff[:chordKey] : ziff[:key])
             chordSets = chordDefaults.merge(ziff.clone)
             parsedChord = stringFloat.split("^")
-            if parsedChord.length>1 then
-              chordRoot = degree parsedChord[0].to_sym, chordKey, ziff[:scale]
-              ziff[:chord] = chord_invert chord(chordRoot, parsedChord[1]), chordSets[:chordInvert]
-            else
-              ziff[:chord] = chord_invert chord_degree(parsedChord[0].to_sym,chordKey,ziff[:scale],3), chordSets[:chordInvert]
-            end
+            chordRoot = degree parsedChord[0].to_sym, chordKey, ziff[:scale]
+            ziff[:chord] = chord_invert chord(chordRoot, parsedChord.length>1 ? parsedChord[1] : :major, num_octaves: chordSets[:chordOctaves]), chordSets[:chordInvert]
             if sfaddition > 0 then
               ziff[:chord] = ziff[:chord]+sfaddition
             end
