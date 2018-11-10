@@ -1,4 +1,4 @@
-use_synth :beep
+use_synth :piano
 
 def testzplay
   # frere jacques
@@ -65,6 +65,8 @@ def testchords
   zplay "G1232 |: i^7 :3||: %-1 iv^dim :3|"
   zplay "Gq12e+3212 |: i^7 :3||: %-1 iv^dim7 :3|", key: :d4, scale: :mixolydian
   zplay "N3 G987654321 %-1 ii^m9 v^add13 %2 i^maj9 %-2 vi^m9", key: :e3
+  zplay "N2 G(1,6,6) i 0 v 0 vi"
+  zplay "N2 G(1..6) i 0 v 0 vi"
 end
 
 def testrandom

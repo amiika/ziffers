@@ -1,4 +1,4 @@
-print "Ziffers 0.3"
+print "Ziffers 0.4"
 
 def defaultDurs
   durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625, 'z': 0.0 }
@@ -18,7 +18,7 @@ def defaultOpts
 end
 
 def controlChars
-  controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, '~': :note_slide, '^': :chord_name, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves }
+  controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, '^': :chord_name, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves }
 end
 
 def getScaleDegrees(zkey,zscale)
@@ -26,17 +26,21 @@ def getScaleDegrees(zkey,zscale)
 end
 
 def replaceRandomSyntax(n) # Replace random values inside [] and ()
-  n.scan(/\[.*?\]/).each do |s|
-    n = n.sub(s,s[1,s.length-2].split(",").choose)
-  end
   n.scan(/\(.*?\)/).each do |s|
     revl = s[1,s.length-2].split(",")
-    if revl.length > 2 then raise 'Too many parameters' end
+    if revl.length > 3 then raise 'Too many parameters' end
     if (Integer(revl[0]) rescue false) then # If int then
-      n = n.sub(s,(rrand_i revl[0].to_i, revl[1].to_i).to_s)
+      n = n.sub(s, (revl.length==3 ? (Array.new(revl[2].to_i) {rrand_i(revl[0].to_i,revl[1].to_i)}).join : rrand_i(revl[0].to_i, revl[1].to_i).to_s))
+    elsif revl[0].include? ".."
+      sArr = revl[0].split("..")
+      nArr = (sArr[0].to_i..sArr[1].to_i).to_a.shuffle
+      n = n.sub(s,(revl.length==2 ? nArr.take(revl[1].to_i) : nArr).join)
     else
       n = n.sub(s,(rrand revl[0].to_f, revl[1].to_f).to_s)
     end
+  end
+  n.scan(/\[.*?\]/).each do |s|
+    n = n.sub(s,s[1,s.length-2].split(",").choose)
   end
   n
 end
@@ -197,14 +201,6 @@ def zparse(n,opts={},shared={})
           escapeType = controlChars[c.to_sym]
         when '^' then
           stringFloat+=c  if escape
-        when '$' then
-          if next_c==' ' then
-            randomScale = scale_names.choose
-            ziff[:scale] = randomScale
-          else
-            escapeType = controlChars[c.to_sym]
-            escape = true
-          end
         when ':' then
           if noteBuffer.length > 0 then # Loop is ending
             if loopCount<1 then # If : loop
@@ -328,16 +324,10 @@ def zparse(n,opts={},shared={})
 end
 
 def getNoteFromDgr(dgr, zkey, zscale)
-  if dgr==0 then
-    return :r
-  else
-    scaleDegrees = getScaleDegrees(zkey,zscale)
-    if dgr>scaleDegrees.length || dgr<0 then
-      return degree(scaleDegrees[dgr],zkey,zscale)+dgr/scaleDegrees.length*12
-    else
-      return degree(dgr,zkey,zscale)
-    end
-  end
+  return :r if dgr==0
+  scaleDegrees = getScaleDegrees(zkey,zscale)
+  return degree(scaleDegrees[dgr],zkey,zscale)+dgr/scaleDegrees.length*12 if dgr>scaleDegrees.length || dgr<0
+  return degree(dgr,zkey,zscale)
 end
 
 def searchList(arr,query)
