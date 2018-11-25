@@ -49,6 +49,7 @@ def zparse(n,opts={},shared={})
   sfaddition, dot, loopCount, note = 0, 0, 0, 0, 0
   escapeType = nil
   midi = shared[:midi] ? true : false
+  n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
   defaults = defaultOpts.merge(opts)
   ziff, controlZiff = defaults.clone # Clone defaults to preliminary Hash objects
   n = replaceRandomSyntax(n)
