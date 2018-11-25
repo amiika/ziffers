@@ -5,8 +5,6 @@ def testzplay
   zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|", key: :e, scale: :major)
   # Same using fractions as note length / sleep
   zplay("|:1/4 1231:|:34 2/4 5:|@:1/8 5654 1/4 31:|:1 -5+ 2/4 1:@|", key: :e, scale: :major)
-  # same with note names in c, transposed to e
-  zplay("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|", parsekey: :c, key: :e)
   # same using Z escape char
   zplay("|:Z0.25 cdec:|:ef Z0.5 g:|@:Z0.125 gagf Z0.25 ec:|:c -g+ Z0.5 c:@|", parsekey: :c, key: :e)
   # jericho
@@ -103,6 +101,10 @@ def testzdrums
   zdrums("12345687654321", synth: :sine)
 end
 
+def testpreparse
+  # Parse degrees from c and play in e
+  zplay(zpreparse("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|",:c),key: :e)
+end
 
 testzplay
 testcontrolchars
@@ -115,6 +117,7 @@ testzsample
 testzmidi
 
 # These require ziffers_utils.rb
+#testpreparse
 #testarraydegrees
 #testbinaural
 #testzdrums

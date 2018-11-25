@@ -1,5 +1,13 @@
 # Requires ziffers.rb to run
 
+def zpreparse(n,key)
+  noteList = ["c","d","e","f","g","a","b"]
+  key = (key.is_a? Symbol) ? key.to_s.chars[0].downcase : key.chars[0].downcase
+  ind = noteList.index(key)
+  noteList = noteList[ind...noteList.length]+noteList[0...ind]
+  n.chars.map { |c| noteList.index(c)!=nil ? noteList.index(c)+1 : c  }.join('')
+end
+
 def zarray(arr, opts=defaultOpts)
   zmel=[]
   arr.each do |item|
