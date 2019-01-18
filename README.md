@@ -224,6 +224,18 @@ Chords can be customized with ^ like: vi^dim. See Sonic Pi:s chord_names list fo
 
 Chords can also be inverted using % char, for example %1 to invert all following chords up by one.
 
+## Arpeggios
+
+You can also create melodies by playing chord arpeggios using G character and chords. You can use subset of ziffers notation to denote chord notes and note lengths.
+
+Examples:
+
+```
+zplay "G1231 i ii iii iv v vi vii"
+zplay "Gq12e+3212 |: i^7 :3||: %-1 iv^dim7 :3|", key: :d4, scale: :mixolydian
+
+```
+
 # Ziffers methods
 
 ## zplay
