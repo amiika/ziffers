@@ -23,14 +23,20 @@ end
 
 def replaceRandomSyntax(n) # Replace random values inside [] and ()
   n.scan(/\(.*?\)/).each do |s|
-    revl = s[1,s.length-2].split(",")
+    nlsp = s[1,s.length-2].split(";")
+    revl = nlsp[0].split(",")
+    lArr = nlsp[1].chars if nlsp[1]
     if revl.length > 3 then raise 'Too many parameters' end
-    if (Integer(revl[0]) rescue false) then # If int then
-      n = n.sub(s, (revl.length==3 ? (Array.new(revl[2].to_i) {rrand_i(revl[0].to_i,revl[1].to_i)}).join : rrand_i(revl[0].to_i, revl[1].to_i).to_s))
-    elsif revl[0].include? ".."
+    if (Integer(revl[0]) rescue false) then # (1,3) (1,3,2) (1,3,2;qe)
+      lArr = lArr && lArr.length<revl[2].to_i ? lArr + Array.new(revl[2].to_i-lArr.length) {""} : lArr if lArr
+      nArr = (revl.length==3 ? (Array.new(revl[2].to_i) {rrand_i(revl[0].to_i,revl[1].to_i)}) : rrand_i(revl[0].to_i, revl[1].to_i).to_s.chars)
+      n = n.sub(s, (lArr ? lArr.zip(nArr) : nArr).join)
+    elsif revl[0].include? ".." # (1..3) (1..3;qwe)
       sArr = revl[0].split("..")
       nArr = (sArr[0].to_i..sArr[1].to_i).to_a.shuffle
-      n = n.sub(s,(revl.length==2 ? nArr.take(revl[1].to_i) : nArr).join)
+      nArr = (revl.length==2 ? nArr.take(revl[1].to_i) : nArr)
+      lArr = lArr && lArr.length<nArr.length ? lArr + Array.new(nArr.length-lArr.length) {""} : lArr if lArr
+      n = n.sub(s,(lArr ? lArr.zip(nArr) : nArr).join)
     else
       n = n.sub(s,(rrand revl[0].to_f, revl[1].to_f).to_s)
     end
@@ -50,6 +56,7 @@ def zparse(n,opts={},shared={})
   escapeType = nil
   midi = shared[:midi] ? true : false
   n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
+  n = lsystem(n,opts[:rules],opts[:gen])[opts[:gen]-1]
   defaults = defaultOpts.merge(opts)
   ziff, controlZiff = defaults.clone # Clone defaults to preliminary Hash objects
   n = replaceRandomSyntax(n)
@@ -314,7 +321,7 @@ def searchList(arr,query)
   end
   
   def clean(ziff)
-    ziff.except(:arpeggio, :key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi,:control)
+    ziff.except(:rules, :eval, :gen, :arpeggio, :key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi,:control)
   end
   
   def playMidiOut(md, ms, p, c)

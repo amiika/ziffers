@@ -9,7 +9,7 @@ def lsystem(ax,rules,gen)
         g = Regexp.last_match.captures
         if g[0] && (prob==nil || (prob && (rand < (prob[2].length<2 ? "0.0"+prob[2] : "0."+prob[2]).to_f))) then
           rep = g.length>1 ? v.gsub(/\$([1-9])/, g[Regexp.last_match[1].to_i]) : v.gsub("$",m)
-          rep = replaceRandomSyntax(rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep)
+          rep = replaceRandomSyntax(rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep)       
           "{{#{rep}}}" # Escape
         else
           m # If escaped or rand<prob
