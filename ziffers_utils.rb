@@ -3,20 +3,20 @@
 def lsystem(ax,rules,gen)
   gen.times.collect do
     ax = rules.each_with_object(ax.dup) do |(k,v),s|
-      prob = k.match(/(.+):([0-9]{1,2})%/) if k.is_a?(String)
-      k = prob[1] if prob
+      prob = v.match(/([-+]?[0-9]*\.?[0-9]+)%=(.+)/)
+      v = prob[2] if prob
       s.gsub!(/{{.*?}}|(#{k.is_a?(String) ? Regexp.escape(k) : k})/) do |m|
         g = Regexp.last_match.captures
-        if g[0] && (prob==nil || (prob && (rand < (prob[2].length<2 ? "0.0"+prob[2] : "0."+prob[2]).to_f))) then
-          rep = g.length>1 ? v.gsub(/\$([1-9])/, g[Regexp.last_match[1].to_i]) : v.gsub("$",m)
-          rep = replaceRandomSyntax(rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep)       
+        if g[0] && (prob==nil || (prob && (rand < prob[1].to_f))) then
+          rep = g.length>1 ? v.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : v.gsub("$",m)
+          rep = replaceRandomSyntax(rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep)
           "{{#{rep}}}" # Escape
         else
           m # If escaped or rand<prob
         end
       end
     end
-    ax.gsub!(/{{(.*?)}}/) {$1}
+    ax = ax.gsub(/{{(.*?)}}/) {$1}
   end
 end
 

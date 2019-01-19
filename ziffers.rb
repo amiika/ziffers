@@ -13,7 +13,7 @@ def defaultSampleOpts
 end
 
 def defaultOpts
-  defaultOpts = { :key => :c, :scale => :major, :release => 1, :sleep => 0.25, :pitch => 0.0, :amp => 1, :pan => 0, :amp_step => 0.5, :note_slide => 0.5, :control => nil, :skip => false, :pitch_slide => 0.25, :offset => 0 }
+  defaultOpts = { :key => :c, :scale => :major, :release => 1, :sleep => 0.25, :pitch => 0.0, :amp => 1, :pan => 0, :amp_step => 0.5, :note_slide => 0.5, :control => nil, :skip => false, :pitch_slide => 0.25 }
   defaultOpts.merge(Hash[current_synth_defaults.to_a])
 end
 
@@ -28,15 +28,13 @@ def replaceRandomSyntax(n) # Replace random values inside [] and ()
     lArr = nlsp[1].chars if nlsp[1]
     if revl.length > 3 then raise 'Too many parameters' end
     if (Integer(revl[0]) rescue false) then # (1,3) (1,3,2) (1,3,2;qe)
-      lArr = lArr && lArr.length<revl[2].to_i ? lArr + Array.new(revl[2].to_i-lArr.length) {""} : lArr if lArr
       nArr = (revl.length==3 ? (Array.new(revl[2].to_i) {rrand_i(revl[0].to_i,revl[1].to_i)}) : rrand_i(revl[0].to_i, revl[1].to_i).to_s.chars)
-      n = n.sub(s, (lArr ? lArr.zip(nArr) : nArr).join)
+      n = n.sub(s, (lArr ? (lArr && lArr.length<revl[2].to_i ? lArr + Array.new(revl[2].to_i-lArr.length) {""} : lArr).zip(nArr) : nArr).join)
     elsif revl[0].include? ".." # (1..3) (1..3;qwe)
       sArr = revl[0].split("..")
       nArr = (sArr[0].to_i..sArr[1].to_i).to_a.shuffle
       nArr = (revl.length==2 ? nArr.take(revl[1].to_i) : nArr)
-      lArr = lArr && lArr.length<nArr.length ? lArr + Array.new(nArr.length-lArr.length) {""} : lArr if lArr
-      n = n.sub(s,(lArr ? lArr.zip(nArr) : nArr).join)
+      n = n.sub(s,(lArr ? (lArr && lArr.length<nArr.length ? lArr + Array.new(nArr.length-lArr.length) {""} : lArr).zip(nArr) : nArr).join)
     else
       n = n.sub(s,(rrand revl[0].to_f, revl[1].to_f).to_s)
     end
@@ -56,7 +54,7 @@ def zparse(n,opts={},shared={})
   escapeType = nil
   midi = shared[:midi] ? true : false
   n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
-  n = lsystem(n,opts[:rules],opts[:gen])[opts[:gen]-1]
+  n = lsystem(n,opts[:rules],opts[:gen])[opts[:gen]-1] if opts[:rules]
   defaults = defaultOpts.merge(opts)
   ziff, controlZiff = defaults.clone # Clone defaults to preliminary Hash objects
   n = replaceRandomSyntax(n)
@@ -194,9 +192,7 @@ def zparse(n,opts={},shared={})
         when ";" then
           if noteBuffer.length > 0 then
             loopCount+=1
-            if loopCount>1 then
-              notes = notes.concat(noteBuffer)
-            end
+            notes = notes.concat(noteBuffer) if loopCount>1
           else
             raise "Use of : is mandatory before ;"
           end
@@ -209,8 +205,7 @@ def zparse(n,opts={},shared={})
           end
         when '*' then # Recursive call from beginning to first *
           if dc then
-            again = zparse(n.split('*')[0], defaults, shared.clone)
-            notes = notes.concat(again)
+            notes = notes.concat(zparse(n.split('*')[0], defaults, shared.clone))
           else
             dc = !dc
           end
@@ -232,8 +227,8 @@ def zparse(n,opts={},shared={})
       if dgr!=nil || note!=0 then
         if dgr!=nil then
           dgr = -(dgr) if negative
-          dgr = -(dgr)+ziff[:inverse]+ziff[:offset] if ziff[:inverse] && dgr!=ziff[:inverse] && dgr!=0
-          dgr = ((dgr+ziff[:offset])<=0) ? (dgr+ziff[:offset])-1 : dgr+ziff[:offset]
+          dgr = -(dgr)+ziff[:inverse]+(ziff[:offset] ? ziff[:offset] : 0) if ziff[:inverse] && dgr!=ziff[:inverse] && dgr!=0
+          dgr = ((dgr+ziff[:offset])<=0) ? (dgr+ziff[:offset])-1 : dgr+ziff[:offset] if ziff[:offset]
           note = getNoteFromDgr(dgr, ziff[:key], ziff[:scale])
         end
         if slideNext then
@@ -309,7 +304,7 @@ end
 
 def searchList(arr,query)
   result = (Float(query) != nil rescue false) ? arr[query.to_i] : arr.find { |e| e.match( /\A#{Regexp.quote(query)}/)}
-    return (result == nil ? query : result)
+    (result == nil ? query : result)
   end
   
   def mergeRates(ziff, opts)

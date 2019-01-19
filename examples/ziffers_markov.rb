@@ -63,7 +63,7 @@ end
 
 
 # frere jacques in ziffers
-n = zparse("|:q1231:|:q34h5:|@:e5654q31:|:q1-5+h1:@|")
+n = zparse("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|")
 
 notes = zparams(n, :note)
 sleeps = zparams(n, :sleep)
