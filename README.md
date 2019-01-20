@@ -22,15 +22,38 @@ Ziffers is a [numbered notation](https://en.wikipedia.org/wiki/Numbered_musical_
 
 Notes are marked as numbers 1-9 representing the position in used scale. Default key is :c and scale :major making the numbers 1=C, 2=D, 3=E .. and so forth. If some scale does not have certain degree, for example 8 in major scale, it is transposed automatically meaning 8 is 1 in higher octave. 
 
+Ziffers is a single character language, which means that every degree that is higher than 9 needs to be transposed to the next octave.
+
 ## Octave change
 
-To create higher notes you can use ^ which makes octave go up, for example ^1 is gain C but one octave up. Numbers 8 and 9 in major scale are exactly same as ^1 and ^2. Use _ to change the octave one step lower.
+To create higher notes you can use ^ which makes the note go one octave go higher, for example ^1 is same as 8 in major scale.
+
+Use _ to change the octave one step lower.
 
 Octave change is sticky, meaning it affects all of the notes that comes after the ^/_ character
 
 ## Negative degrees
 
 Using negative degrees is other way to play lower notes. Consider scale as number line from negative to positive, for example: -987654321+123456789. In most cases it is more intuitive to use -2 than _6. You can also use lower numbers using eval syntax, for example: =-12
+
+## Escaping degrees
+
+In some cases it might be easier to escape the digits that require more characters than one. To do this you can use the = character.
+
+**=** character evaluates the characters between the **=** and the next empty space:
+```
+zplay "=-10 =12 =24"
+zplay "=1*1 =2*2 =3*3 =4*4"
+```
+
+You can also use ruby string interpolation in combination with the **=** character:
+
+```
+# Plays degrees [0, 0, 2, 3, 4, 6, 6, 9, 8, 12, 10, 15, 12, 18, 14, 21, 16, 24, 18, 27]
+10.times do |n|
+  zplay "=#{n*2} =#{n*3} "
+end
+```
 
 ## Note lengths
 
