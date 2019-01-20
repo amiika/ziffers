@@ -1,7 +1,7 @@
 ![Ziffers](https://raw.githubusercontent.com/amiika/ziffers/master/logo.svg?sanitize=true)
 
-# Ziffers: Numbered musical notation for Sonic Pi 
-Ziffers is a numbered musical notation (aka. Ziffersystem) that makes composing melodies easier and faster for any key or scale. 
+# Ziffers: Numbered musical notation for composing algorithmic and generative music using Sonic Pi
+Ziffers is a numbered musical notation (aka. Ziffersystem) that makes composing generative melodies easier and faster for any key or scale. 
 
 Writing and playing melodies will be as simple as:
 ```
@@ -12,15 +12,25 @@ or
 zplay "|:44332233:|.4h4", key: :c, scale: :chromatic
 ```
 
-Just copy the [source](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.rb) and run it in a free buffer or use **run_file** command to include the ziffers.rb file.
+Just copy the [source](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.rb) and run it in a free buffer or use **run_file** command to include the ziffers.rb file. Some features like **lsystem** or **zpreparse** also requires [ziffer utils](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers_utils.rb) to run.
 
 # Basic notation
 
 Ziffers is a [numbered notation](https://en.wikipedia.org/wiki/Numbered_musical_notation) for music, meaning you write melodies using numbers that represent notes in some scale. Ziffers parses custom "ASCII" notation with **zparse** method and produces array of hash objects that contains parameters which can be played using **zplay** method. You can also use **zparams** method to use produced notes in any other method.
 
-## Numbers 1-7 (and 8,9)
+## Numbers 1-9
 
-Notes are marked as numbers 1-7 representing the position in used scale. Default key is :c and scale :major making the numbers 1=C, 2=D, 3=E .. and so forth. 
+Notes are marked as numbers 1-9 representing the position in used scale. Default key is :c and scale :major making the numbers 1=C, 2=D, 3=E .. and so forth. If some scale does not have certain degree, for example 8 in major scale, it is transposed automatically meaning 8 is 1 in higher octave. 
+
+## Octave change
+
+To create higher notes you can use ^ which makes octave go up, for example ^1 is gain C but one octave up. Numbers 8 and 9 in major scale are exactly same as ^1 and ^2. Use _ to change the octave one step lower.
+
+Octave change is sticky, meaning it affects all of the notes that comes after the ^/_ character
+
+## Negative degrees
+
+Using negative degrees is other way to play lower notes. Consider scale as number line from negative to positive, for example: -987654321+123456789. In most cases it is more intuitive to use -2 than _6. You can also use lower numbers using eval syntax, for example: =-12
 
 ## Note lengths
 
@@ -30,6 +40,22 @@ For example note lengths in Blue bird song can be defined using characters **w**
 ```
 zplay("5353 5653 4242 4542 5353 5653 w5 q5432 w1")
 ```
+
+### Standard note lengths
+
+- **m** = Max = 8/1 = 8 beats
+- **l** = Long = 4/1 = 4 beats
+- **d** = Double whole = 2/1 = 2 beats
+- **w** = Whole = 1/1 = 1 beat
+- **h** = Half = 1/2 = 0.5 beat
+- **q** = Quarter = 1/4 = 0.25 beat
+- **e** = Eighth = 1/8 = 0.125 beat
+- **s** = Sixteenth = 1/16 = 0.0625 beat
+- **t** = Thirty-second = 1/32 = 0.03125 beat
+- **f** = Sixty-fourth = 1/64 = 0.015625 beat
+
+
+### Alternative ways to define note lengths
 
 Same note lengths can also be defined using different escape notations:
 
@@ -45,54 +71,32 @@ zplay("1/4 5353 5653 4242 4542 5353 5653 4/4 5 1/4 5432 4/4 1")
 
 **Note that only 1/1*n works. No support fractions where numerator is bigger than 9, eg. 12/64** 
 
-### Standard note lengths
-
-- **m** = Max = 8/1 = 8 beats
-- **l** = Long = 4/1 = 4 beats
-- **d** = Double whole = 2/1 = 2 beats
-- **w** = Whole = 1/1 = 1 beat
-- **h** = Half = 1/2 = 0.5 beat
-- **q** = Quarter = 1/4 = 0.25 beat
-- **e** = Eighth = 1/8 = 0.125 beat
-- **s** = Sixteenth = 1/16 = 0.0625 beat
-- **t** = Thirty-second = 1/32 = 0.03125 beat
-- **f** = Sixty-fourth = 1/64 = 0.015625 beat
-
-### Dotted notes
-
-**.** for dotted notes. First dot increases the duration of the basic note by half of its original value. Second dot half of the half, third dot half of the half of the half ... and so on. For example dots added to Whole note "w." will change the duration to 1.5, second dot "w.." to 1.75, third dot to 1.875.
-
-### Custom lengths
-
-You can also use custom note lengths, for example: "Z1.123 1" or "23/123 1"
-
 Default note length can also be changed via parameter, for example:
 ```
 # Plays short efg notes for 1 note per beat.
 zplay("123",{release:0.5, sleep: 1})
 ```
 
+### Dotted notes
+
+**.** for dotted notes. First dot increases the duration of the basic note by half of its original value. Second dot half of the half, third dot half of the half of the half ... and so on. For example dots added to Whole note "w." will change the duration to 1.5, second dot "w.." to 1.75, third dot to 1.875.
+
+
 ### Parse degrees from note names
 
 You can also use notation based on note names to parse melody the ziffers notation. In order to use note names you have to use Z or fractions to define note lengths.
 
-Use zpreparse to parse note names to degrees:
+Include [ziffer utils](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers_utils.rb) to use **zpreparse**-function to parse note names to degrees:
 ```
 print zpreparse "1/4 cdefg - abg", :e
 # Prints "1/4 67123 - 453"
 ```
 
-You can also play with note names, by defining the **parsekey**. These two play exactly same melody:
+Use zplay with note names by defining the **parsekey**. Ziffers utils must be included. These two play exactly same melody:
 ```
 zplay("|:1/4 1231:|:34 2/4 5:|@:1/8 5654 1/4 31:|:1 -5+ 2/4 1:@|", key: :e) 
 zplay("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|", parsekey: :c, key: :e)
 ```
-
-## Octave change
-
-To create higher notes you can use + which makes octave go up, for example +1 is gain C but one octave up. Numbers 8 and 9 is exactly same as +1 and +2. Use - to change the octave one step lower.
-
-Octave change is sticky, meaning it affects all of the notes that comes after the +/- character
 
 ## Rest or silence
 
@@ -117,7 +121,7 @@ Use **:** as basic repeat, for example in Frere Jacques:
 
 ```
 # Repeat every bar
-zplay("|: 1231 :|: 34w5 :|: q5654h31 :|: 1-5+w1 :|")
+zplay("|: 1231 :|: 34w5 :|: q5654h31 :|: 1_5^w1 :|")
 ```
 
 ### Alternative sections or numbered endings
@@ -127,8 +131,8 @@ Use **;** in repeats for alternative sections, like "|: 123 ; 432 ; 543 :|".
 Alternative endings in ievan polkka:
 
 ```
-zplay("|:q1e11q12| q3113 |;q2-77+2 |q31h1;q.5e4q32|q31h1:|"\
-      "|:q5e55q43|q2-77+2|;q4e44q32|q3113;q4e44q32|q31h1:|", :g, :minor)
+zplay("|:q1e11q12| q3113 |;q2_77^2 |q31h1;q.5e4q32|q31h1:|"\
+      "|:q5e55q43|q2_77^2|;q4e44q32|q3113;q4e44q32|q31h1:|", :g, :minor)
 ```
 
 ### D.S repeat
@@ -206,15 +210,26 @@ zplay " |: ???0???q(1,2)[6,7](1,2)[6,7] (1,2)[6,7](1,2)[6,7] :| "
 
 ## Random note
 
-Use **?** for random note
+Use **?** for random degree between 1-7
 
 ## Random between
 
 Use (1,5) for random numer between 1 and 5. (1,7) is same as ?.
 
+(1,4,3) = create 4 random numbers between 1 and 4: "2341"
+(3000,4000,4;qeee) = create 4 random numbers between 3000 and 4000: "q3e532"
+
+## Random sequence
+
+(1..7) = create random sequence: "1324657". 
+(1..7,3) = pick 3 from random sequence: "152"
+(1..3;qe) = create sequence with note lengths: "q2e23"
+
 ## Choose random from array
 
 Use [q1,e2345,h3] for randomly selected lengths and degree/degrees from the array.
+
+It is also possible to combine other random syntax: [(1,3),(1..5,2)]
 
 # Chords
 
@@ -232,7 +247,7 @@ Examples:
 
 ```
 zplay "G1231 i ii iii iv v vi vii"
-zplay "Gq12e+3212 |: i^7 :3||: %-1 iv^dim7 :3|", key: :d4, scale: :mixolydian
+zplay "Gq12e^3212 |: i^7 :3||: %-1 iv^dim7 :3|", key: :d4, scale: :mixolydian
 
 ```
 
@@ -316,8 +331,8 @@ Ziffers is meant to provide easy way to write and experiment with melodies. By *
 Example of using Ziffers with default Sonic Pi methods:
 ```
 ievanpolka = \
-  "|:q1e11q12|q3113;q2-77+2|q31h1;q.5e4q32|q31h1:|"\
-  "|:q5e55q43|q2-77+2;q4e44q32|q3113;q4e44q32|q31h1:|"
+  "|:q1e11q12|q3113;q2_77^2|q31h1;q.5e4q32|q31h1:|"\
+  "|:q5e55q43|q2_77^2;q4e44q32|q3113;q4e44q32|q31h1:|"
 
 n = zparse(ievanpolka,{key:"C", scale:"minor"})
 notes = zparams(n, :note)
@@ -326,4 +341,52 @@ notes = [notes,pitch].transpose.map {|x| x.reduce(:+)}
 durations = zparams(n, :sleep)
 
 play_pattern_timed notes, durations
+```
+
+Look under examples to see other ways to use zparse and other Sonic Pi projects, such as Markov chains.
+
+# Fractal melodies
+
+Ziffers can be used to generate fractal melodies using L-system based approach. Include [ziffer utils](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers_utils.rb) to use rules. Use **rules** to define hash-object specifying the transformation rules and **gen** to define amount of generations the rules are run against.
+
+For example:
+```
+    zplay "1", rules: {"1"=>"13","3"=>"6431"}, gen: 3
+```
+
+Matched value is defined as string or regular expression. You can feed back the matched number with $ or ${1-9}. Use single quotes to run evaluation against the matched number:
+
+```
+	zplay "1", rules: {/(3)1/=>"q'$1+1'1'$2+2'",/[1-7]/=>"e313"}, gen: 4
+	sleep 2
+    zplay "123", rules: {/[1-9]/=>"'$*1' [e,q] '$*2'"}, gen: 4
+```
+
+## Stochastic melodies
+
+Use 0.4%= syntax to define chance of replacement. This way you can vary the replaced matches when using alternative random seeds.
+
+This example has 20% chance to tranform any number between 1 and 7 to six numbers randomly chosen from numbers between 1 and 9.
+```
+zplay "1234", rules: {/[1-7]/=>"0.2%=(1..9,6)"}, gen: 4
+```
+
+## Context dependent rules
+
+Use regular expression lookbehind and lookahead syntax. For example this would match 3 only if it is between 1 and 2: /(?<=1)3(?=2)/
+
+## Automata rules
+
+Other way to use the L-system is to write rules that change the input in a way that the end result does not grow. This way you can predictable or unpredictable loops that are somewhat similar to Conways automata or "The game of life".
+
+Example of using **lsystem** directly to produce a random loop from the different generations:
+```
+use_synth :chipbass
+
+n = lsystem("12e3456",{"1"=>"[2,4]","2"=>"[1,5]","3"=>"5","4"=>"3","5"=>"[1,3]"},10).ring
+
+live_loop :p do
+  sample :bd_tek
+  zplay n.tick
+end
 ```
