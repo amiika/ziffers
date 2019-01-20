@@ -240,12 +240,15 @@ Use **?** for random degree between 1-7
 Use (1,5) for random numer between 1 and 5. (1,7) is same as ?.
 
 (1,4,3) = create 4 random numbers between 1 and 4: "2341"
+
 (3000,4000,4;qeee) = create 4 random numbers between 3000 and 4000: "q3e532"
 
 ## Random sequence
 
 (1..7) = create random sequence: "1324657". 
+
 (1..7,3) = pick 3 from random sequence: "152"
+
 (1..3;qe) = create sequence with note lengths: "q2e23"
 
 ## Choose random from array
@@ -370,14 +373,14 @@ Look under examples to see other ways to use zparse and other Sonic Pi projects,
 
 # Fractal melodies
 
-Ziffers can be used to generate fractal melodies using L-system based approach. Include [ziffer utils](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers_utils.rb) to use rules. Use **rules** to define hash-object specifying the transformation rules and **gen** to define amount of generations the rules are run against.
+Ziffers can be used to generate fractal melodies using L-system based approach. Include [ziffer utils](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers_utils.rb) to define rules in hash-objects. Use **gen** to define amount of generations the rules are run against.
 
 For example:
 ```
     zplay "1", rules: {"1"=>"13","3"=>"6431"}, gen: 3
 ```
 
-Matched value is defined as string or regular expression. You can feed back the matched number with $ or ${1-9}. Use single quotes to run evaluation against the matched number:
+Hash key is a string or regular expression that represents the string to be matched and replaced. You can feed back the matched string with $ or ${1-9}. Use single quotes to run evaluation against the matches:
 
 ```
 	zplay "1", rules: {/(3)1/=>"q'$1+1'1'$2+2'",/[1-7]/=>"e313"}, gen: 4
@@ -387,7 +390,7 @@ Matched value is defined as string or regular expression. You can feed back the 
 
 ## Stochastic melodies
 
-Use 0.4%= syntax to define chance of replacement. This way you can vary the replaced matches when using alternative random seeds.
+Use 0.4%= syntax in the beginning of the hash value to define chance of replacement. This way you can vary the replaced matches when using alternative random seeds.
 
 This example has 20% chance to tranform any number between 1 and 7 to six numbers randomly chosen from numbers between 1 and 9.
 ```
@@ -400,7 +403,7 @@ Use regular expression lookbehind and lookahead syntax. For example this would m
 
 ## Automata rules
 
-Other way to use the L-system is to write rules that change the input in a way that the end result does not grow. This way you can predictable or unpredictable loops that are somewhat similar to Conways automata or "The game of life".
+Write rules that change the input in a way that the end result does not grow. This way you can predictable or unpredictable loops that are somewhat similar to cellular automata.
 
 Example of using **lsystem** directly to produce a random loop from the different generations:
 ```
