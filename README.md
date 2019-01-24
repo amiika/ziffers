@@ -373,19 +373,19 @@ Look under examples to see other ways to use zparse and other Sonic Pi projects,
 
 # Fractal melodies
 
-Ziffers can be used to generate fractal melodies using L-system based approach. Include [ziffer utils](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers_utils.rb) to define rules in hash-objects. Use **gen** to define amount of generations the rules are run against.
+Ziffers can be used to generate fractal melodies using L-system based approach. Include [ziffer utils](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers_utils.rb) to use **rules** and **gen** parameters. Define transformation **rules** as hash object and use **gen** to define amount of generations the rules are run against.
 
-For example:
+Matched values are defined as hash keys and replacements as hash value. For example:
 ```
-    zplay "1", rules: {"1"=>"13","3"=>"6431"}, gen: 3
+zplay "1", rules: {"1"=>"13","3"=>"6431"}, gen: 3
 ```
 
-Hash key is a string or regular expression that represents the string to be matched and replaced. You can feed back the matched string with $ or ${1-9}. Use single quotes to run evaluation against the matches:
+Key can be string or regular expression that represents the string to be matched and replaced. You can feed back the matched string with $ or ${1-9} if using regexp groups. Use single quotes to evaluate the calculations:
 
 ```
-	zplay "1", rules: {/(3)1/=>"q'$1+1'1'$2+2'",/[1-7]/=>"e313"}, gen: 4
-	sleep 2
-    zplay "123", rules: {/[1-9]/=>"'$*1' [e,q] '$*2'"}, gen: 4
+zplay "1", rules: {/(3)1/=>"q'$1+1'1'$1+2'",/[1-7]/=>"e313"}, gen: 4
+sleep 2
+zplay "123", rules: {/[1-9]/=>"'$*1' [e,q] '$*2'"}, gen: 4
 ```
 
 ## Stochastic melodies
