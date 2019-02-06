@@ -239,15 +239,19 @@ Use **?** for random degree between 1-7
 
 Use (1,5) for random numer between 1 and 5. (1,7) is same as ?.
 
-(1,4,3) = create 4 random numbers between 1 and 4: "2341"
+(1,4*4) = create 4 random numbers between 1 and 4: "2341"
 
-(3000,4000,4;qeee) = create 4 random numbers between 3000 and 4000: "q3e532"
+(3000,4000;qeee*4) = create 4 random numbers between 3000 and 4000: "q3e532"
 
-## Random sequence
+## Sequences
 
-(1..7) = create random sequence: "1324657". 
+(1..7) = create sequence: "1234567"
 
-(1..7,3) = pick 3 from random sequence: "152"
+(1..9+2) = create sequence using step: "13579" 
+
+(1..7~) = create random sequence: "1324657".
+
+(1..7?3) = take 3 from random sequence: "152"
 
 (1..3;qe) = create sequence with note lengths: "q2e23"
 

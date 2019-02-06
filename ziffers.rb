@@ -22,26 +22,25 @@ def controlChars
 end
 
 def replaceRandomSyntax(n) # Replace random values inside [] and ()
-  n.scan(/\(.*?\)/).each do |s|
-    nlsp = s[1,s.length-2].split(";")
-    revl = nlsp[0].split(",")
-    lArr = nlsp[1].chars if nlsp[1]
-    if revl.length > 3 then raise 'Too many parameters' end
-    if (Integer(revl[0]) rescue false) then # (1,3) (1,3,2) (1,3,2;qe)
-      nArr = (revl.length==3 ? (Array.new(revl[2].to_i) {rrand_i(revl[0].to_i,revl[1].to_i)}) : rrand_i(revl[0].to_i, revl[1].to_i).to_s.chars)
-      n = n.sub(s, (lArr ? (lArr && lArr.length<revl[2].to_i ? lArr + Array.new(revl[2].to_i-lArr.length) {""} : lArr).zip(nArr) : nArr).join)
-    elsif revl[0].include? ".." # (1..3) (1..3;qwe)
-      sArr = revl[0].split("..")
-      nArr = (sArr[0].to_i..sArr[1].to_i).to_a.shuffle
-      nArr = (revl.length==2 ? nArr.take(revl[1].to_i) : nArr)
-      n = n.sub(s,(lArr ? (lArr && lArr.length<nArr.length ? lArr + Array.new(nArr.length-lArr.length) {""} : lArr).zip(nArr) : nArr).join)
-    else
-      n = n.sub(s,(rrand revl[0].to_f, revl[1].to_f).to_s)
-    end
-  end
   n.scan(/\[.*?\]/).each do |s|
     n = n.sub(s,s[1,s.length-2].split(",").choose)
   end
+  n = n.gsub(/\(((\d+)\.\.(\d+)\??(\d+)?\+?(\d+)?|(\d+),(\d+));?([a-z]+)?\*?(\d+)?\:?(\d+)?(~)?\)/) do |g|
+    m = Regexp.last_match.captures
+    fArr=[]
+    (m[8] ? m[8].to_i : 1).times do # *3
+      nArr = m[4] ? (m[1].to_i..m[2].to_i).step(m[4].to_i).to_a : (m[1].to_i..m[2].to_i).to_a if m[1] && m[2] # 1..7 +2
+      nArr = rrand_i(m[5].to_i,m[6].to_i).to_s.chars if m[5] && m[6] # 1,3
+      nArr = nArr.shuffle if m[10] or m[3] # ~
+      nArr = nArr.take(m[3].to_i) if m[3] # ?3
+      lArr = m[7].chars if m[7] #;qwe
+      nArr = (lArr.length<nArr.length ? lArr + Array.new(nArr.length-lArr.length) {""} : lArr).zip(nArr) if lArr
+      fArr += nArr
+    end
+    fArr = fArr * m[9].to_i if m[9] # :4
+    fArr.join
+  end
+  print "Randomized: "+n
   n
 end
 

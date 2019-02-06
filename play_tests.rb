@@ -76,8 +76,14 @@ def testchords
 end
 
 def testrandom
-  zplay "(2000,5000,10;qqee)"
-  zplay "(1..7;hqe)"
+  zplay "(1..7?3)"
+  zplay "(1..7?3*3)"
+  zplay "(1,7*10)"
+  zplay "(100,200:3)"
+  zplay "(2000,5000;wqqee)"
+  zplay "(1..9;wqqeee)"
+  zplay "(1..9;wqqeee~)"
+  zplay "(10..1000+100;e~)"
   zplay "Z0.? ???? Z[0.25,0.5,1] ???? Z(0.1,0.5) ????"
   with_synth :beep do
     3.times do zplay("ii 554e56 iv 12323456 i q 334e56 v [q7765,e75645342,q????]") end
@@ -127,6 +133,7 @@ def testpreparse
   # same using Z escape char and parseKey param
   zplay("|:Z0.25 cdec:|:ef Z0.5 g:|@:Z0.125 gagf Z0.25 ec:|:c _g^ Z0.5 c:@|", parsekey: :c, key: :e)
 end
+
 
 testzplay
 testchords
