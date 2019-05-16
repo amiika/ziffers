@@ -1,3 +1,4 @@
+require "~/ziffers/ziffers.rb"
 
 live_loop :boom do
   zdrums("1 0 0 1",{key: :c,scale: :minor})

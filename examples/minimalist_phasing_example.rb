@@ -1,3 +1,5 @@
+require "~/ziffers/ziffers.rb"
+
 use_synth :fm
 
 z = zparse "111525"

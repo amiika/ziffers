@@ -1,3 +1,4 @@
+require "~/ziffers/ziffers.rb"
 
 live_loop :spread do
   (spread 7, 32).each do |bool|

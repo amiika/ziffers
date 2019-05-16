@@ -1,3 +1,5 @@
+require "~/ziffers/ziffers.rb"
+
 # Play ziffers using keyboard
 # On windows: https://in-thread.sonic-pi.net/t/connecting-sonic-pi-to-virtual-midi-piano-keyboard-on-windows-10/176
 

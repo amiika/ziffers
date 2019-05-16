@@ -1,3 +1,4 @@
+require "~/ziffers/ziffers.rb"
 
 n = zparse("333 444 222 666")
 

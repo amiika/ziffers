@@ -1,7 +1,9 @@
-print "Ziffers 0.5: Octave syntax change - to _ and + to ^"
+print "Ziffers 0.6: More sequence options. Variable assignation. Negative degrees not sticky."
 
 def defaultDurs
   durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625, 'z': 0.0 }
+  durs.default = 0.25
+  durs
 end
 
 def chordDefaults
@@ -21,26 +23,29 @@ def controlChars
   controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves, "=": :eval }
 end
 
-def replaceRandomSyntax(n) # Replace random values inside [] and ()
-  n.scan(/\[.*?\]/).each do |s|
-    n = n.sub(s,s[1,s.length-2].split(",").choose)
+def replaceRandomSyntax(n,rep={}) # Replace random values inside [] and ()
+  n = n.gsub(/\<(.)=(.*?)\>/) do
+    rep[$1] = replaceRandomSyntax($2)
+    ""
   end
-  n = n.gsub(/\(((\d+)\.\.(\d+)\??(\d+)?\+?(\d+)?|(\d+),(\d+));?([a-z]+)?\*?(\d+)?\:?(\d+)?(~)?\)/) do |g|
+  n = n.gsub(/\[.*?\]/).each { |s| s[1,s.length-2].split(",").choose }
+  n = n.gsub(/\(((-?\d+)\.\.(\d+)\??(\d+)?\+?(\d+)?|(-?\d+),(\d+));?([a-z]+)?(~)?(%[\w])?\*?(\d+)?\:?(\d+)?\)/) do
     m = Regexp.last_match.captures
     fArr=[]
-    (m[8] ? m[8].to_i : 1).times do # *3
-      nArr = m[4] ? (m[1].to_i..m[2].to_i).step(m[4].to_i).to_a : (m[1].to_i..m[2].to_i).to_a if m[1] && m[2] # 1..7 +2
+    (m[10] ? m[10].to_i : 1).times do # *3
+      nArr = (m[4] ? (m[1].to_i..m[2].to_i).step(m[4].to_i).to_a : (m[1].to_i..m[2].to_i).to_a) - [0] if m[1] && m[2] # 1..7 +2
       nArr = rrand_i(m[5].to_i,m[6].to_i).to_s.chars if m[5] && m[6] # 1,3
-      nArr = nArr.shuffle if m[10] or m[3] # ~
+      nArr = nArr.shuffle if m[8] or m[3] # ~
+      nArr = nArr + (m[9]=="%s" ? nArr.drop(1).reverse.drop(1) : m[9]=="%r" ? nArr.reverse.drop(1) : nArr.reverse) if m[9] # %
       nArr = nArr.take(m[3].to_i) if m[3] # ?3
       lArr = m[7].chars if m[7] #;qwe
       nArr = (lArr.length<nArr.length ? lArr + Array.new(nArr.length-lArr.length) {""} : lArr).zip(nArr) if lArr
       fArr += nArr
     end
-    fArr = fArr * m[9].to_i if m[9] # :4
+    fArr = fArr * m[11].to_i if m[11] # :4
     fArr.join
   end
-  print "Randomized: "+n
+  rep.each { |k,v| n.gsub!(/#{Regexp.escape(k)}/,v) }
   n
 end
 
@@ -164,12 +169,8 @@ def zparse(n,opts={},shared={})
           ziff[:pitch] += 12
         when '_' then
           ziff[:pitch] -= 12
-        when '-',"+"
-          negative=!negative
-        when '<' then
-          ziff[:amp] = ziff.fetch(:amp)+ziff.fetch(:amp_step)
-        when '>' then
-          ziff[:amp] = ziff.fetch(:amp)-ziff.fetch(:amp_step)
+        when '-'
+          negative=true
         when ':' then
           if noteBuffer.length > 0 then # Loop is ending
             if loopCount<1 then # If : loop
@@ -273,12 +274,13 @@ def zparse(n,opts={},shared={})
           end
         end
         dot = 0
+        negative=false
         dotLength = 1.0
         note = 0
       elsif ziff[:chord]!=nil
         chordZiff = chordDefaults.merge(ziff.clone)
-        chordZiff[:sleep] = chordZiff.delete(:chordSleep)
-        chordZiff[:release] = ziff[:chordRelease]
+        chordZiff[:sleep] = chordZiff[:chordLength] ? noteLength : chordZiff.delete(:chordSleep)
+        chordZiff[:release] = chordZiff[:chordLength] ? noteLength : ziff[:chordRelease]
         notes.push(chordZiff)
         noteBuffer.push(chordZiff.clone) if loop && loopCount<1 # : buffer
         ziff.delete(:chord)
@@ -305,23 +307,23 @@ def searchList(arr,query)
   result = (Float(query) != nil rescue false) ? arr[query.to_i] : arr.find { |e| e.match( /\A#{Regexp.quote(query)}/)}
     (result == nil ? query : result)
   end
-  
+
   def mergeRates(ziff, opts)
     ziff.merge(opts) {|_,a,b| (a.is_a? Numeric) ? a * b : b }
   end
-  
+
   def zparams(hash, name)
     hash.map{|x| x[name]}
   end
-  
+
   def clean(ziff)
     ziff.except(:rules, :eval, :gen, :arpeggio, :key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi,:control)
   end
-  
+
   def playMidiOut(md, ms, p, c)
     midi md, {sustain: ms, port: p }.tap { |hash| hash[:channel] = c if c!=nil }
   end
-  
+
   def playZiff(ziff,defaults={})
     if ziff[:skip] then
       print "Skipping note"
@@ -360,14 +362,14 @@ def searchList(arr,query)
       end
     end
   end
-  
+
   def zmidi(melody,opts={},shared={})
     shared[:midi] = true
     shared[:rateBased] = true if opts[:sample] && shared[:degreeBased]!=nil
     opts[:degree] = melody-opts[:key] if shared[:degreeBased]
     zplay(melody,opts,shared)
   end
-  
+
   def zplay(melody,opts={},defaults={})
     opts = defaultOpts.merge(opts)
     if melody.is_a? Numeric then
@@ -388,5 +390,73 @@ def searchList(arr,query)
         playZiff(ziff,defaults)
         sleep ziff[:sleep] if !ziff[:skip] and !(ziff[:chord] and ziff[:arpeggio])
       end
+    end
+  end
+
+  def lsystem(ax,rules,gen)
+    gen.times.collect.with_index do |i|
+      ax = rules.each_with_object(ax.dup) do |(k,v),s|
+        v = v[i] if (v.is_a? Array or v.is_a? SonicPi::Core::RingVector) # [nil,"1"].ring -> every other
+        prob = v.match(/([0-9]*\.?[0-9]+)%=(.+)/) if v
+        v = prob[2] if prob
+        if v then
+         s.gsub!(/{{.*?}}|(#{k.is_a?(String) ? Regexp.escape(k) : k})/) do |m|
+           g = Regexp.last_match.captures
+           if g[0] && (prob==nil || (prob && (rand < prob[1].to_f))) then
+            rep = replaceRandomSyntax(v)
+            rep = g.length>1 ? rep.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : rep.gsub("$",m)
+            rep = rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep
+            "{{#{rep}}}" # Escape
+          else
+            m # If escaped or rand<prob
+          end
+         end
+        end
+      end
+      ax = ax.gsub(/{{(.*?)}}/) {$1}
+    end
+  end
+
+  def zpreparse(n,key)
+    noteList = ["c","d","e","f","g","a","b"]
+    key = (key.is_a? Symbol) ? key.to_s.chars[0].downcase : key.chars[0].downcase
+    ind = noteList.index(key)
+    noteList = noteList[ind...noteList.length]+noteList[0...ind]
+    n.chars.map { |c| noteList.index(c)!=nil ? noteList.index(c)+1 : c  }.join('')
+  end
+
+  def zarray(arr, opts=defaultOpts)
+    zmel=[]
+    arr.each do |item|
+      if item.is_a? Array then
+        zmel.push arrayToHash(item,opts)
+      elsif item.is_a? Numeric then
+        opts[:note] = getNoteFromDgr(item, opts[:key], opts[:scale])
+        zmel.push(opts.clone)
+      end
+    end
+    zmel
+  end
+
+  def arrayToHash(obj,opts=defaultOpts)
+    defObj = [0,opts[:sleep],opts[:key],opts[:scale],opts[:release]]
+    arrayOpts = [:note,:sleep,:key,:scale,:release]
+    obj.each_with_index { |item,index| defObj[index] = item }
+    defObj[0] = getNoteFromDgr(defObj[0], defObj[2], defObj[3])
+    opts.merge(Hash[arrayOpts.zip(defObj)])
+  end
+
+  def zbeats(arr)
+    zparams(arr,:sleep).inject(0){|sum,x| sum+x }
+  end
+
+  def zdrums(melody,opts={synth: :beep},defaults={})
+    if melody.is_a? String then
+      melody = zparse(melody,opts,defaults)
+    end
+    melody.each do |ziff|
+      c = synth ziff[:synth], clean(ziff) if ziff[:note]!=nil
+      control c, note: 0, amp: ziff[:amp]*2
+      sleep ziff[:sleep] if melody.length>1
     end
   end

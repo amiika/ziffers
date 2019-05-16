@@ -1,5 +1,6 @@
-use_synth :piano
+require "~/ziffers/ziffers.rb"
 
+use_synth :piano
 
 def testzplay
   # row row
@@ -19,7 +20,7 @@ def testzplay
   # Numbered loops
   zplay("|:1234:3|616|:4321:3|")
   # Test negative degree
-  zplay "-987654321+123456789", key: :b
+  zplay "987654321-1-2-3-4-5-6-7-8-9", key: :c
 end
 
 def testinverseoffset
@@ -64,7 +65,7 @@ end
 def testchords
   # Chord synth test
   zplay("i ii iii iv v vi vii",{scale: "major", chordSleep: 0.25, chordSynth: :piano})
-  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: :e3, key: :e4, scale: "mixolydian"})
+  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: :e4, key: :e4, scale: "mixolydian"})
   zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: "f", key: "e", scale: "mixolydian"})
   zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chordSleep: 0.5, scale: :aeolian)
   zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chordSleep: 0.5)
@@ -76,15 +77,32 @@ def testchords
 end
 
 def testrandom
+  zplay "(1..3%s)"
+  sleep 0.5
+  zplay "(1..3%r)"
+  sleep 0.5
+  zplay "(1..3%m)"
+  sleep 0.5
   zplay "(1..7?3)"
+  sleep 0.5
   zplay "(1..7?3*3)"
+  sleep 0.5
   zplay "(1,7*10)"
+  sleep 0.5
   zplay "(100,200:3)"
+  sleep 0.5
   zplay "(2000,5000;wqqee)"
+  sleep 0.5
   zplay "(1..9;wqqeee)"
+  sleep 0.5
   zplay "(1..9;wqqeee~)"
+  sleep 0.5
   zplay "(10..1000+100;e~)"
+  sleep 0.5
+  zplay "(1..7+2;eqe~%r*3:4)"
+  sleep 0.5
   zplay "Z0.? ???? Z[0.25,0.5,1] ???? Z(0.1,0.5) ????"
+  sleep 0.5
   with_synth :beep do
     3.times do zplay("ii 554e56 iv 12323456 i q 334e56 v [q7765,e75645342,q????]") end
     zplay("$ P? C0.? (1,2) P? C0.? (2,3) P? C0.? (3,4) $ [1,2,3] P? [4,5,6] P? [4,5,6] ~ ????????? ")
@@ -124,6 +142,7 @@ def testlsystem
     zplay "1", rules: {/[1-7]/=>"(1..7;qeqqe)"}, gen: 2, scale: :gong
     zplay "1", rules: {/(3)1/=>"q'$1+1'1'$2+2'",/[1-7]/=>"e313"}, gen: 4
     zplay "123", rules: {/[1-9]/=>"'$*1' [e,q] '$*2'"}, gen: 4
+    zplay " 1 1 1 ", rules: {/(?<= ([1-9]) ([1-9]) )/=>"0.6%=<?=(-3,3)>' $1+?' '$2+?' "}, gen: 4
   end
 end
 
@@ -133,7 +152,6 @@ def testpreparse
   # same using Z escape char and parseKey param
   zplay("|:Z0.25 cdec:|:ef Z0.5 g:|@:Z0.125 gagf Z0.25 ec:|:c _g^ Z0.5 c:@|", parsekey: :c, key: :e)
 end
-
 
 testzplay
 testchords
@@ -145,9 +163,10 @@ testsingledegrees
 testzsample
 testzmidi
 
-# These require ziffers_utils.rb
 testlsystem
 testpreparse
 testarraydegrees
-testbinaural
 testzdrums
+
+# These require ziffers_utils.rb
+#testbinaural

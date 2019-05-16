@@ -1,4 +1,4 @@
-# Requires ziffers.rb
+require "~/ziffers/ziffers.rb"
 
 # Ziffers keyboard - Always on key & scale
 
@@ -60,7 +60,7 @@ live_loop :midi_piano_on do
   res = parse_sync_address "/midi/*/*/*/*"
   event = res[4]
   deg = ((s.index note)+1)
-  
+
   if deg!=nil then
     case event
     when "note_on" then

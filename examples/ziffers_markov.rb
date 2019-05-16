@@ -1,3 +1,5 @@
+require "~/ziffers/ziffers.rb"
+
 # Example of using markov chain (after the Markov class)
 # Markov source from https://github.com/samaaron/sonic-pi/issues/1029
 class Markov
@@ -10,11 +12,11 @@ class Markov
     end
     reset(start)
   end
-  
+
   def look
     @look.first
   end
-  
+
   def reset(start=nil)
     # start at random position
     # populate @look with list of length (order)
@@ -26,7 +28,7 @@ class Markov
     end
     look
   end
-  
+
   def chains
     @chains ||= begin
       links = {}
@@ -44,7 +46,7 @@ class Markov
       links
     end
   end
-  
+
   def next
     out = look
     words = chains[@look]
@@ -60,7 +62,6 @@ end
 def markov(source, order=1, start=nil)
   Markov.new(source, order, start)
 end
-
 
 # frere jacques in ziffers
 n = zparse("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|")

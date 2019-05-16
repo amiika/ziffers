@@ -1,4 +1,4 @@
-# Requires loading or running ziffers.rb
+require "~/ziffers/ziffers.rb"
 
 use_bpm 65
 use_debug false

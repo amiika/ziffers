@@ -1,4 +1,4 @@
-# This example shows how to use play_pattern_timed with ziffers
+require "~/ziffers/ziffers.rb"
 
 ievanpolka = \
   "@|:q1e11q12|q3113;q2_77^2|q31h1;q.5e4q32|q31h1:|"\
