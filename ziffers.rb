@@ -1,13 +1,18 @@
-print "Ziffers 0.6: More sequence options. Variable assignation. Negative degrees not sticky."
+print "Ziffers 0.7: Option to assign letters for custom samples"
+
+module Ziffers
+
+  @@controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves, "=": :eval }
+  @@chordDefaults = { :chordOctaves=>1, :chordSleep => 0, :chordRelease => 1, :chordInvert => 0, :sleep => 0 }
+
+def removeControlChars(keys)
+  @@controlChars = @@controlChars.except(*keys)
+end
 
 def defaultDurs
   durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625, 'z': 0.0 }
   durs.default = 0.25
   durs
-end
-
-def chordDefaults
-  defaults = { :chordOctaves=>1, :chordSleep => 0, :chordRelease => 1, :chordInvert => 0, :sleep => 0 }
 end
 
 def defaultSampleOpts
@@ -17,10 +22,6 @@ end
 def defaultOpts
   defaultOpts = { :key => :c, :scale => :major, :release => 1, :sleep => 0.25, :pitch => 0.0, :amp => 1, :pan => 0, :amp_step => 0.5, :note_slide => 0.5, :control => nil, :skip => false, :pitch_slide => 0.25 }
   defaultOpts.merge(Hash[current_synth_defaults.to_a])
-end
-
-def controlChars
-  controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves, "=": :eval }
 end
 
 def replaceRandomSyntax(n,rep={}) # Replace random values inside [] and ()
@@ -57,6 +58,8 @@ def zparse(n,opts={},shared={})
   sfaddition, dot, loopCount, note = 0, 0, 0, 0, 0
   escapeType = nil
   midi = shared[:midi] ? true : false
+  samples = opts.delete(:samples) if opts[:samples]
+  removeControlChars(samples.keys) if samples
   n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
   n = lsystem(n,opts[:rules],opts[:gen])[opts[:gen]-1] if opts[:rules]
   defaults = defaultOpts.merge(opts)
@@ -69,10 +72,10 @@ def zparse(n,opts={},shared={})
     if skip then
       skip = false # Skip next char and continue
     else
-      if !escape && controlChars.key?(c.to_sym)
+      if !escape && @@controlChars.key?(c.to_sym) then
+        escapeType = @@controlChars[c.to_sym]
         escape = true
-        escapeType = controlChars[c.to_sym]
-        if controlChars[c.to_sym] == :chord
+        if @@controlChars[c.to_sym] == :chord then
           stringFloat+=c
           chars.push(" ") if next_c==nil
         end
@@ -93,7 +96,7 @@ def zparse(n,opts={},shared={})
             ziff[escapeType] = stringFloat.to_i
           elsif escapeType == :chord then
             chordKey = (ziff[:chordKey] ? ziff[:chordKey] : ziff[:key])
-            chordSets = chordDefaults.merge(ziff.clone)
+            chordSets = @@chordDefaults.merge(ziff.clone)
             parsedChord = stringFloat.split("^")
             chordRoot = degree parsedChord[0].to_sym, chordKey, ziff[:scale]
             ziff[:chord] = chord_invert chord(chordRoot, parsedChord.length>1 ? parsedChord[1] : :major, num_octaves: chordSets[:chordOctaves]), chordSets[:chordInvert]
@@ -121,6 +124,12 @@ def zparse(n,opts={},shared={})
         escape = false
       elsif escape && (["=",".","+","-","/","*","^"].include?(c) || c=~/^[a-zA-Z0-9]+$/) then
         stringFloat+=c
+      elsif samples and samples.key?(c.to_sym)
+        sample = samples[c.to_sym]
+        sample_opts = (sample.is_a? Hash) ? sample[:opts] : nil
+        sample = sample[:sample] if (sample.is_a? Hash)
+        ziff[:playSample] = sample
+        ziff[:sampleOpts] = sample_opts
       else
         case c
         when '/' then
@@ -278,13 +287,20 @@ def zparse(n,opts={},shared={})
         dotLength = 1.0
         note = 0
       elsif ziff[:chord]!=nil
-        chordZiff = chordDefaults.merge(ziff.clone)
+        chordZiff = @@chordDefaults.merge(ziff.clone)
         chordZiff[:sleep] = chordZiff[:chordLength] ? noteLength : chordZiff.delete(:chordSleep)
         chordZiff[:release] = chordZiff[:chordLength] ? noteLength : ziff[:chordRelease]
         notes.push(chordZiff)
         noteBuffer.push(chordZiff.clone) if loop && loopCount<1 # : buffer
         ziff.delete(:chord)
         sfaddition=0
+      elsif ziff[:playSample]!=nil
+        sampleZiff = ziff.clone
+        sampleZiff[:sleep] = (ziff[:sampleOpts] and ziff[:sampleOpts][:sleep])  ? ziff[:sampleOpts][:sleep] : noteLength*dotLength
+        notes.push(sampleZiff)
+        noteBuffer.push(sampleZiff.clone) if loop && loopCount<1 # : buffer
+        ziff.delete(:playSample)
+        ziff.delete(:sampleOpts)
       end
       # Continues loop
     end
@@ -327,6 +343,9 @@ def searchList(arr,query)
   def playZiff(ziff,defaults={})
     if ziff[:skip] then
       print "Skipping note"
+    elsif ziff[:playSample] then
+      sample ziff[:playSample], ziff[:sampleOpts]
+      sleep ziff[:sleep]
     elsif ziff[:chord] then
       if ziff[:arpeggio] then
         ziff[:arpeggio].each { |cn|
@@ -460,3 +479,6 @@ def searchList(arr,query)
       sleep ziff[:sleep] if melody.length>1
     end
   end
+end
+
+include Ziffers

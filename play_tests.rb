@@ -146,6 +146,11 @@ def testlsystem
   end
 end
 
+def testsamples
+  zplay "|: X O e XX q O :2|", samples: {"X": :bd_tek, "O": :drum_snare_soft}
+  zplay "|: O X X X X :4|", samples: {"X": :bd_tek, "O": {sample: :ambi_choir, opts:{rate: 0.3, sleep: 0}}}
+end
+
 def testpreparse
   # Parse degrees from c and play in e
   zplay(zpreparse("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c _g^ 2/4 c:@|",:c),key: :e)
