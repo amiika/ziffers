@@ -11,11 +11,14 @@ or
 ```
 zplay "|:44332233:|.4h4", key: :c, scale: :chromatic
 ```
+# How to install
 
-Include Ziffers to Sonic Pi by cloning this project or by saving the [source](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.rb) to your home directory (for example) and require the file in your code:
+Include Ziffers to [Sonic Pi](https://sonic-pi.net/) by cloning this project or by saving the [source](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.rb) to your home directory (for example) and require the file in your code:
 ```
 require "~/ziffers/ziffers.rb"
 ```
+
+Stay up to date as the Ziffers is an ongoing project. Aim is to keep Ziffers syntax stable but some parts are still looking for its place. Participate or post Issues if you have suggestions or questions about the project.
 
 # Basic notation
 
