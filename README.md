@@ -320,6 +320,14 @@ zplay [[1,1],[2,0.5],[3,0.25]] # Is same as w1h2q3
 
 Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/play_tests.rb) in buffer to see various ways to use zplay.
 
+### MIDI out for external synths and keyboards
+
+Use **port** and **channel** parameters to play external keyboards or virtual synths.
+
+```
+zplay "(123..456~)", scale: :hex_sus, port: "loopmidi", channel: 3
+```
+
 ### Using sample as a synth
 
 You can also use **zplay** with samples to create new "synths" where **zplay** uses Sonic Pi's pitch or rate parameters to play the degrees.
@@ -350,10 +358,15 @@ zplay "|: O X X X X :4|", samples: {"X": :bd_tek, "O": {sample: :ambi_choir, opt
 
 ## zmidi
 
-Plays midi notes using space separated midi notation
+Plays midi notes using space separated midi notation:
 
 ```
 zmidi "|: q 53 53 53 57 h 60 q 53 53 ; h 55 q 60 60 h 57 q 53 53 ; q 55 55 57 55 w 53 :|"
+```
+
+Midi can also be sent to virtual synths to play melody or drums, for example:
+```
+zmidi "|: q 12 90 e 12 12 q 90 :6|", port: "loopmidi", channel: 1
 ```
 
 ## zparse

@@ -391,7 +391,7 @@ def searchList(arr,query)
 
   def zplay(melody,opts={},defaults={})
     opts = defaultOpts.merge(opts)
-    if melody.is_a? Numeric then
+    if melody.is_a? Numeric then # zplay 1 OR zmidi 85
       if defaults[:midi] then
         opts[:note] = melody
       else
