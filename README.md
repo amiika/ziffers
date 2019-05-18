@@ -320,14 +320,6 @@ zplay [[1,1],[2,0.5],[3,0.25]] # Is same as w1h2q3
 
 Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/play_tests.rb) in buffer to see various ways to use zplay.
 
-## zmidi
-
-Plays midi notes using space separated midi notation
-
-```
-zmidi "|: q 53 53 53 57 h 60 q 53 53 ; h 55 q 60 60 h 57 q 53 53 ; q 55 55 57 55 w 53 :|"
-```
-
 ### Using sample as a synth
 
 You can also use zplay with samples to create new "synths", for example:
@@ -336,7 +328,7 @@ You can also use zplay with samples to create new "synths", for example:
 zplay("554e56 12323456 q 334e56 e75645343", {sample: :guit_e_fifths, start: 0.2, finish: 0.25, amp: 3})
 ```
 
-### Using custom samples with character assingnation
+### Playing samples with character assignation
 
 Ziffers *zplay* can also play rhythms with custom samples. Use *samples* to define characters to fire samples. All capital letters are safe to use as sample characters. Some letters may overwrite other control characters like 'A', but it doesnt matter if you are not using it to change amplitude. There is two ways to define length of musical rest:
 
@@ -348,6 +340,13 @@ zplay "|: X O e XX q O :4|", samples: {"X": :bd_tek, "O": :drum_snare_soft}
 Alternatively you can play multiple samles at the same time. To define sample spesific options like sleep and any other sample properties, use hash object and *opts* parameter:
 ```
 zplay "|: O X X X X :4|", samples: {"X": :bd_tek, "O": {sample: :ambi_choir, opts: {rate: 0.3, sleep: 0}}}
+```
+## zmidi
+
+Plays midi notes using space separated midi notation
+
+```
+zmidi "|: q 53 53 53 57 h 60 q 53 53 ; h 55 q 60 60 h 57 q 53 53 ; q 55 55 57 55 w 53 :|"
 ```
 
 ## zparse
