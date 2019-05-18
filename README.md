@@ -337,7 +337,7 @@ By default musical rest is as with degrees, denoted with rest characters:
 zplay "|: X O e XX q O :4|", samples: {"X": :bd_tek, "O": :drum_snare_soft}
 ```
 
-Alternatively you can play multiple samles at the same time. To define sample spesific options like sleep and any other sample properties, use hash object and *opts* parameter:
+Alternatively you can play multiple samples at the same time. To define sample spesific rest (sleep) or any sample properties like rate, sustain, release etc. define sample as hash object and use *opts* parameter:
 ```
 zplay "|: O X X X X :4|", samples: {"X": :bd_tek, "O": {sample: :ambi_choir, opts: {rate: 0.3, sleep: 0}}}
 ```
