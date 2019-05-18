@@ -332,7 +332,7 @@ zplay("554e56 12323456 q 334e56 e75645343", {sample: :guit_e_fifths, start: 0.2,
 
 Ziffers *zplay* can also play rhythms with custom samples. Use *samples* to define characters to fire samples. All capital letters are safe to use as sample characters. Some letters may overwrite other control characters like 'A', but it doesnt matter if you are not using it to change amplitude. There is two ways to define length of musical rest:
 
-By default musical rest is as with degrees, denoted with rest characters:
+By default sleep time after the sample is played are denoted with [note length characters](#standard-note-lengths):
 ```
 zplay "|: X O e XX q O :4|", samples: {"X": :bd_tek, "O": :drum_snare_soft}
 ```
