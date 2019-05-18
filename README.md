@@ -82,7 +82,6 @@ zplay("5353 5653 4242 4542 5353 5653 w5 q5432 w1")
 - **t** = Thirty-second = 1/32 = 0.03125 beat
 - **f** = Sixty-fourth = 1/64 = 0.015625 beat
 
-
 ### Alternative ways to define note lengths
 
 Same note lengths can also be defined using different escape notations:
@@ -112,9 +111,9 @@ zplay("123",{release:0.5, sleep: 1})
 
 ### Parse degrees from note names
 
-You can also use notation based on note names to parse melody the ziffers notation. In order to use note names you have to use Z or fractions to define note lengths.
+You can also use notation based on note names to parse melody the ziffers notation. In order to use note names you have to use **Z** control character or fractions to define note lengths.
 
-Include [ziffer utils](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers_utils.rb) to use **zpreparse**-function to parse note names to degrees:
+Using **zpreparse**-function to parse note names to degrees:
 ```
 print zpreparse "1/4 cdefg - abg", :e
 # Prints "1/4 67123 - 453"
@@ -128,7 +127,9 @@ zplay("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|", parsekey: :c,
 
 ## Rest or silence
 
-Use 0 to create silence in melodies. 0 can be combined with note length, meaning it will sleep the length of the 0 note.
+Use 0 to create musical rest in melodies. 0 can be combined with note length, meaning it will sleep the length of the 0 note.
+
+Note: Rest character is going to be changed to 'r' in the future version.
 
 ## Sharp and flat
 
@@ -177,20 +178,6 @@ Use **\*** to start from beginning and continue until first **\***. If & is at t
 
 ```
 zplay("| 7162 *| 6354 |*")
-```
-
-## Volume
-
-### < Volume up and down >
-
-**<** Volume up
-**>** Volume down
-
-Default volume or amp is 1. Volume characters changes the amp 0.25 by default. You can also change the amp treshold, for example:
-
-```
-#Changes amp treshold to 0.5, meaning first note is played at amp 1.5, second 2, and last 1.5
-zplay("<1<2>1",:d,:minor,0.5,0.5)
 ```
 
 # Control characters
@@ -276,13 +263,6 @@ Use following notation to create increasing or random sequences:
 
 (1..7+2;eqe~%r*3:4) -> Go crazy with the combinations
 
-### Mirroring sequences
-
-(1..3%m) -> 123321
-(1..3%r) -> 12321
-(1..3%s) -> 1232
-(1..3%s*2) -> 12321232
-
 Sequences can also be useful with arpeggios, see **arpeggios_example.rb**.
 
 ## Choose random from array
@@ -291,7 +271,7 @@ Use [q1,e2345,h3] for randomly selected lengths and degree/degrees from the arra
 
 It is also possible to combine other random syntax: [(1,3),(1..5,2)]
 
-## Variable assingnation
+## Variable assignation
 
 Ziffers notation can also be assigned to a variable using <{variable_name}={ziffers}> notation.
 
@@ -348,12 +328,26 @@ Plays midi notes using space separated midi notation
 zmidi "|: q 53 53 53 57 h 60 q 53 53 ; h 55 q 60 60 h 57 q 53 53 ; q 55 55 57 55 w 53 :|"
 ```
 
-### Using samples
+### Using sample as a synth
 
 You can also use zplay with samples to create new "synths", for example:
 
 ```
 zplay("554e56 12323456 q 334e56 e75645343", {sample: :guit_e_fifths, start: 0.2, finish: 0.25, amp: 3})
+```
+
+### Using custom samples with character assingnation
+
+Ziffers *zplay* can also play rhythms with custom samples. Use *samples* to define characters to fire samples. All capital letters are safe to use as sample characters. Some letters may overwrite other control characters like 'A', but it doesnt matter if you are not using it to change amplitude. There is two ways to define length of musical rest:
+
+By default musical rest is as with degrees, denoted with rest characters:
+```
+zplay "|: X O e XX q O :4|", samples: {"X": :bd_tek, "O": :drum_snare_soft}
+```
+
+Alternatively you can play multiple samles at the same time. To define sample spesific options like sleep and any other sample properties, use hash object and *opts* parameter:
+```
+zplay "|: O X X X X :4|", samples: {"X": :bd_tek, "O": {sample: :ambi_choir, opts: {rate: 0.3, sleep: 0}}}
 ```
 
 ## zparse

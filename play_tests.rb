@@ -167,7 +167,7 @@ testslide
 testsingledegrees
 testzsample
 testzmidi
-
+testsamples
 testlsystem
 testpreparse
 testarraydegrees
