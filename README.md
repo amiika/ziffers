@@ -119,7 +119,7 @@ print zpreparse "1/4 cdefg - abg", :e
 # Prints "1/4 67123 - 453"
 ```
 
-Use zplay with note names by defining the **parsekey**. Ziffers utils must be included. These two play exactly same melody:
+Use zplay with note names by defining the **parsekey**. These two play exactly same melody:
 ```
 zplay("|:1/4 1231:|:34 2/4 5:|@:1/8 5654 1/4 31:|:1 -5+ 2/4 1:@|", key: :e)
 zplay("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|", parsekey: :c, key: :e)
@@ -322,25 +322,32 @@ Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/play_test
 
 ### Using sample as a synth
 
-You can also use zplay with samples to create new "synths", for example:
+You can also use **zplay** with samples to create new "synths" where **zplay** uses Sonic Pi's pitch or rate parameters to play the degrees.
 
+Pitch based:
 ```
 zplay("554e56 12323456 q 334e56 e75645343", {sample: :guit_e_fifths, start: 0.2, finish: 0.25, amp: 3})
+```
+
+Rate based:
+```
+zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25}, rateBased: true)
 ```
 
 ### Playing samples with character assignation
 
 Ziffers *zplay* can also play rhythms with custom samples. Use *samples* to define characters to fire samples. All capital letters are safe to use as sample characters. Some letters may overwrite other control characters like 'A', but it doesnt matter if you are not using it to change amplitude. There is two ways to define length of musical rest:
 
-By default sleep time after the sample is played are denoted with [note length characters](#standard-note-lengths):
+Sleep time after the samples are denoted with [note length characters](#standard-note-lengths):
 ```
 zplay "|: X O e XX q O :4|", samples: {"X": :bd_tek, "O": :drum_snare_soft}
 ```
 
-Alternatively you can play multiple samples at the same time. To define sample spesific rest (sleep) or any sample properties like rate, sustain, release etc. define sample as hash object and use *opts* parameter:
+Alternatively you can play multiple samples at the same time. To define sample specific sleep times or any sample properties like rate, sustain, release etc. define sample as hash object and use *opts* parameter:
 ```
 zplay "|: O X X X X :4|", samples: {"X": :bd_tek, "O": {sample: :ambi_choir, opts: {rate: 0.3, sleep: 0}}}
 ```
+
 ## zmidi
 
 Plays midi notes using space separated midi notation
@@ -412,7 +419,7 @@ Look under examples to see other ways to use zparse and other Sonic Pi projects,
 
 # Fractal melodies
 
-Ziffers can be used to generate fractal melodies using L-system based approach. Include [ziffer utils](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers_utils.rb) to use **rules** and **gen** parameters. Define transformation **rules** as hash object and use **gen** to define amount of generations the rules are run against.
+Ziffers can be used to generate fractal melodies using L-system based approach. Define transformation **rules** as hash object and use **gen** parameter to define amount of generations the rules are run against.
 
 Matched values are defined as hash keys and replacements as hash value. For example:
 ```
