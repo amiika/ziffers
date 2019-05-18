@@ -399,7 +399,9 @@ def searchList(arr,query)
       end
       playZiff(opts,defaults)
     else
-      raise "Use zarray to parse degree arrays to hash array" if (melody.is_a? Array) && !(melody[0].is_a? Hash)
+      if (melody.is_a? Array) && !(melody[0].is_a? Hash) then
+        melody = zarray(melody,opts)
+      end
       if melody.is_a? String then
         melody = zparse(melody,opts,defaults)
         defaults[:parsed]==true

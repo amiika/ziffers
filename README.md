@@ -307,9 +307,9 @@ zplay "Gq12e^3212 |: i^7 :3||: %-1 iv^dim7 :3|", key: :d4, scale: :mixolydian
 
 ## zplay
 
-Plays degrees in some key and scale. Function plays the hash array from **zparse** or parses the string or array first. You should consider using preparsed melody if you are using **zplay** inside **live_loop**.
+Plays degrees in some key and scale. Function plays the hash array from **zparse** or parses the string or array first. You should consider preparsing the melody using **zparse** if you are using **zplay** inside **live_loop**.
 
-You can use zplay with strings, integers and arrays, for example:
+**zplay** works with strings, integers and arrays, for example:
 
 ```
 zplay 1 # Plays in :c :major
@@ -318,7 +318,7 @@ zplay "w1h2q3"
 zplay [[1,1],[2,0.5],[3,0.25]] # Is same as w1h2q3
 ```
 
-Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/play_tests.rb) in buffer to see various ways to use zplay.
+It can also play samples, use samples as synths and send MIDI out messages. Run [examples](https://raw.githubusercontent.com/amiika/ziffers/master/play_tests.rb) in buffer to see various ways to use zplay.
 
 ### MIDI out for external synths and keyboards
 
