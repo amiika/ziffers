@@ -24,11 +24,22 @@ Stay up to date as the Ziffers is an ongoing project. Aim is to keep Ziffers syn
 
 Ziffers is a [numbered notation](https://en.wikipedia.org/wiki/Numbered_musical_notation) for music, meaning you write melodies using numbers that represent notes in some scale. Ziffers parses custom "ASCII" notation with **zparse** method and produces array of hash objects that contains parameters which can be played using **zplay** method. You can also use **zparams** method to use produced notes in any other method.
 
-## Numbers 1-9
+## Degree numbers 1-9
 
 Notes are marked as numbers 1-9 representing the position in used scale. Default key is :c and scale :major making the numbers 1=C, 2=D, 3=E .. and so forth. If some scale does not have certain degree, for example 8 in major scale, it is transposed automatically meaning 8 is 1 in higher octave.
 
 Ziffers is a single character language, which means that every degree that is higher than 9 needs to be transposed to the next octave.
+
+## Zero-based notation 0-9 and T=10 & E=11
+
+Alternatively [zero-based integer notation](https://en.wikipedia.org/wiki/Pitch_class#Integer_notation) can be used. Zero-based notation is especially useful with random sequences & string replacing lsystem-rules that may produce 0-values trough different mathematical operations.
+
+Zero-based notation can be switched on by calling setZeroBased in Ziffers module:
+```
+Ziffers.setZeroBased true
+zplay "(100..200)~"
+zplay "0123456789TE", scale: :chromatic
+```
 
 ## Octave change
 
@@ -130,9 +141,12 @@ zplay("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|", parsekey: :c,
 
 ## Rest or silence
 
-Use 0 to create musical rest in melodies. 0 can be combined with note length, meaning it will sleep the length of the 0 note.
+Use **r** to create musical rest in the melodies. r can be combined with note length, meaning it will sleep the length of the r, for example:
 
-Note: Rest character is going to be changed to 'r' in the future version.
+```
+# Play quarter note 1 (D) and then sleep half note and then play half note 2 (E)
+zplay "q 1 h r 2", key: :d
+```
 
 ## Sharp and flat
 
@@ -198,7 +212,7 @@ List of control characters:
 - **R** = :release
 - **Z** = :sleep
 - **X** = :chordSleep
-- **T** = :pitch
+- **I** = :pitch
 - **K** = :key
 
 ## Pan
@@ -234,43 +248,63 @@ Use **?** for random degree between 1-7
 
 Use (1,5) for random numer between 1 and 5. (1,7) is same as ?.
 
-(1,4*4) = create 4 random numbers between 1 and 4: "2341"
+(1,4)*4 = create 4 random numbers between 1 and 4: "2341"
 
-(3000,4000;qeee*4) = create 4 random numbers between 3000 and 4000: "q3e532"
+(3000,4000)^qeee*4 = create 4 random numbers between 3000 and 4000: "q3e532"
 
-## Sequences
+## Sequences / Pitch sets
+
+You can use and create sequences using (1234) or (1..4) notation.
 
 Use following notation to create increasing or random sequences:
 
+(13425) -> Just the written sequence: 13425
 (1..7) -> Sequence from 1 to 7: "1234567"
 
-(1..7~) -> Random sequence between 1 to 7 "1324657"
+Created sequence can be manipulated using following commands:
 
-(1..9+2) -> Sequence from 1 to 9 using step 2: "13579"
+**?** (Randomize and take n)
 
-(1..7?3) -> Sequence from 1 to 7 take 3: "152"
+(1..7)? -> Sequence in random order: "2135764"
+(1..7)?3 -> Sequence from 1 to 7 take random 3: "152"
+(13467)?2 -> Take random 2: "36"
 
-(1..3;qe) -> Sequence with note lengths: "q2e23"
+**+** (step)
 
-(1..3%m) -> Mirroring: "123321"
+(1..9)+2 -> Sequence from 1 to 9 using step 2: "13579"
 
-(1..3%r) -> Reversing: "12321"
+**^** (note lengths)
 
-(1..3%s) -> Reversing skipping the last: "1232"
+(1..4)^qe -> With note lengths: "q2e2q3e4"
+(12345)^qe -> With note lengths: "q1e2q3e4q5"
 
-(1..3%s:2) -> Reversing sequence two times: "12321232"  
+**%** (mirroring)
 
-(1..3~:3) -> Create 1..3 in random order repeat 3 times
+(1..3)%m -> Mirroring: "123321"
 
-(1..3~*3:3) -> Create 1..3 in random order 3 times and then repeat the result 3 times
+(1..3)%r -> Reversing: "12321"
 
-(1..7+2;eqe~%r*3:4) -> Go crazy with the combinations
+(1..3)%s -> Reversing skipping the last: "1232"
+
+**\*** (do n-times)
+
+(1..3)%s*2 -> Reversing sequence two times: "12321232"  
+
+(1..3)?*3 -> Create 1..3 in random order 3 times
+
+(1..7)+2?%r^eqe*3 -> Go crazy with the combinations.
+
+**NB!**
+
+Combinations are always processed in following order: + ? % ^ \*
 
 Sequences can also be useful with arpeggios, see **arpeggios_example.rb**.
 
 ## Choose random from array
 
 Use [q1,e2345,h3] for randomly selected lengths and degree/degrees from the array.
+
+[1,4,6,7]*4 -> Choose from array 4 times
 
 It is also possible to combine other random syntax: [(1,3),(1..5,2)]
 
@@ -280,7 +314,7 @@ Ziffers notation can also be assigned to a variable using <{variable_name}={ziff
 
 This allows you to assign larger piece in single character and create patterns using those variables:
 ```
-zplay "<a=(1..3%s)><b=(-2..1%s)>aabb"
+zplay "<a=(1..3)%s><b=(-2..1)%s>aabb"
 
 zplay "<a=1234><b=321>abab"
 

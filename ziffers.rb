@@ -1,19 +1,27 @@
-print "Ziffers 0.7: Option to assign letters for custom samples"
+print "Ziffers 0.8: Changed '0' to 'r'. Added option for zero-based notation + new features / changes in random sequences."
 
 module Ziffers
 
-  @@controlChars = {'A': :amp, 'E': :env_curve, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'T': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves, "=": :eval }
+  @@controlChars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves, "=": :eval }
   @@chordDefaults = { :chordOctaves=>1, :chordSleep => 0, :chordRelease => 1, :chordInvert => 0, :sleep => 0 }
+  @@defaultDurs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
+  @@isZeroBased = false
 
-def removeControlChars(keys)
-  @@controlChars = @@controlChars.except(*keys)
-end
+  def self.setZeroBased(bool)
+    @@isZeroBased = bool
+  end
 
-def defaultDurs
-  durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125,'f': 0.015625, 'z': 0.0 }
-  durs.default = 0.25
-  durs
-end
+  def self.isZeroBased
+    @@isZeroBased
+  end
+
+  def self.durations
+    @@defaultDurs
+  end
+
+  def removeControlChars(keys)
+    @@controlChars = @@controlChars.except(*keys)
+  end
 
 def defaultSampleOpts
   defaultSampleOpts = { :key => :c, :scale => :major, :sample => :ambi_piano, :rate => 1, :scale => :major, :pan => 0, :release => 0.0 }
@@ -29,22 +37,31 @@ def replaceRandomSyntax(n,rep={}) # Replace random values inside [] and ()
     rep[$1] = replaceRandomSyntax($2)
     ""
   end
-  n = n.gsub(/\[.*?\]/).each { |s| s[1,s.length-2].split(",").choose }
-  n = n.gsub(/\(((-?\d+)\.\.(\d+)\??(\d+)?\+?(\d+)?|(-?\d+),(\d+));?([a-z]+)?(~)?(%[\w])?\*?(\d+)?\:?(\d+)?\)/) do
-    m = Regexp.last_match.captures
-    fArr=[]
-    (m[10] ? m[10].to_i : 1).times do # *3
-      nArr = (m[4] ? (m[1].to_i..m[2].to_i).step(m[4].to_i).to_a : (m[1].to_i..m[2].to_i).to_a) - [0] if m[1] && m[2] # 1..7 +2
-      nArr = rrand_i(m[5].to_i,m[6].to_i).to_s.chars if m[5] && m[6] # 1,3
-      nArr = nArr.shuffle if m[8] or m[3] # ~
-      nArr = nArr + (m[9]=="%s" ? nArr.drop(1).reverse.drop(1) : m[9]=="%r" ? nArr.reverse.drop(1) : nArr.reverse) if m[9] # %
-      nArr = nArr.take(m[3].to_i) if m[3] # ?3
-      lArr = m[7].chars if m[7] #;qwe
-      nArr = (lArr.length<nArr.length ? lArr + Array.new(nArr.length-lArr.length) {""} : lArr).zip(nArr) if lArr
-      fArr += nArr
+  n = n.gsub(/\[(.*?)\]\*?(\d+)?/) do
+    repeat = $2 ? $2.to_i : 1
+    chooseArray = $1.split(",")
+    result = ""
+    repeat.times do
+      result+=chooseArray.choose
     end
-    fArr = fArr * m[11].to_i if m[11] # :4
-    fArr.join
+    result
+  end
+  # Debug: https://www.debuggex.com/r/21egJ9XdAyxOiyG7
+  n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\d+))\)\+?(\d+)?(\?)?(\d+)?(%[\w])?\^?([a-z]+)?\*?(\d+)?/) do
+    m = Regexp.last_match.captures
+    resultArr=[]
+    (m[11] ? m[11].to_i : 1).times do # *3
+      nArr = m[5].chars if m[5] # (1234)
+      nArr = (m[6] ? (m[1].to_i..m[2].to_i).step(m[6].to_i).to_a : (m[1].to_i..m[2].to_i).to_a) - [0] if m[1] && m[2] # 1..7 +2
+      nArr = rrand_i(m[3].to_i,m[4].to_i).to_s.chars if m[3] && m[4] # 1,3
+      nArr = nArr.shuffle if m[7] # ?
+      nArr = nArr.take(m[8].to_i) if m[8] # ?3
+      nArr = nArr + (m[9]=="%s" ? nArr.drop(1).reverse.drop(1) : m[9]=="%r" ? nArr.reverse.drop(1) : nArr.reverse) if m[9] # %
+      lArr = m[10].chars if m[10] #^qwe
+      nArr = (lArr.length<nArr.length ? lArr*(nArr.length/lArr.length) : lArr).zip(nArr) if lArr
+      resultArr += nArr
+    end
+    resultArr.join
   end
   rep.each { |k,v| n.gsub!(/#{Regexp.escape(k)}/,v) }
   n
@@ -65,6 +82,7 @@ def zparse(n,opts={},shared={})
   defaults = defaultOpts.merge(opts)
   ziff, controlZiff = defaults.clone # Clone defaults to preliminary Hash objects
   n = replaceRandomSyntax(n)
+  print "Ziffers: "+n
   chars = n.chars # Loop chars
   chars.to_enum.each_with_index do |c, index|
     next_c = chars[index+1]
@@ -124,14 +142,22 @@ def zparse(n,opts={},shared={})
         escape = false
       elsif escape && (["=",".","+","-","/","*","^"].include?(c) || c=~/^[a-zA-Z0-9]+$/) then
         stringFloat+=c
-      elsif samples and samples.key?(c.to_sym)
+      elsif samples and samples.key?(c.to_sym) then
         sample = samples[c.to_sym]
         sample_opts = (sample.is_a? Hash) ? sample[:opts] : nil
         sample = sample[:sample] if (sample.is_a? Hash)
         ziff[:playSample] = sample
         ziff[:sampleOpts] = sample_opts
+      elsif @@defaultDurs.key?(c.to_sym) then
+        noteLength = @@defaultDurs[c.to_sym]
       else
         case c
+        when 'T' then
+          dgr = 10
+        when 'E' then
+          dgr = 11
+        when 'r' then
+          note = :r
         when '/' then
           if next_c=='/' then
             ziff[:skip]=!ziff[:skip]
@@ -146,9 +172,13 @@ def zparse(n,opts={},shared={})
         when '.' then
           dot+=1
           dotLength = (2.0-(1.0/(2**dot))) # https://en.wikipedia.org/wiki/Dotted_note
-        when /^[a-z]+$/ then
-          noteLength = defaultDurs[c.to_sym]
-        when /^[0-9]+$/ then
+        when "0" then
+          if midi then
+          stringFloat+=c
+        else
+          dgr = 0 if @@isZeroBased
+        end
+        when /^[1-9]+$/ then
           if midi then
             stringFloat+=c
           elsif next_c=='/' then
@@ -309,7 +339,7 @@ def zparse(n,opts={},shared={})
 end
 
 def getNoteFromDgr(dgr, zkey, zscale)
-  return :r if dgr==0
+  dgr+=1 if @@isZeroBased and dgr>=0
   scaleLength = scale(zkey,zscale).length-1
   if dgr>=scaleLength || dgr<0 then
     oct = (dgr-1)/scaleLength*12
@@ -400,6 +430,7 @@ def searchList(arr,query)
       playZiff(opts,defaults)
     else
       if (melody.is_a? Array) && !(melody[0].is_a? Hash) then
+        print melody
         melody = zarray(melody,opts)
       end
       if melody.is_a? String then
@@ -452,8 +483,10 @@ def searchList(arr,query)
       if item.is_a? Array then
         zmel.push arrayToHash(item,opts)
       elsif item.is_a? Numeric then
+        if item!=0 then
         opts[:note] = getNoteFromDgr(item, opts[:key], opts[:scale])
         zmel.push(opts.clone)
+      end
       end
     end
     zmel

@@ -1,7 +1,7 @@
 require "~/ziffers/ziffers.rb"
 
 live_loop :boom do
-  zdrums("1 0 0 1",{key: :c,scale: :minor})
+  zdrums("1 r r 1",{key: :c,scale: :minor})
 end
 
 live_loop :melody do
