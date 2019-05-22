@@ -254,14 +254,13 @@ Use (1,5) for random numer between 1 and 5. (1,7) is same as ?.
 
 ## Sequences / Pitch sets
 
-You can use and create sequences using (1234) or (1..4) notation.
+Create sequences of pitches using (1234) or (1..4) notation:
 
-Use following notation to create increasing or random sequences:
+(13425) -> Just the sequence: 13425
 
-(13425) -> Just the written sequence: 13425
 (1..7) -> Sequence from 1 to 7: "1234567"
 
-Created sequence can be manipulated using following commands:
+Sequences can be manipulated using following commands:
 
 **? = Randomize / take random n**
 
