@@ -266,7 +266,9 @@ Created sequence can be manipulated using following commands:
 **? = Randomize / take random n**
 
 (1..7)? -> Sequence in random order: "2135764"
+
 (1..7)?3 -> Sequence from 1 to 7 take random 3: "152"
+
 (13467)?2 -> Take random 2: "36"
 
 **+ = Step**
@@ -276,6 +278,7 @@ Created sequence can be manipulated using following commands:
 **^ = note lengths**
 
 (1..4)^qe -> With note lengths: "q2e2q3e4"
+
 (12345)^qe -> With note lengths: "q1e2q3e4q5"
 
 **% = mirroring**
