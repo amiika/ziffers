@@ -32,7 +32,7 @@ Ziffers is a single character language, which means that every degree that is hi
 
 ## Zero-based notation 0-9 and T=10 & E=11
 
-Alternatively [zero-based integer notation](https://en.wikipedia.org/wiki/Pitch_class#Integer_notation) can be used. Zero-based notation is especially useful with random sequences & string replacing lsystem-rules that may produce 0-values trough different mathematical operations.
+Degree based notation can also be changed to musical set-theory influenced [zero-based integer notation](https://en.wikipedia.org/wiki/Pitch_class#Integer_notation). Zero-based notation is especially useful with random sequences & string replacing lsystem-rules that may produce 0-values trough different mathematical operations.
 
 Zero-based notation can be switched on by calling setZeroBased in Ziffers module:
 ```
