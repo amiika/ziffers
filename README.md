@@ -263,22 +263,22 @@ Use following notation to create increasing or random sequences:
 
 Created sequence can be manipulated using following commands:
 
-**?** (Randomize and take n)
+**? = Randomize / take random n**
 
 (1..7)? -> Sequence in random order: "2135764"
 (1..7)?3 -> Sequence from 1 to 7 take random 3: "152"
 (13467)?2 -> Take random 2: "36"
 
-**+** (step)
+**+ = Step**
 
 (1..9)+2 -> Sequence from 1 to 9 using step 2: "13579"
 
-**^** (note lengths)
+**^ = note lengths**
 
 (1..4)^qe -> With note lengths: "q2e2q3e4"
 (12345)^qe -> With note lengths: "q1e2q3e4q5"
 
-**%** (mirroring)
+**% = mirroring**
 
 (1..3)%m -> Mirroring: "123321"
 
@@ -286,7 +286,7 @@ Created sequence can be manipulated using following commands:
 
 (1..3)%s -> Reversing skipping the last: "1232"
 
-**\*** (do n-times)
+**\* = do n-times**
 
 (1..3)%s*2 -> Reversing sequence two times: "12321232"  
 
