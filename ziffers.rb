@@ -3,8 +3,9 @@ print "Ziffers 0.8: Changed '0' to 'r'. Added option for zero-based notation + n
 module Ziffers
 
   @@controlChars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves, "=": :eval }
-  @@chordDefaults = { :chordOctaves=>1, :chordSleep => 0, :chordRelease => 1, :chordInvert => 0, :sleep => 0 }
+  @@chordDefaults = { :chordOctaves=>1, :chordSleep => 0, :chordRelease => 1, :chordInvert => 0, :sleep => 0, chordName: :major }
   @@defaultDurs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
+  @@defaultOpts = { :key => :c, :scale => :major, :release => 1, :sleep => 0.25, :pitch => 0.0, :amp => 1, :pan => 0, :amp_step => 0.5, :note_slide => 0.5, :control => nil, :skip => false, :pitch_slide => 0.25 }
   @@isZeroBased = false
 
   def self.setZeroBased(bool)
@@ -23,13 +24,8 @@ module Ziffers
     @@controlChars = @@controlChars.except(*keys)
   end
 
-def defaultSampleOpts
-  defaultSampleOpts = { :key => :c, :scale => :major, :sample => :ambi_piano, :rate => 1, :scale => :major, :pan => 0, :release => 0.0 }
-end
-
-def defaultOpts
-  defaultOpts = { :key => :c, :scale => :major, :release => 1, :sleep => 0.25, :pitch => 0.0, :amp => 1, :pan => 0, :amp_step => 0.5, :note_slide => 0.5, :control => nil, :skip => false, :pitch_slide => 0.25 }
-  defaultOpts.merge(Hash[current_synth_defaults.to_a])
+def getDefaultOpts
+  @@defaultOpts.merge(Hash[current_synth_defaults.to_a])
 end
 
 def replaceRandomSyntax(n,rep={}) # Replace random values inside [] and ()
@@ -79,7 +75,7 @@ def zparse(n,opts={},shared={})
   removeControlChars(samples.keys) if samples
   n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
   n = lsystem(n,opts[:rules],opts[:gen])[opts[:gen]-1] if opts[:rules]
-  defaults = defaultOpts.merge(opts)
+  defaults = getDefaultOpts.merge(opts)
   ziff, controlZiff = defaults.clone # Clone defaults to preliminary Hash objects
   n = replaceRandomSyntax(n)
   print "Ziffers: "+n
@@ -117,7 +113,7 @@ def zparse(n,opts={},shared={})
             chordSets = @@chordDefaults.merge(ziff.clone)
             parsedChord = stringFloat.split("^")
             chordRoot = degree parsedChord[0].to_sym, chordKey, ziff[:scale]
-            ziff[:chord] = chord_invert chord(chordRoot, parsedChord.length>1 ? parsedChord[1] : :major, num_octaves: chordSets[:chordOctaves]), chordSets[:chordInvert]
+            ziff[:chord] = chord_invert chord(chordRoot, parsedChord.length>1 ? parsedChord[1] : chordSets[:chordName], num_octaves: chordSets[:chordOctaves]), chordSets[:chordInvert]
             if sfaddition > 0 then
               ziff[:chord] = ziff[:chord]+sfaddition
             end
@@ -354,10 +350,6 @@ def searchList(arr,query)
     (result == nil ? query : result)
   end
 
-  def mergeRates(ziff, opts)
-    ziff.merge(opts) {|_,a,b| (a.is_a? Numeric) ? a * b : b }
-  end
-
   def zparams(hash, name)
     hash.map{|x| x[name]}
   end
@@ -366,8 +358,8 @@ def searchList(arr,query)
     ziff.except(:rules, :eval, :gen, :arpeggio, :key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi,:control)
   end
 
-  def playMidiOut(md, ms, p, c)
-    midi md, {sustain: ms, port: p }.tap { |hash| hash[:channel] = c if c!=nil }
+  def playMidiOut(md, opts)
+    midi md, opts
   end
 
   def playZiff(ziff,defaults={})
@@ -380,7 +372,7 @@ def searchList(arr,query)
       if ziff[:arpeggio] then
         ziff[:arpeggio].each { |cn|
           synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, note: ziff[:chord][cn[:degree]-1], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: cn[:pitch] if cn[:degree]!=0 && ziff[:port]==nil
-          playMidiOut(ziff[:chord][cn[:degree]-1]+cn[:pitch], ziff[:chordRelease], ziff[:port],ziff[:channel]) if cn[:degree]!=0 && ziff[:port]
+          playMidiOut ziff[:chord][cn[:degree]-1]+cn[:pitch], {sustain: ziff[:chordRelease], port: ziff[:port], channel: ziff[:channel]} if cn[:degree]!=0 && ziff[:port]
         sleep cn[:sleep] }
       else
         synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide] if ziff[:port]==nil
@@ -388,7 +380,7 @@ def searchList(arr,query)
       end
     elsif ziff[:port] then
       sustain = ziff[:sustain]!=nil ? ziff[:sustain] :  ziff[:release]
-      playMidiOut(ziff[:note]+ziff[:pitch],sustain, ziff[:port], ziff[:channel])
+      playMidiOut(ziff[:note]+ziff[:pitch], {sustain: sustain, port: ziff[:port], channel: ziff[:channel]})
     else
       slide = ziff.delete(:control)
       if ziff[:sample]!=nil then
@@ -420,7 +412,7 @@ def searchList(arr,query)
   end
 
   def zplay(melody,opts={},defaults={})
-    opts = defaultOpts.merge(opts)
+    opts = getDefaultOpts.merge(opts)
     if melody.is_a? Numeric then # zplay 1 OR zmidi 85
       if defaults[:midi] then
         opts[:note] = melody
@@ -430,19 +422,22 @@ def searchList(arr,query)
       playZiff(opts,defaults)
     else
       if (melody.is_a? Array) && !(melody[0].is_a? Hash) then
-        print melody
         melody = zarray(melody,opts)
       end
       if melody.is_a? String then
         melody = zparse(melody,opts,defaults)
         defaults[:parsed]==true
       end
-      melody.each_with_index do |ziff,index|
-        ziff = mergeRates(ziff, defaults) if defaults[:parsed]==nil
+      melody.each do |ziff|
+        ziff = opts.merge(mergeRates(ziff, defaults)) if defaults[:parsed]==nil
         playZiff(ziff,defaults)
         sleep ziff[:sleep] if !ziff[:skip] and !(ziff[:chord] and ziff[:arpeggio])
       end
     end
+  end
+
+  def mergeRates(ziff, opts)
+    ziff.merge(opts) {|_,a,b| (a.is_a? Numeric) ? a * b : b }
   end
 
   def lsystem(ax,rules,gen)
@@ -477,7 +472,7 @@ def searchList(arr,query)
     n.chars.map { |c| noteList.index(c)!=nil ? noteList.index(c)+1 : c  }.join('')
   end
 
-  def zarray(arr, opts=defaultOpts)
+  def zarray(arr, opts=getDefaultOpts)
     zmel=[]
     arr.each do |item|
       if item.is_a? Array then
@@ -492,7 +487,7 @@ def searchList(arr,query)
     zmel
   end
 
-  def arrayToHash(obj,opts=defaultOpts)
+  def arrayToHash(obj,opts=getDefaultOpts)
     defObj = [0,opts[:sleep],opts[:key],opts[:scale],opts[:release]]
     arrayOpts = [:note,:sleep,:key,:scale,:release]
     obj.each_with_index { |item,index| defObj[index] = item }
