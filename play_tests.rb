@@ -38,6 +38,7 @@ def testinverseoffset
 end
 
 def testcontrolchars
+  zplay "S3 1 3 5"
   zplay("R3 Z0 123456789 Z1 rrr")
   with_synth :beep do
     zplay("R1 1234 R2 1234 R3 1234 R4 1234")

@@ -295,7 +295,7 @@ def zparse(n,opts={},shared={})
           ziff[:degree] = dgr
           ziff[:note] = note
           ziff[:sleep] = noteLength*dotLength
-          ziff[:sustain] = defaults[:sustain]*(ziff[:sleep]==0 ? 1 : ziff[:sleep]*2) if ziff[:sustain]!=nil
+          ziff[:sustain] = ziff[:sustain]*(ziff[:sleep]==0 ? 1 : ziff[:sleep]*2) if ziff[:sustain]!=nil
           ziff[:release] = defaults[:release]*(ziff[:sleep]==0 ? 1 : ziff[:sleep]*2)
           ziff[:pitch] = ziff[:pitch]+sfaddition
           noteBuffer.push(ziff.clone) if !slideNext && loop && loopCount<1 # : buffer
@@ -417,7 +417,7 @@ def searchList(arr,query)
       if defaults[:midi] then
         opts[:note] = melody
       else
-        opts[:note] = getNoteFromDgr(melody, opts[:key], opts[:scale])
+        opts[:note] = getNoteFromDgr(@@isZeroBased ? melody : (melody==0 ? 1 : melody), opts[:key], opts[:scale])
       end
       playZiff(opts,defaults)
     else
