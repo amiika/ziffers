@@ -7,6 +7,7 @@ module Ziffers
   @@defaultDurs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@defaultOpts = { :key => :c, :scale => :major, :release => 1, :sleep => 0.25, :pitch => 0.0, :amp => 1, :pan => 0, :amp_step => 0.5, :note_slide => 0.5, :control => nil, :skip => false, :pitch_slide => 0.25 }
   @@isZeroBased = false
+  @@subsequentMode = true
 
   def self.setZeroBased(bool)
     @@isZeroBased = bool
@@ -14,6 +15,14 @@ module Ziffers
 
   def self.isZeroBased
     @@isZeroBased
+  end
+
+  def self.setSubsequent(bool)
+    @@subsequentMode = bool
+  end
+
+  def self.isSubsequent
+    @@subsequentMode
   end
 
   def self.durations
@@ -28,11 +37,16 @@ def getDefaultOpts
   @@defaultOpts.merge(Hash[current_synth_defaults.to_a])
 end
 
-def replaceRandomSyntax(n,rep={}) # Replace random values inside [] and ()
+def replaceVariableSyntax(n,rep={})
   n = n.gsub(/\<(.)=(.*?)\>/) do
     rep[$1] = replaceRandomSyntax($2)
     ""
   end
+  rep.each { |k,v| n.gsub!(/#{Regexp.escape(k)}/,v) }
+  n
+end
+
+def replaceRandomSyntax(n) # Replace random values inside [] and ()
   n = n.gsub(/\[(.*?)\]\*?(\d+)?/) do
     repeat = $2 ? $2.to_i : 1
     chooseArray = $1.split(",")
@@ -43,23 +57,24 @@ def replaceRandomSyntax(n,rep={}) # Replace random values inside [] and ()
     result
   end
   # Debug: https://www.debuggex.com/r/21egJ9XdAyxOiyG7
-  n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\d+))\)\+?(\d+)?(\?)?(\d+)?(%[\w])?\^?([a-z]+)?\*?(\d+)?/) do
+#  n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\d+))\)\+?(\d+)?(\?)?(\d+)?(%[\w])?@(\d+)?\^?([a-z]+)?\*?(\d+)?/) do
+n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\d+))\)\+?(\d+)?(\?)?(\d+)?@?(\d+)?(%[\w])?\^?([a-z]+)?\*?(\d+)?/) do
     m = Regexp.last_match.captures
     resultArr=[]
-    (m[11] ? m[11].to_i : 1).times do # *3
-      nArr = m[5].chars if m[5] # (1234)
+    (m[12] ? m[12].to_i : 1).times do # *3
+      nArr = m[5].chars.map(&:to_i) if m[5] # (1234)
       nArr = (m[6] ? (m[1].to_i..m[2].to_i).step(m[6].to_i).to_a : (m[1].to_i..m[2].to_i).to_a) - [0] if m[1] && m[2] # 1..7 +2
       nArr = rrand_i(m[3].to_i,m[4].to_i).to_s.chars if m[3] && m[4] # 1,3
       nArr = nArr.shuffle if m[7] # ?
       nArr = nArr.take(m[8].to_i) if m[8] # ?3
-      nArr = nArr + (m[9]=="%s" ? nArr.drop(1).reverse.drop(1) : m[9]=="%r" ? nArr.reverse.drop(1) : nArr.reverse) if m[9] # %
-      lArr = m[10].chars if m[10] #^qwe
+      nArr = nArr.inject(m[9].split("").map(&:to_i)) {|a,j| a.flat_map{|n|[n,n+j]}} if m[9] # @4
+      nArr = nArr + (m[10]=="%s" ? nArr.drop(1).reverse.drop(1) : m[10]=="%r" ? nArr.reverse.drop(1) : nArr.reverse) if m[10] # %
+      lArr = m[11].chars if m[11] #^qwe
       nArr = (lArr.length<nArr.length ? lArr*(nArr.length/lArr.length) : lArr).zip(nArr) if lArr
       resultArr += nArr
     end
     resultArr.join
   end
-  rep.each { |k,v| n.gsub!(/#{Regexp.escape(k)}/,v) }
   n
 end
 
@@ -72,11 +87,13 @@ def zparse(n,opts={},shared={})
   escapeType = nil
   midi = shared[:midi] ? true : false
   samples = opts.delete(:samples) if opts[:samples]
+  dgrLengths = opts.delete(:lengths) if opts[:lengths]
   removeControlChars(samples.keys) if samples
   n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
   n = lsystem(n,opts[:rules],opts[:gen])[opts[:gen]-1] if opts[:rules]
   defaults = getDefaultOpts.merge(opts)
   ziff, controlZiff = defaults.clone # Clone defaults to preliminary Hash objects
+  n = replaceVariableSyntax(n)
   n = replaceRandomSyntax(n)
   print "Ziffers: "+n
   chars = n.chars # Loop chars
@@ -294,7 +311,19 @@ def zparse(n,opts={},shared={})
           end
           ziff[:degree] = dgr
           ziff[:note] = note
-          ziff[:sleep] = noteLength*dotLength
+          if dgrLengths then
+            dgrLength = dgrLengths[dgr] # Try -1 or 9 etc. otherwise try with real degrees
+            dgrLength = dgrLengths[getRealDegree(dgr,ziff[:key], ziff[:scale])] if !dgrLength
+          end
+          if @@subsequentMode and (next_c =~ /[0-9]/ or (samples and next_c and samples.key?(next_c.to_sym)))
+              ziff[:sleep] = 0
+            else
+              if dgrLength then
+                ziff[:sleep] = (dgrLength.is_a?(String) ? @@defaultDurs[dgrLength.to_sym] : dgrLength)*dotLength
+              else
+              ziff[:sleep] = noteLength*dotLength
+            end
+          end
           ziff[:sustain] = ziff[:sustain]*(ziff[:sleep]==0 ? 1 : ziff[:sleep]*2) if ziff[:sustain]!=nil
           ziff[:release] = defaults[:release]*(ziff[:sleep]==0 ? 1 : ziff[:sleep]*2)
           ziff[:pitch] = ziff[:pitch]+sfaddition
@@ -322,7 +351,8 @@ def zparse(n,opts={},shared={})
         sfaddition=0
       elsif ziff[:playSample]!=nil
         sampleZiff = ziff.clone
-        sampleZiff[:sleep] = (ziff[:sampleOpts] and ziff[:sampleOpts][:sleep])  ? ziff[:sampleOpts][:sleep] : noteLength*dotLength
+        sampleZiff[:sleep] = (ziff[:sampleOpts] and ziff[:sampleOpts][:sleep])  ? ziff[:sampleOpts][:sleep] : ((@@subsequentMode and next_c and samples.key?(next_c.to_sym)) ?  0 : noteLength*dotLength)
+        print noteLength*dotLength
         notes.push(sampleZiff)
         noteBuffer.push(sampleZiff.clone) if loop && loopCount<1 # : buffer
         ziff.delete(:playSample)
@@ -332,6 +362,11 @@ def zparse(n,opts={},shared={})
     end
   end
   notes
+end
+
+def getRealDegree(dgr,zkey,zscale)
+  scaleLength = scale(zkey,zscale).length-1
+  return dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
 end
 
 def getNoteFromDgr(dgr, zkey, zscale)
@@ -367,7 +402,6 @@ def searchList(arr,query)
       print "Skipping note"
     elsif ziff[:playSample] then
       sample ziff[:playSample], ziff[:sampleOpts]
-      sleep ziff[:sleep]
     elsif ziff[:chord] then
       if ziff[:arpeggio] then
         ziff[:arpeggio].each { |cn|
@@ -450,7 +484,7 @@ def searchList(arr,query)
          s.gsub!(/{{.*?}}|(#{k.is_a?(String) ? Regexp.escape(k) : k})/) do |m|
            g = Regexp.last_match.captures
            if g[0] && (prob==nil || (prob && (rand < prob[1].to_f))) then
-            rep = replaceRandomSyntax(v)
+            rep = replaceRandomSyntax(replaceVariableSyntax(v))
             rep = g.length>1 ? rep.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : rep.gsub("$",m)
             rep = rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep
             "{{#{rep}}}" # Escape
