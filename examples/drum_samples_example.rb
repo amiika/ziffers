@@ -1,22 +1,27 @@
 load "~/ziffers/ziffers.rb"
 
-use_bpm 80
+use_bpm 100
 
-disco1 = "|: zHqB H | zHSqB H :|"
-disco2 = "| zHqB H | zBSqH zBqH |"
-disco3 = "| zHeB HHH | zSHeB HHH |"
-house1 = "|: zHqB H |; zBSqS H |; zBSqH eHS:|"
-house2 = "| zHqB H | zBSqH H | zHqB eSH | zBS qSH |"
-house3 = "| zHqB H | zBSqH eHS | zHqB H | zBSqH zBqH |"
+Ziffers.setSimultanious true
 
-rythm = zparse disco1*2+disco2*2+disco3*2,
+breakbeat = "| h HB H | h HS q H B | q H B H B  | h HS q H B  |
+             | h HB H | h HS h H | q H H r B | h HS q H H |"
+
+rythm = zparse breakbeat,
 samples: {
   B: :bd_tek,
   S: :drum_snare_soft,
-  H: {sample: :drum_cymbal_closed, opts: {amp: 0.3}}
+  O: {sample: :drum_cymbal_open, opts: {amp: 0.3}},
+  H: {sample: :drum_cymbal_closed, opts: {amp: 0.2}}
 }
 
 live_loop :beat do
   zplay rythm
 end
+
+live_loop :bass do
+  zplay "hr1r1 r2r2", key: 30
+end
+
+
 

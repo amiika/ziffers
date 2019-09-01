@@ -2,27 +2,27 @@ print "Ziffers 0.8: Changed '0' to 'r'. Added option for zero-based notation + n
 
 module Ziffers
 
-  @@controlChars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chordSleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chordInvert, 'O': :channel, 'G': :arpeggio, 'N': :chordOctaves, "=": :eval }
-  @@chordDefaults = { :chordOctaves=>1, :chordSleep => 0, :chordRelease => 1, :chordInvert => 0, :sleep => 0, chordName: :major }
+  @@controlChars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, 'N': :chord_octaves, "=": :eval }
+  @@chordDefaults = { :chord_octaves=>1, :chord_sleep => 0, :chord_release => 1, :chord_invert => 0, :sleep => 0, :chord_name => :major }
   @@defaultDurs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@defaultOpts = { :key => :c, :scale => :major, :release => 1, :sleep => 0.25, :pitch => 0.0, :amp => 1, :pan => 0, :amp_step => 0.5, :note_slide => 0.5, :control => nil, :skip => false, :pitch_slide => 0.25 }
-  @@isZeroBased = false
-  @@subsequentMode = true
+  @@zero_based = false
+  @@simultanious = false
 
   def self.setZeroBased(bool)
-    @@isZeroBased = bool
+    @@zero_based = bool
   end
 
   def self.isZeroBased
-    @@isZeroBased
+    @@zero_based
   end
 
-  def self.setSubsequent(bool)
-    @@subsequentMode = bool
+  def self.setSimultanious(bool)
+    @@simultanious = bool
   end
 
-  def self.isSubsequent
-    @@subsequentMode
+  def self.isSimultanious
+    @@simultanious
   end
 
   def self.durations
@@ -56,24 +56,37 @@ def replaceRandomSyntax(n) # Replace random values inside [] and ()
     end
     result
   end
-  # Debug: https://www.debuggex.com/r/21egJ9XdAyxOiyG7
-#  n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\d+))\)\+?(\d+)?(\?)?(\d+)?(%[\w])?@(\d+)?\^?([a-z]+)?\*?(\d+)?/) do
-n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\d+))\)\+?(\d+)?(\?)?(\d+)?@?(\d+)?(%[\w])?\^?([a-z]+)?\*?(\d+)?/) do
+  n = replaceRandomSequence(n)
+  n
+end
+
+def replaceRandomSequence(n)
+  return n if !n.include?("(")
+  # Debug: https://www.debuggex.com/r/1VusJWIiV_hRy3zt
+n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\d+))\)\+?(\d+)?(\?)?(\d+)?@?([1-9.\(\)\+\?]+)?(%[\w])?\^?([a-z]+)?\*?(\d+)?'?(.*?)'?/) do
     m = Regexp.last_match.captures
     resultArr=[]
     (m[12] ? m[12].to_i : 1).times do # *3
       nArr = m[5].chars.map(&:to_i) if m[5] # (1234)
-      nArr = (m[6] ? (m[1].to_i..m[2].to_i).step(m[6].to_i).to_a : (m[1].to_i..m[2].to_i).to_a) - [0] if m[1] && m[2] # 1..7 +2
+      if m[1] && m[2] then # 1..7 +2
+        s = m[1].to_i
+        e = m[2].to_i
+        ms = s>e ? e : s # 1..7
+        me = e>s ? e : s # 7..1
+        nArr = (m[6] ? (ms..me).step(m[6].to_i).to_a : (ms..me).to_a) - [0]
+        nArr = nArr.reverse if s>e
+      end
       nArr = rrand_i(m[3].to_i,m[4].to_i).to_s.chars if m[3] && m[4] # 1,3
       nArr = nArr.shuffle if m[7] # ?
       nArr = nArr.take(m[8].to_i) if m[8] # ?3
-      nArr = nArr.inject(m[9].split("").map(&:to_i)) {|a,j| a.flat_map{|n|[n,n+j]}} if m[9] # @4
+      nArr = nArr.inject(replaceRandomSequence(m[9]).split("").map(&:to_i)) {|a,j| a.flat_map{|n|[n,n+j]}} if m[9] # @{4}
       nArr = nArr + (m[10]=="%s" ? nArr.drop(1).reverse.drop(1) : m[10]=="%r" ? nArr.reverse.drop(1) : nArr.reverse) if m[10] # %
+      nArr = nArr.join("").split("")
       lArr = m[11].chars if m[11] #^qwe
       nArr = (lArr.length<nArr.length ? lArr*(nArr.length/lArr.length) : lArr).zip(nArr) if lArr
       resultArr += nArr
     end
-    resultArr.join
+    m[13] ? resultArr.join(m[13]) : resultArr.join
   end
   n
 end
@@ -86,6 +99,7 @@ def zparse(n,opts={},shared={})
   sfaddition, dot, loopCount, note = 0, 0, 0, 0, 0
   escapeType = nil
   midi = shared[:midi] ? true : false
+  simultanious = opts[:simultanious] ? opts[:simultanious] : @@simultanious
   samples = opts.delete(:samples) if opts[:samples]
   dgrLengths = opts.delete(:lengths) if opts[:lengths]
   removeControlChars(samples.keys) if samples
@@ -123,14 +137,14 @@ def zparse(n,opts={},shared={})
             ziff[:key] = stringFloat.to_s
           elsif escapeType == :arpeggio then
             ziff[:arpeggio] = zparse stringFloat #stringFloat.each_char.map { |c| Integer(c) }
-          elsif escapeType == :chordInvert || escapeType == :channel then
+          elsif escapeType == :chord_invert || escapeType == :channel then
             ziff[escapeType] = stringFloat.to_i
           elsif escapeType == :chord then
-            chordKey = (ziff[:chordKey] ? ziff[:chordKey] : ziff[:key])
+            chord_key = (ziff[:chord_key] ? ziff[:chord_key] : ziff[:key])
             chordSets = @@chordDefaults.merge(ziff.clone)
             parsedChord = stringFloat.split("^")
-            chordRoot = degree parsedChord[0].to_sym, chordKey, ziff[:scale]
-            ziff[:chord] = chord_invert chord(chordRoot, parsedChord.length>1 ? parsedChord[1] : chordSets[:chordName], num_octaves: chordSets[:chordOctaves]), chordSets[:chordInvert]
+            chordRoot = degree parsedChord[0].to_sym, chord_key, ziff[:scale]
+            ziff[:chord] = chord_invert chord(chordRoot, parsedChord.length>1 ? parsedChord[1] : chordSets[:chord_name], num_octaves: chordSets[:chord_octaves]), chordSets[:chord_invert]
             if sfaddition > 0 then
               ziff[:chord] = ziff[:chord]+sfaddition
             end
@@ -189,7 +203,7 @@ def zparse(n,opts={},shared={})
           if midi then
           stringFloat+=c
         else
-          dgr = 0 if @@isZeroBased
+          dgr = 0 if @@zero_based
         end
         when /^[1-9]+$/ then
           if midi then
@@ -264,7 +278,7 @@ def zparse(n,opts={},shared={})
         when '{' then
           escape = true
         when '}',',' then
-          customChord.push(getNoteFromDgr(stringFloat.to_i,(ziff[:chordKey]!=nil ? ziff[:chordKey] : ziff[:key]),ziff[:scale])+sfaddition)
+          customChord.push(getNoteFromDgr(stringFloat.to_i,(ziff[:chord_key]!=nil ? ziff[:chord_key] : ziff[:key]),ziff[:scale])+sfaddition)
           stringFloat = ""
           if c =='}' then
             ziff[:chord] = customChord
@@ -315,7 +329,7 @@ def zparse(n,opts={},shared={})
             dgrLength = dgrLengths[dgr] # Try -1 or 9 etc. otherwise try with real degrees
             dgrLength = dgrLengths[getRealDegree(dgr,ziff[:key], ziff[:scale])] if !dgrLength
           end
-          if @@subsequentMode and (next_c =~ /[0-9]/ or (samples and next_c and samples.key?(next_c.to_sym)))
+          if simultanious and (next_c =~ /[0-9]/ or (samples and next_c and samples.key?(next_c.to_sym)))
               ziff[:sleep] = 0
             else
               if dgrLength then
@@ -343,15 +357,15 @@ def zparse(n,opts={},shared={})
         note = 0
       elsif ziff[:chord]!=nil
         chordZiff = @@chordDefaults.merge(ziff.clone)
-        chordZiff[:sleep] = chordZiff[:chordLength] ? noteLength : chordZiff.delete(:chordSleep)
-        chordZiff[:release] = chordZiff[:chordLength] ? noteLength : ziff[:chordRelease]
+        chordZiff[:sleep] = chordZiff[:chordLength] ? noteLength : chordZiff.delete(:chord_sleep)
+        chordZiff[:release] = chordZiff[:chordLength] ? noteLength : ziff[:chord_release]
         notes.push(chordZiff)
         noteBuffer.push(chordZiff.clone) if loop && loopCount<1 # : buffer
         ziff.delete(:chord)
         sfaddition=0
       elsif ziff[:playSample]!=nil
         sampleZiff = ziff.clone
-        sampleZiff[:sleep] = (ziff[:sampleOpts] and ziff[:sampleOpts][:sleep])  ? ziff[:sampleOpts][:sleep] : ((@@subsequentMode and next_c and samples.key?(next_c.to_sym)) ?  0 : noteLength*dotLength)
+        sampleZiff[:sleep] = (ziff[:sampleOpts] and ziff[:sampleOpts][:sleep])  ? ziff[:sampleOpts][:sleep] : ((simultanious and next_c and samples.key?(next_c.to_sym)) ?  0 : noteLength*dotLength)
         print noteLength*dotLength
         notes.push(sampleZiff)
         noteBuffer.push(sampleZiff.clone) if loop && loopCount<1 # : buffer
@@ -370,7 +384,7 @@ def getRealDegree(dgr,zkey,zscale)
 end
 
 def getNoteFromDgr(dgr, zkey, zscale)
-  dgr+=1 if @@isZeroBased and dgr>=0
+  dgr+=1 if @@zero_based and dgr>=0
   scaleLength = scale(zkey,zscale).length-1
   if dgr>=scaleLength || dgr<0 then
     oct = (dgr-1)/scaleLength*12
@@ -390,7 +404,7 @@ def searchList(arr,query)
   end
 
   def clean(ziff)
-    ziff.except(:rules, :eval, :gen, :arpeggio, :key,:scale,:chordSleep,:chordRelease,:chordInvert,:ampStep,:rateBased,:skip,:midi,:control)
+    ziff.except(:rules, :eval, :gen, :arpeggio, :key,:scale,:chord_sleep,:chord_release,:chord_invert,:ampStep,:rate_based,:skip,:midi,:control)
   end
 
   def playMidiOut(md, opts)
@@ -405,12 +419,12 @@ def searchList(arr,query)
     elsif ziff[:chord] then
       if ziff[:arpeggio] then
         ziff[:arpeggio].each { |cn|
-          synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, note: ziff[:chord][cn[:degree]-1], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: cn[:pitch] if cn[:degree]!=0 && ziff[:port]==nil
-          playMidiOut ziff[:chord][cn[:degree]-1]+cn[:pitch], {sustain: ziff[:chordRelease], port: ziff[:port], channel: ziff[:channel]} if cn[:degree]!=0 && ziff[:port]
+          synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : current_synth, note: ziff[:chord][cn[:degree]-1], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: cn[:pitch] if cn[:degree]!=0 && ziff[:port]==nil
+          playMidiOut ziff[:chord][cn[:degree]-1]+cn[:pitch], {sustain: ziff[:chord_release], port: ziff[:port], channel: ziff[:channel]} if cn[:degree]!=0 && ziff[:port]
         sleep cn[:sleep] }
       else
-        synth ziff[:chordSynth]!=nil ? ziff[:chordSynth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide] if ziff[:port]==nil
-        ziff[:chord].each { |cnote| playMidiOut(cnote, ziff[:chordRelease],ziff[:port],ziff[:channel]) } if ziff[:port]
+        synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : current_synth, notes: ziff[:chord], amp: ziff[:amp], pan: ziff[:pan], attack: ziff[:attack], release: ziff[:release], sustain: ziff[:sustain], decay: ziff[:decay], pitch: ziff[:pitch], note_slide: ziff[:note_slide] if ziff[:port]==nil
+        ziff[:chord].each { |cnote| playMidiOut(cnote, ziff[:chord_release],ziff[:port],ziff[:channel]) } if ziff[:port]
       end
     elsif ziff[:port] then
       sustain = ziff[:sustain]!=nil ? ziff[:sustain] :  ziff[:release]
@@ -418,7 +432,7 @@ def searchList(arr,query)
     else
       slide = ziff.delete(:control)
       if ziff[:sample]!=nil then
-        if defaults[:rateBased] && ziff[:note]!=nil then
+        if defaults[:rate_based] && ziff[:note]!=nil then
           ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
         elsif ziff[:degree]!=nil && ziff[:degree]!=0 then
           ziff[:pitch] = (scale 1, ziff[:scale])[ziff[:degree]-1]+ziff[:pitch]-0.999
@@ -440,7 +454,7 @@ def searchList(arr,query)
 
   def zmidi(melody,opts={},shared={})
     shared[:midi] = true
-    shared[:rateBased] = true if opts[:sample] && shared[:degreeBased]!=nil
+    shared[:rate_based] = true if opts[:sample] && shared[:degreeBased]!=nil
     opts[:degree] = melody-opts[:key] if shared[:degreeBased]
     zplay(melody,opts,shared)
   end
@@ -451,7 +465,7 @@ def searchList(arr,query)
       if defaults[:midi] then
         opts[:note] = melody
       else
-        opts[:note] = getNoteFromDgr(@@isZeroBased ? melody : (melody==0 ? 1 : melody), opts[:key], opts[:scale])
+        opts[:note] = getNoteFromDgr(@@zero_based ? melody : (melody==0 ? 1 : melody), opts[:key], opts[:scale])
       end
       playZiff(opts,defaults)
     else

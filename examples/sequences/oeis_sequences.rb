@@ -1,5 +1,7 @@
 load "~/ziffers/ziffers.rb"
 
+# Collection of sequence functions
+
 # https://oeis.org/A005132
 def recaman
   Enumerator.new do |y|
@@ -22,7 +24,7 @@ def hoffQ
   end
 end
 
-print hoffQ.first(10)
+#print hoffQ.first(10)
 
 # https://oeis.org/A002487
 def sterns
@@ -35,7 +37,7 @@ def sterns
   end
 end
 
-print sterns.first(1000)
+#print sterns.first(1000)
 
 def binrev(n, base=2)
   # https://oeis.org/A030101
@@ -61,7 +63,6 @@ def frac2(n)
   return n
 end
 
-
 #print sb.first(100)
 
 #zplay sterns.first(100)
@@ -85,5 +86,3 @@ end
 #a = recaman(200)
 #b = normDur(a)
 #play_pattern_timed normMod(a,60,80),b
-
-

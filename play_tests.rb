@@ -23,6 +23,18 @@ def testzplay
   zplay "987654321-1-2-3-4-5-6-7-8-9", key: :c
 end
 
+def testSimultanious
+  zplay "135 1 3 5 421 4 2 5 457 7 5 4 135", simultanious: true
+  Ziffers.setSimultanious true
+  zplay "|: q HB H BHS H :3| q BH B q SH H "*2,
+  samples: {
+    B: :bd_tek,
+    S: :drum_snare_soft,
+    H: {sample: :drum_cymbal_closed, opts: {amp: 0.3}}
+  }
+  Ziffers.setSimultanious false
+end
+
 def testZeroBased
   Ziffers.setZeroBased true
   zplay "q210r q210r e00001111 q210r"
@@ -72,12 +84,12 @@ end
 
 def testchords
   # Chord synth test
-  zplay("i ii iii iv v vi vii",{chordName: "major", chordSleep: 0.25, chordSynth: :piano})
-  zplay("i ii iii iv v vi vii",{chordName: "minor", chordSleep: 0.25, chordSynth: :piano})
-  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: :e4, key: :e4, scale: "mixolydian"})
-  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chordKey: "f", key: "e", scale: "mixolydian"})
-  zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chordSleep: 0.5, scale: :aeolian)
-  zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chordSleep: 0.5)
+  zplay("i ii iii iv v vi vii",{chord_name: "major", chord_sleep: 0.25, chord_synth: :piano})
+  zplay("i ii iii iv v vi vii",{chord_name: "minor", chord_sleep: 0.25, chord_synth: :piano})
+  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chord_key: :e4, key: :e4, scale: "mixolydian"})
+  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chord_key: "f", key: "e", scale: "mixolydian"})
+  zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chord_sleep: 0.5, scale: :aeolian)
+  zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chord_sleep: 0.5)
   zplay "G1232 |: i^7 :3||: %-1 iv^dim :3|"
   zplay "Gq12e^3212 |: i^7 :3||: %-1 iv^dim7 :3|", key: :d4, scale: :mixolydian
   zplay "N3 G987654321 %-1 ii^m9 v^add13 %2 i^maj9 %-2 vi^m9", key: :e3
@@ -128,7 +140,7 @@ end
 
 def testzsample
   zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", {hz: 4, sample:  :ambi_drone, key: "c1", sustain: 0.25})
-  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25}, rateBased: true)
+  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25}, rate_based: true)
   zplay("h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})
   zplay("h3q323 q ~0.1 3666 h5.3 q ~0.25 3666 53 q ~0.2 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})
   zplay("q115566h5q443322h1 *|: q554433h2 :|*", sample: :ambi_glass_rub, rate: 2.1, amp: 0.2)
@@ -143,8 +155,8 @@ def testbinaural
   with_synth :beep do zbin("q12345678",{hz:10}) end
   zbin("q12345678",{sustain: 0.25, sample: :ambi_glass_rub})
   zbin("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub})
-  zbin("q12345678",{sustain: 0.25, sample: :ambi_glass_rub}, rateBased: true)
-  zbin("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub}, rateBased: true)
+  zbin("q12345678",{sustain: 0.25, sample: :ambi_glass_rub}, rate_based: true)
+  zbin("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub}, rate_based: true)
 end
 
 def testzdrums
