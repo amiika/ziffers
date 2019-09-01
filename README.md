@@ -118,6 +118,14 @@ Default note length can also be changed via parameter, for example:
 zplay("123",{release:0.5, sleep: 1})
 ```
 
+### Custom lengths for degrees
+
+Custom lengths can be assigned to each degree using **lengths** parameter. This can be useful in gerative melodies.
+
+```
+zplay "123", lengths: {0=>"h",1=>"q",2=>"h",3=>"q",4=>"e",5=>"e",6=>"q",7=>"q",8=>"e"}
+```
+
 ### Dotted notes
 
 **.** for dotted notes. First dot increases the duration of the basic note by half of its original value. Second dot half of the half, third dot half of the half of the half ... and so on. For example dots added to Whole note "w." will change the duration to 1.5, second dot "w.." to 1.75, third dot to 1.875.
@@ -324,7 +332,9 @@ zplay "<a=1234><b=321>abab"
 
 # Chords
 
-Chords can be used within the notation using roman numerals: i ii iii iv v vi vii or by custom chord syntax {1,3,5}
+Chords can be used within the notation using roman numerals: i ii iii iv v vi vii
+
+Custom chords can be played using custom chord syntax **{1,3,5}** or in simultanious mode zplay "135", simultanious: true.
 
 Chords can be customized with ^ like: vi^dim. See Sonic Pi:s chord_names list for supported chord names.
 
