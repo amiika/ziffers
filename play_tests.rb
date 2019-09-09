@@ -98,11 +98,11 @@ def testchords
 end
 
 def testrandom
-  zplay "(1234)"
+  zplay "(..1234)"
   sleep 0.5
-  zplay "(1234)?"
+  zplay "(..1234)?"
   sleep 0.5
-  zplay "(1234)?*2"
+  zplay "(..1234)?*2"
   sleep 0.5
   zplay "(10000,20000)?3"
   sleep 0.5

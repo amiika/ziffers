@@ -334,11 +334,38 @@ zplay "<a=1234><b=321>abab"
 
 Chords can be used within the notation using roman numerals: i ii iii iv v vi vii
 
-Custom chords can be played using custom chord syntax **{1,3,5}** or in simultanious mode zplay "135", simultanious: true.
+By default chords are played simultaniously with the degrees for example:
 
-Chords can be customized with ^ like: vi^dim. See Sonic Pi:s chord_names list for supported chord names.
+```
+zplay "|: iv 123 iii 234 ii 432 i 123 :|"
+```
 
-Chords can also be inverted using % char, for example %1 to invert all following chords up by one.
+Separate length for the chords can be set using **chord_sleep* or by using default lengths and rests:
+
+```
+zplay "i ii iii iv v vi vii", chord_sleep: 1
+zplay "h i r ii r iii r iv r v r vi r vii"
+```
+
+Custom chords can be played using custom chord syntax **{1,3,5}** or in simultanious mode **zplay "135", simultanious: true**. Chord syntax will perform better usually without timing issues.
+
+Chord key is assigned with **key** parameter (defaults to major). Alternatively **chord_key** can be used to change the key for the chords.
+
+Chords can also be customized using chord names (See Sonic Pi:s chord_names in help). Notice that current key is ignored if the chord_name is used. Set chord name for all chords using **chord_name** or for single chords using **^**.
+
+Examples:
+```
+zplay "i vi", chord_name: :dim, chord_sleep: 1
+zplay "i vi^dim", chord_sleep: 1
+zplay "i vi", chord_name: "m11+", chord_sleep: 1
+zplay "i vi^m11+", chord_sleep: 1
+```
+
+Chords can also be inverted using % char, for example %1 to invert all following chords up by one:
+```
+zplay "%-2 vii %-1 iii vi %0 ii v %1 i %2 iv", chord_sleep: 1, key: :d, scale: :minor
+
+```
 
 ## Arpeggios
 
