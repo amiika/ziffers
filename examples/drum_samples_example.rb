@@ -8,7 +8,7 @@ breakbeat = "| h HB H | h HS q H B | q H B H B  | h HS q H B  |
              | h HB H | h HS h H | q H H r B | h HS q H H |"
 
 rythm = zparse breakbeat,
-samples: {
+use: {
   B: :bd_tek,
   S: :drum_snare_soft,
   O: {sample: :drum_cymbal_open, opts: {amp: 0.3}},
@@ -22,6 +22,3 @@ end
 live_loop :bass do
   zplay "hr1r1 r2r2", key: 30
 end
-
-
-

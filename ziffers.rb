@@ -1,4 +1,4 @@
-print "Ziffers 0.8: Changed '0' to 'r'. Added option for zero-based notation + new features / changes in random sequences."
+print "Ziffers 0.9: Changed samples->use. Added functional list notation, zloop, zspread, random syntax changes ..."
 
 module Ziffers
 
@@ -100,9 +100,9 @@ def zparse(n,opts={},shared={})
   escapeType = nil
   midi = shared[:midi] ? true : false
   simultanious = opts[:simultanious]!=nil ? opts[:simultanious] : @@simultanious
-  samples = opts.delete(:samples) if opts[:samples]
+  use = opts.delete(:use) if opts[:use]
   dgrLengths = opts.delete(:lengths) if opts[:lengths]
-  removeControlChars(samples.keys) if samples
+  removeControlChars(use.keys) if use
   n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
   n = lsystem(n,opts[:rules],opts[:gen])[opts[:gen]-1] if opts[:rules]
   defaults = getDefaultOpts.merge(opts)
@@ -177,20 +177,22 @@ def zparse(n,opts={},shared={})
         escape = false
       elsif escape && (["=",".","+","-","/","*","^"].include?(c) || c=~/^[a-zA-Z0-9]+$/) then
         stringFloat+=c
-      elsif samples and samples.key?(c.to_sym) then
-        sample = samples[c.to_sym]
-        if (sample.is_a? Hash) then
-          if sample[:note] then
-            ziff[:port] = sample[:port] if sample[:port]
-            ziff[:channel] = sample[:channel] if sample[:channel]
-            note = sample[:note]
+      elsif use and use.key?(c.to_sym) then
+        use_char = use[c.to_sym]
+        if (use_char.is_a? Hash) then
+          if use_char[:note] then
+            ziff[:port] = use_char[:port] if use_char[:port]
+            ziff[:channel] = use_char[:channel] if use_char[:channel]
+            #TODO: Merge use_char opts to clone of ziff instead?
+            #ziffClone.merge use_char
+            note = use_char[:note]
           else
-            ziff[:play_sample] = sample[:sample] if sample[:sample]
-            ziff[:sample_opts] = sample[:opts] if sample[:opts]
+            ziff[:play_sample] = use_char[:sample] if use_char[:sample]
+            ziff[:sample_opts] = use_char[:opts] if use_char[:opts]
           end
         else
-          ziff[:play_sample] = sample if sample.is_a? Symbol
-          note = sample if sample.is_a? Integer
+          ziff[:play_sample] = use_char if use_char.is_a? Symbol
+          note = use_char if use_char.is_a? Integer
         end
       elsif @@defaultDurs.key?(c.to_sym) then
         noteLength = @@defaultDurs[c.to_sym]
@@ -364,7 +366,7 @@ def zparse(n,opts={},shared={})
             dgr_sleep = dgrLengths[dgr] # Try -1 or 9 etc. otherwise try with real degrees
             dgr_sleep = dgrLengths[getRealDegree(dgr,ziff[:key], ziff[:scale])] if !dgrLength
           end
-          if !escape and simultanious and (samples and next_c and samples.key?(next_c.to_sym))
+          if !escape and simultanious and (use and next_c and use.key?(next_c.to_sym))
               ziff[:sleep] = 0
           else
             if dgr_sleep then
@@ -378,6 +380,7 @@ def zparse(n,opts={},shared={})
           noteBuffer.push(ziff.clone) if !slideNext && loop && loopCount<1 # : buffer
           notes.push(ziff)
           sub.push(ziff) if subList.length>0
+          # Next ziff
           if !slideNext then
             ziff = ziff.clone
             if sfaddition!=0 then
@@ -396,17 +399,19 @@ def zparse(n,opts={},shared={})
         chordZiff[:release] = chordZiff[:chordLength] ? noteLength : ziff[:chord_release]
         notes.push(chordZiff)
         noteBuffer.push(chordZiff.clone) if loop && loopCount<1 # : buffer
-        sub.push(sampleZiff) if subList.length>0
+        sub.push(chordZiff) if subList.length>0
         ziff.delete(:chord)
         sfaddition=0
       elsif ziff[:play_sample]!=nil
+        sample_opts = ziff.delete(:sample_opts)
+        play_sample = ziff.delete(:play_sample)
         sampleZiff = ziff.clone
-        sampleZiff[:sleep] = (ziff[:sample_opts] and ziff[:sample_opts][:sleep])  ? ziff[:sample_opts][:sleep] : ((simultanious and next_c and samples.key?(next_c.to_sym)) ?  0 : noteLength*dotLength)
+        sampleZiff[:sample] = play_sample
+        sampleZiff[:sleep] = ((simultanious and next_c and use.key?(next_c.to_sym)) ?  0 : noteLength*dotLength)
+        sampleZiff.merge!(sample_opts) if sample_opts
         notes.push(sampleZiff)
         noteBuffer.push(sampleZiff.clone) if loop && loopCount<1 # : buffer
         sub.push(sampleZiff) if subList.length>0
-        ziff.delete(:play_sample)
-        ziff.delete(:sample_opts)
       end
       # Continues loop
     end
@@ -467,10 +472,9 @@ def searchList(arr,query)
   end
 
   def playZiff(ziff,defaults={})
+
     if ziff[:skip] then
       print "Skipping note"
-    elsif ziff[:play_sample] then
-      sample ziff[:play_sample], ziff[:sample_opts]
     elsif ziff[:chord] then
       if ziff[:arpeggio] then
         ziff[:arpeggio].each { |cn|

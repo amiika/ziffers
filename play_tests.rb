@@ -23,18 +23,6 @@ def testzplay
   zplay "987654321-1-2-3-4-5-6-7-8-9", key: :c
 end
 
-def testSimultanious
-  zplay "135 1 3 5 421 4 2 5 457 7 5 4 135", simultanious: true
-  Ziffers.setSimultanious true
-  zplay "|: q HB H BHS H :3| q BH B q SH H "*2,
-  samples: {
-    B: :bd_tek,
-    S: :drum_snare_soft,
-    H: {sample: :drum_cymbal_closed, opts: {amp: 0.3}}
-  }
-  Ziffers.setSimultanious false
-end
-
 def testZeroBased
   Ziffers.setZeroBased true
   zplay "q210r q210r e00001111 q210r"
@@ -175,9 +163,28 @@ def testlsystem
   end
 end
 
-def testsamples
-  zplay "|: X O e XX q O :2|", samples: {"X": :bd_tek, "O": :drum_snare_soft}
-  zplay "|: O X X X X :4|", samples: {"X": :bd_tek, "O": {sample: :ambi_choir, opts:{rate: 0.3, sleep: 0}}}
+def testSimult
+  zplay "135 1 3 5 421 4 2 5 457 7 5 4 135", simultanious: true
+  Ziffers.setSimultanious true
+  zplay "|: q HB H BHS H :3| q BH B q SH H "*2,
+  use: {
+    B: :bd_tek,
+    S: :drum_snare_soft,
+    H: {sample: :drum_cymbal_closed, opts: {amp: 0.3}}
+  }
+  Ziffers.setSimultanious false
+end
+
+def testListSyntax
+  zplay "w 6 ((64)(4321)) 83"
+  zplay "w (1(23(34(6))))"
+  zplay "h 2 (64) w 2 (42(321)) -3 (-2 3 (4 5(89))) ^4 _9"
+end
+
+def testUseChars
+  zplay "|: X O e XX q O :2|", use: {"X": :bd_tek, "O": :drum_snare_soft}
+  zplay "|: X O e XX q O :2|", use: {"X": {note: 50, port: "loopmidi", channel: 9}, "O": {note: 40, port: "loopmidi", channel: 9}}
+  zplay "|: O X X X X :2|", use: {"X": :bd_tek, "O": {sample: :ambi_choir, opts:{rate: 0.3, sleep: 0}}}
 end
 
 def testpreparse
@@ -196,12 +203,14 @@ testslide
 testsingledegrees
 testzsample
 testzmidi
-testsamples
+testUseChars
 testlsystem
 testpreparse
 testarraydegrees
 testzdrums
 testZeroBased
+testSimult
+testListSyntax
 
 # These require ziffers_utils.rb
 #testbinaural

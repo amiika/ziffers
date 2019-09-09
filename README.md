@@ -264,7 +264,7 @@ Use (1,5) for random numer between 1 and 5. (1,7) is same as ?.
 
 Create sequences of pitches using (1234) or (1..4) notation:
 
-(13425) -> Just the sequence: 13425
+(..13425) -> Just the sequence: 13425
 
 (1..7) -> Sequence from 1 to 7: "1234567"
 
