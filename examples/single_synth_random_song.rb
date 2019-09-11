@@ -1,11 +1,11 @@
 require "~/ziffers/ziffers.rb"
 
 live_loop :boom do
-  zdrums("1 r r 1",{key: :c,scale: :minor})
+  zdrums("q 1 r r 1",{key: :c,scale: :minor})
 end
 
 live_loop :melody do
-  zplay("i ???? iii ???? v ????",{key: :c,scale: :minor})
+  zplay("q i ???? iii ???? v ????",{key: :c,scale: :minor})
 end
 
 live_loop :bass do
@@ -13,6 +13,6 @@ live_loop :bass do
 end
 
 live_loop :slide do
-  zplay("~ ????",{key: :c,scale: :minor})
+  zplay("q ~ ????",{key: :c,scale: :minor})
   sleep rrand_i(3,6)
 end

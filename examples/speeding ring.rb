@@ -1,6 +1,6 @@
 require "~/ziffers/ziffers.rb"
 
-n = zparse("333 444 222 666")
+n = zparse("q 333 444 222 666")
 
 live_loop :test do
   with_fx :echo do

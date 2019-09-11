@@ -1,20 +1,21 @@
-require "~/ziffers/ziffers.rb"
+load "~/ziffers/ziffers.rb"
 
 use_synth :piano
+Ziffers.set_default_opts({sleep: 0.25, amp: 0.5})
 
 def testzplay
   # row row
-  zplay("|:q.1.1|q1e2q.3|3e2q3e4|h.5|e888555333111|q5e4q3e2|h.1:|")
+  zplay("|:.1.1|q1e2q.3|3e2q3e4|h.5|e888555333111|q5e4q3e2|h.1:|")
   # frere jacques
   zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", key: :e, scale: :major)
   # Same using fractions as note length / sleep
   zplay("|:1/4 1231:|:34 2/4 5:|@:1/8 5654 1/4 31:|:1 _5^ 2/4 1:@|", key: :e, scale: :major)
   # jericho
-  zplay "|:q1_7^12&32&345h55r;q4h44rq5h55r;&q34h54&321:|", key: :d, scale: :major
+  zplay "|:1_7^12&32&345h55r;q4h44rq5h55r;&q34h54&321:|", key: :d, scale: :major
   # ode to joy
-  zplay("|:q3345|5432|1123|;q32h2;q21h1:|q2231|2e34q31|2e34q32|q12h_5|^q3345|5432|1123|21h1|")
+  zplay("|:3345|5432|1123|;q32h2;q21h1:|q2231|2e34q31|2e34q32|q12h_5|^q3345|5432|1123|21h1|")
   # twinkle twinkle
-  zplay("q115566h5q443322h1 *|: q554433h2 :|*")
+  zplay("115566h5q443322h1 *|: q554433h2 :|*")
   # Test transposing degrees
   zplay("s12345678987654321",{scale: "major_pentatonic"})
   # Numbered loops
@@ -24,10 +25,10 @@ def testzplay
 end
 
 def testZeroBased
-  Ziffers.setZeroBased true
+  Ziffers.set_zero_based true
   zplay "q210r q210r e00001111 q210r"
-  zplay "0123456789TE", scale: :chromatic
-  Ziffers.setZeroBased false
+  zplay "q0123456789TE", scale: :chromatic
+  Ziffers.set_zero_based false
 end
 
 def testinverseoffset
@@ -38,18 +39,18 @@ def testinverseoffset
 end
 
 def testcontrolchars
-  zplay "S3 1 3 5"
+  zplay "q S3 1 3 5"
   zplay("R3 Z0 123456789 Z1 rrr")
   with_synth :beep do
-    zplay("R1 1234 R2 1234 R3 1234 R4 1234")
+    zplay("q R1 1234 R2 1234 R3 1234 R4 1234")
   end
 end
 
 def testslide
   with_synth :chiplead do
-    zplay "|: ~ 91 ~ 61 :|"
-    zplay "~0.1 1234"
-    zplay " ~1 1234 "
+    zplay "q |: ~ 91 ~ 61 :|"
+    zplay "q ~0.1 1234"
+    zplay "q ~1 1234 "
     zplay("h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222")
   end
 end
@@ -65,9 +66,9 @@ end
 
 def testarraydegrees
   zplay [4,4,3,3,2,2,3,3,4,4,3,3,2,2,3,3], key: :c, scale: :chromatic, sleep: 0.12
-  zplay (scale :gong).reflect.to_a,  key: 60, scale: :blues_minor
-  zplay [[1, 0.375], [1, 0.375], [1, 0.25], [2, 0.125], [3, 0.375], [3, 0.25], [2, 0.125], [3, 0.25], [4, 0.125], [5, 0.75], [8, 0.125], [8, 0.125], [8, 0.125], [5, 0.125], [5, 0.125], [5, 0.125], [3, 0.125], [3, 0.125], [3, 0.125], [1, 0.125], [1, 0.125], [1, 0.125], [5, 0.25], [4, 0.125], [3, 0.25], [2, 0.125], [1, 0.75]], scale: :aeolian
-  zplay [1,2,4,5,6,7].zip(0.1.step(0.7,0.1).to_a)
+  zplay (scale :gong).reflect.to_a,  key: 60, scale: :blues_minor, sleep: 0.125
+  zplay [[1, 0.375], [1, 0.375], [1, 0.25], [2, 0.125], [3, 0.375], [3, 0.25], [2, 0.125], [3, 0.25], [4, 0.125], [5, 0.75], [8, 0.125], [8, 0.125], [8, 0.125], [5, 0.125], [5, 0.125], [5, 0.125], [3, 0.125], [3, 0.125], [3, 0.125], [1, 0.125], [1, 0.125], [1, 0.125], [5, 0.25], [4, 0.125], [3, 0.25], [2, 0.125], [1, 0.75]], sleep: 0.125, scale: :aeolian
+  zplay [1,2,4,5,6,7].zip(0.1.step(0.7,0.1).to_a), sleep: 0.125
 end
 
 def testchords
@@ -86,43 +87,43 @@ def testchords
 end
 
 def testrandom
-  zplay "(..1234)"
+  zplay "q(..1234)"
   sleep 0.5
-  zplay "(..1234)?"
+  zplay "q(..1234)?"
   sleep 0.5
-  zplay "(..1234)?*2"
+  zplay "q(..1234)?*2"
   sleep 0.5
-  zplay "(10000,20000)?3"
+  zplay "q(10000,20000)?3"
   sleep 0.5
-  zplay "(1..3)%s"
+  zplay "q(1..3)%s"
   sleep 0.5
-  zplay "(1..3)%r"
+  zplay "q(1..3)%r"
   sleep 0.5
-  zplay "(1..3)%m"
+  zplay "q(1..3)%m"
   sleep 0.5
-  zplay "(1..7)?"
+  zplay "q(1..7)?"
   sleep 0.5
-  zplay "(1..7)?3"
+  zplay "q(1..7)?3"
   sleep 0.5
-  zplay "(1..7)?3*3"
+  zplay "q(1..7)?3*3"
   sleep 0.5
-  zplay "(1,7)*10"
+  zplay "q(1,7)*10"
   sleep 0.5
-  zplay "(2000,5000)^wqqee"
+  zplay "q(2000,5000)^wqqee"
   sleep 0.5
-  zplay "(1..9)^wqqeee"
+  zplay "q(1..9)^wqqeee"
   sleep 0.5
-  zplay "(1..9)^wqqeee~"
+  zplay "q(1..9)^wqqeee~"
   sleep 0.5
-  zplay "(10..1000)+100?^qe"
+  zplay "q(10..1000)+100?^qe"
   sleep 0.5
-  zplay "(1..9)+2?3%r^eqe*3"
+  zplay "q(1..9)+2?3%r^eqe*3"
   sleep 0.5
-  zplay "Z0.? ???? Z[0.25,0.5,1] ???? Z0.(1,5) ????"
+  zplay "q Z0.? ???? Z[0.25,0.5,1] ???? Z0.(1,5) ????"
   sleep 0.5
   with_synth :beep do
-    3.times do zplay("ii 554e56 iv 12323456 i q 334e56 v [q7765,e75645342,q????]") end
-    zplay("$ I? C0.? (1,2) I? C0.? (2,3) I? C0.? (3,4) $ [1,2,3] I? [4,5,6] I? [4,5,6] ~ ????????? ")
+    3.times do zplay("q ii 554e56 iv 12323456 i q 334e56 v [q7765,e75645342,q????]") end
+    zplay("q $ I? C0.? (1,2) I? C0.? (2,3) I? C0.? (3,4) $ [1,2,3] I? [4,5,6] I? [4,5,6] ~ ????????? ")
   end
 end
 
@@ -148,31 +149,31 @@ def testbinaural
 end
 
 def testzdrums
-  zdrums("1 2 3 4", )
-  zdrums("12345687654321", synth: :sine)
+  zdrums "q 1 2 3 4"
+  zdrums "q12345687654321", synth: :sine
 end
 
 def testlsystem
   with_synth :beep do
-    zplay "1", rules: {"1"=>"13","3"=>"6431"}, gen: 3
-    zplay "?", rules: {"?"=>"q?e???q?"}, gen: 2, scale: :major_pentatonic
-    zplay "1", rules: {/[1-7]/=>"(1..7)^qeqqe"}, gen: 2, scale: :gong
-    zplay "1", rules: {/(3)1/=>"q'$1+1'1'$2+2'",/[1-7]/=>"e313"}, gen: 4
-    zplay "123", rules: {/[1-9]/=>"'$*1' [e,q] '$*2'"}, gen: 4
-    zplay " 1 1 1 ", rules: {/(?<= ([1-9]) ([1-9]) )/=>"0.6%=<?=(-3,3)>' $1+?' '$2+?' "}, gen: 4
+    zplay "q1", rules: {"1"=>"13","3"=>"6431"}, gen: 3
+    zplay "q?", rules: {"?"=>"q?e???q?"}, gen: 2, scale: :major_pentatonic
+    zplay "q1", rules: {/[1-7]/=>"(1..7)^qeqqe"}, gen: 2, scale: :gong
+    zplay "q1", rules: {/(3)1/=>"q'$1+1'1'$2+2'",/[1-7]/=>"e313"}, gen: 4
+    zplay "q123", rules: {/[1-9]/=>"'$*1' [e,q] '$*2'"}, gen: 4
+    zplay "q 1 1 1 ", rules: {/(?<= ([1-9]) ([1-9]) )/=>"0.6%=<?=(-3,3)>' $1+?' '$2+?' "}, gen: 4
   end
 end
 
 def testSimult
-  zplay "135 1 3 5 421 4 2 5 457 7 5 4 135", simultanious: true
-  Ziffers.setSimultanious true
-  zplay "|: q HB H BHS H :3| q BH B q SH H "*2,
+  zplay "q 135 1 3 5 421 4 2 5 457 7 5 4 135", groups: true
+  Ziffers.set_groups true
+  zplay "q |: q HB H BHS H :3| q BH B q SH H "*2,
   use: {
     B: :bd_tek,
     S: :drum_snare_soft,
-    H: {sample: :drum_cymbal_closed, opts: {amp: 0.3}}
+    H: {sample: :drum_cymbal_closed, amp: 0.3}
   }
-  Ziffers.setSimultanious false
+  Ziffers.set_groupsfalse
 end
 
 def testListSyntax
@@ -182,9 +183,9 @@ def testListSyntax
 end
 
 def testUseChars
-  zplay "|: X O e XX q O :2|", use: {"X": :bd_tek, "O": :drum_snare_soft}
-  zplay "|: X O e XX q O :2|", use: {"X": {note: 50, port: "loopmidi", channel: 9}, "O": {note: 40, port: "loopmidi", channel: 9}}
-  zplay "|: O X X X X :2|", use: {"X": :bd_tek, "O": {sample: :ambi_choir, opts:{rate: 0.3, sleep: 0}}}
+  zplay "q|: X O e XX q O :2|", use: {"X": :bd_tek, "O": :drum_snare_soft}
+  zplay "q|: X O e XX q O :2|", use: {"X": {note: 50, port: "loopmidi", channel: 9}, "O": {note: 40, port: "loopmidi", channel: 9}}
+  zplay "q|: O X X X X :2|", use: {"X": :bd_tek, "O": {sample: :ambi_choir, rate: 0.3, sleep: 0}}
 end
 
 def testpreparse
