@@ -1,9 +1,9 @@
-print "Ziffers 0.91: Lots of refactoring. Changed default length to w=1.0. Renamed simultanious to groups. "
+print "Ziffers 0.92: Added effects and sample cutting. Changed chord default sleep to 1."
 
 module Ziffers
 
   @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, 'N': :chord_octaves, "=": :eval }
-  @@chord_defaults = { :chord_octaves=>1, :chord_sleep => 0, :chord_release => 1, :sleep => 0 }
+  @@chord_defaults = { :chord_octaves=>1, :chord_release => 1 }
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :note_slide => 0.5, :skip => false, :pitch_slide => 0.25 }
   @@zero_based = false
@@ -121,7 +121,6 @@ def zparse(n,opts={},shared={})
   escapeType = nil
   midi = shared[:midi] ? true : false
   groups = (opts[:groups] ? opts.delete(:groups) : @@groups)
-  print groups
   use = opts.delete(:use) if opts[:use]
   dgrLengths = opts.delete(:lengths) if opts[:lengths]
   remove_control_chars(use.keys) if use
@@ -173,7 +172,7 @@ def zparse(n,opts={},shared={})
               chordRoot = degree parsedChord[0].to_sym, chord_key, chord_scale
               ziff[:notes] = chord chordRoot, chord_name
             else
-              ziff[:notes] = chord_degree parsedChord[0].to_sym, chord_key, chord_scale
+              ziff[:notes] = chord_degree parsedChord[0].to_sym, chord_key, chord_scale, 3
             end
             ziff[:notes] = chord_invert ziff[:notes], ziff[:chord_invert] if ziff[:chord_invert]
             if sfaddition > 0 then
@@ -424,17 +423,18 @@ def zparse(n,opts={},shared={})
         negative=false
         dotLength = 1.0
         note = 0
-      elsif ziff[:notes]!=nil
+      elsif ziff[:notes]
         chordZiff = @@chord_defaults.merge(ziff.clone)
-        chordZiff[:sleep] = chordZiff[:chordLength] ? noteLength : chordZiff.delete(:chord_sleep)
-        chordZiff[:release] = chordZiff[:chordLength] ? noteLength : ziff[:chord_release]
+        chordZiff[:sleep] = chordZiff[:chord_sleep] ? chordZiff.delete(:chord_sleep) : noteLength
+        chordZiff[:release] = chordZiff[:chord_release] ? ziff[:chord_release] : noteLength
+        set_ADSR(chordZiff,adsr)
         notes.push(chordZiff)
         noteBuffer.push(chordZiff) if loop && loopCount<1 # : buffer
         sub.push(chordZiff) if chordZiff[:sleep]>0 and subList.length>0
         ziff.delete(:notes)
         ziff.delete(:degrees)
         sfaddition=0
-      elsif ziff[:sample_opts]!=nil
+      elsif ziff[:sample_opts]
         sample_opts = ziff.delete(:sample_opts)
         sampleZiff = ziff.clone
         sampleZiff.merge!(sample_opts)
@@ -451,6 +451,7 @@ end
 
 # Sets ADSR envelope for given note
 def set_ADSR(ziff,adsr)
+  adsr.merge!(ziff.slice(:attack,:decay,:sustain,:release))
   note_length = (ziff[:sleep]==0 ? 1 : ziff[:sleep]*1.5)
   ziff[:attack] = adsr[:attack] * note_length if adsr[:attack]!=nil
   ziff[:decay] = adsr[:decay] * note_length if adsr[:decay]!=nil
@@ -499,7 +500,7 @@ def zparams(hash, name)
 end
 
 def clean(ziff)
-  ziff.except(:rules, :eval, :gen, :arpeggio, :key,:scale,:chord_sleep,:chord_release,:chord_invert,:ampStep,:rate_based,:skip,:midi,:control,:degrees)
+  ziff.except(:rules,:eval,:gen,:arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:effects,:sample)
 end
 
 def play_midi_out(md, opts)
@@ -525,7 +526,7 @@ def play_ziff(ziff,defaults={})
         sleep cn[:sleep]
       end
     else
-      synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : current_synth, ziff.except(:key,:scale,:degree) if ziff[:port]==nil
+      synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : current_synth, clean(ziff) if ziff[:port]==nil
       ziff[:notes].each { |cnote| play_midi_out(cnote, ziff[:chord_release],ziff[:port],ziff[:channel]) } if ziff[:port]
     end
   elsif ziff[:port] then
@@ -539,9 +540,25 @@ def play_ziff(ziff,defaults={})
       elsif ziff[:degree]!=nil && ziff[:degree]!=0 then
         ziff[:pitch] = (scale 1, ziff[:scale])[ziff[:degree]-1]+ziff[:pitch]-0.999
       end
-      c = sample ziff[:sample], clean(ziff)
+      if ziff[:sample_dir] then
+        if ziff[:cut] then
+          ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration ziff[:sample_dir], ziff[:sample])+ziff[:cut]),1.0].sort[1] if ziff[:cut]
+          ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
+        end
+        c = sample ziff[:sample_dir], ziff[:sample], clean(ziff)
+      else
+        if ziff[:cut] then
+          ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration ziff[:sample])+ziff[:cut]),1.0].sort[1]
+          ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
+        end
+        c = sample ziff[:sample], clean(ziff)
+      end
     else
-      c = play clean(ziff)
+      if ziff[:synth] then
+       c = synth ziff[:synth], clean(ziff)
+      else
+       c = play clean(ziff)
+     end
     end
     if slide != nil then
       sleep ziff[:sleep]*ziff[:note_slide]
@@ -562,27 +579,89 @@ def zmidi(melody,opts={},shared={})
 end
 
 def zplay(melody,opts={},defaults={})
+  effects = opts.delete(:effects) if opts[:effects]
+  raise "Effects should be array of hashes" if effects and !effects.kind_of?(Array)
   opts = get_default_opts.merge(opts)
-  if melody.is_a? Numeric then # zplay 1 OR zmidi 85
+  defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
+  melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
+  if !opts[:port] and effects then
+    block_with_effects effects.clone do
+        zplayer(melody,opts,defaults)
+      end
+  else
+    zplayer(melody,opts,defaults)
+  end
+end
+
+def zplayer(melody,opts={},defaults={})
+  melody.each do |ziff|
+      ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
+      if ziff[:effects] then
+        block_with_effects ziff[:effects].clone do
+          play_ziff(ziff,defaults)
+        end
+      else
+        play_ziff(ziff,defaults)
+      end
+      sleep ziff[:sleep] if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
+    end
+  end
+end
+
+def normalize_melody(melody, opts, defaults)
+  if melody.is_a?(String)
+     return zparse(melody,opts,defaults)
+  elsif melody.is_a?(Numeric) # zplay 1 OR zmidi 85
     if defaults[:midi] then
       opts[:note] = melody
     else
       opts[:note] = get_note_from_dgr(@@zero_based ? melody : (melody==0 ? 1 : melody), opts[:key], opts[:scale])
     end
-    play_ziff(opts,defaults)
+    return [opts]
+  elsif melody.is_a?(Array)
+      return zarray(melody,opts)
   else
-    if (melody.is_a? Array) && !(melody[0].is_a? Hash) then
-      melody = zarray(melody,opts)
+    raise "Could not parse given melody!"
+  end
+end
+
+def zloop(name, ziff, opts={}, defaults={})
+  raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
+  raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
+  if ziff.is_a?(Array) && ziff[0].is_a?(Hash) then
+    defaults[:preparsed] = true
+  elsif (ziff.is_a?(String) and !ziff.start_with? "//") and !opts[:seed]
+      parsed_ziff = normalize_melody ziff, opts, defaults
+      defaults[:parsed] = true
+  end
+  live_loop name, opts.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
+    stop if opts[:stop] or (ziff.is_a?(String) and ziff.start_with? "//")
+    if defaults[:preparsed] then
+      zplay ziff, opts, defaults
+    elsif parsed_ziff
+      zplay parsed_ziff, opts.slice(:effects), defaults
+    else
+      zplay ziff, opts, defaults
     end
-    if melody.is_a? String then
-      melody = zparse(melody,opts,defaults)
-      defaults[:parsed]==true
+  end
+end
+
+def block_with_effects(x,&block)
+  if x.length>0 then
+    n = x.shift
+    if n[:with_fx]
+      with_fx n[:with_fx], n do block_with_effects(x,&block) end
+    elsif n[:with_swing]
+      with_swing n[:with_swing], n do block_with_effects(x,&block) end
+    elsif n[:with_bpm]
+      with_bpm n[:with_bpm] do block_with_effects(x,&block) end
+    elsif n[:with_cent_tuning]
+      with_cent_tuning n[:with_cent_tuning] do block_with_effects(x,&block) end
+    elsif n[:with_octave]
+      with_octave n[:with_octave] do block_with_effects(x,&block) end
     end
-    melody.each do |ziff|
-      ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:parsed]==nil
-      play_ziff(ziff,defaults)
-      sleep ziff[:sleep] if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
-    end
+  else
+    yield
   end
 end
 
@@ -692,31 +771,27 @@ def zdrums(melody,opts={synth: :beep},defaults={})
     sleep ziff[:sleep] if melody.length>1
   end
 end
-end
 
-def zloop(name, ziff, opts={})
-  parsed_ziff = zparse ziff, get_default_opts().merge(opts) if !ziff.start_with? "//" and !opts[:seed]
-  live_loop name, opts.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
-    with_bpm (opts[:with_bpm] ? opts[:with_bpm] : current_bpm) do
-      stop if ziff.start_with? "//"
-      if parsed_ziff then
-        zplay parsed_ziff
-      else
-        zplay ziff, opts
-      end
-    end
-  end
-end
-
-def z0(ziff, opts={})  zloop(:z0,ziff,opts) end
-  def z1(ziff, opts={})  zloop(:z1,ziff,opts) end
-    def z2(ziff, opts={})  zloop(:z2,ziff,opts) end
-      def z3(ziff, opts={})  zloop(:z3,ziff,opts) end
-        def z4(ziff, opts={})  zloop(:z4,ziff,opts) end
-          def z5(ziff, opts={})  zloop(:z5,ziff,opts) end
-            def z6(ziff, opts={})  zloop(:z6,ziff,opts) end
-              def z7(ziff, opts={})  zloop(:z7,ziff,opts) end
-                def z8(ziff, opts={})  zloop(:z8,ziff,opts) end
+  def z0(ziff, opts={})  zloop(:z0,ziff,opts) end
+    def z1(ziff, opts={})  zloop(:z1,ziff,opts) end
+      def z2(ziff, opts={})  zloop(:z2,ziff,opts) end
+        def z3(ziff, opts={})  zloop(:z3,ziff,opts) end
+          def z4(ziff, opts={})  zloop(:z4,ziff,opts) end
+            def z5(ziff, opts={})  zloop(:z5,ziff,opts) end
+              def z6(ziff, opts={})  zloop(:z6,ziff,opts) end
+                def z7(ziff, opts={})  zloop(:z7,ziff,opts) end
+                 def z8(ziff, opts={})  zloop(:z8,ziff,opts) end
                   def z9(ziff, opts={})  zloop(:z9,ziff,opts) end
+               def z10(ziff, opts={})  zloop(:z10,ziff,opts) end
+            def z11(ziff, opts={})  zloop(:z11,ziff,opts) end
+          def z12(ziff, opts={})  zloop(:z12,ziff,opts) end
+        def z13(ziff, opts={})  zloop(:z13,ziff,opts) end
+          def z14(ziff, opts={})  zloop(:z14,ziff,opts) end
+            def z15(ziff, opts={})  zloop(:z15,ziff,opts) end
+              def z16(ziff, opts={})  zloop(:z16,ziff,opts) end
+                def z17(ziff, opts={})  zloop(:z17,ziff,opts) end
+                  def z18(ziff, opts={})  zloop(:z18,ziff,opts) end
+                    def z19(ziff, opts={})  zloop(:z19,ziff,opts) end
+                      def z20(ziff, opts={})  zloop(:z20,ziff,opts) end
 
-                    include Ziffers
+                                     include Ziffers
