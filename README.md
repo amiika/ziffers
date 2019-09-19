@@ -15,7 +15,7 @@ zplay "|:44332233:|.4h4", key: :c, scale: :chromatic
 
 Include Ziffers to [Sonic Pi](https://sonic-pi.net/) by cloning this project or by saving the [source](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.rb) to your home directory (for example) and require the file in your code:
 ```
-require "~/ziffers/ziffers.rb"
+require "~/ziffers/ziffers.rb" # ~ references home folder, works also in Windows
 ```
 
 Stay up to date as the Ziffers is an ongoing project. Aim is to keep Ziffers syntax stable but some parts are still looking for its place. Participate or post Issues if you have suggestions or questions about the project.
@@ -26,9 +26,9 @@ Ziffers is a [numbered notation](https://en.wikipedia.org/wiki/Numbered_musical_
 
 ## Degree numbers 1-9
 
-Notes are marked as numbers 1-9 representing the position in used scale. Default key is :c and scale :major making the numbers 1=C, 2=D, 3=E .. and so forth. If some scale does not have certain degree, for example 8 in major scale, it is transposed automatically meaning 8 is 1 in higher octave.
+Notes are marked as numbers 1-9 representing the degrees or positions in the used scale. Default key is :c and scale :major making the numbers 1=C, 2=D, 3=E .. and so forth. If some scale does not have certain degree, for example 8 in major scale, it is transposed automatically meaning 8 is 1 in higher octave.
 
-Ziffers is a single character language, which means that every degree that is higher than 9 needs to be transposed to the next octave.
+Ziffers is a single character language, which means that every degree that is higher than 9 needs to be transposed to the next octave. Zero based notation can also be used to define melodies in chromatic scale.
 
 ## Zero-based notation 0-9 and T=10 & E=11
 
@@ -60,12 +60,13 @@ Negative degrees are not sticky! It makes generation of sequences and rules easi
 In some cases it might be easier to escape the digits that require more characters than one. To do this you can use the = character.
 
 **=** character evaluates the characters between the **=** and the next empty space:
+
 ```
 zplay "=-10 =12 =24"
 zplay "=1*1 =2*2 =3*3 =4*4"
 ```
 
-You can also use ruby string interpolation in combination with the **=** character:
+You can also use [ruby string interpolation](https://en.wikibooks.org/wiki/Ruby_Programming/Syntax/Literals#Interpolation) in combination with the **=** character:
 
 ```
 # Plays degrees [0, 0, 2, 3, 4, 6, 6, 9, 8, 12, 10, 15, 12, 18, 14, 21, 16, 24, 18, 27]
@@ -76,11 +77,12 @@ end
 
 ## Note lengths
 
-Default note length is quarter note, meaning 0.25 sleep after the note plays. Note length characters are sticky, so you only have to type note length when you need to change the following note lengths.
+Default note length is a whole note, meaning 1.0 sleep after the note plays. Note lengths can be changed with the note length characters, fractions, list notation or escape characters.
 
-For example note lengths in Blue bird song can be defined using characters **w** and **q** for Whole and Quarter notes:
+Note length definition is always sticky, meaning you only have to type note length once when you need to change the length of the following melody. For example note lengths in Blue bird song can be defined using characters **w** and **q** for Whole and Quarter notes:
+
 ```
-zplay("5353 5653 4242 4542 5353 5653 w5 q5432 w1")
+zplay "q5353 5653 4242 4542 5353 5653 w5 q5432 w1"
 ```
 
 ### Standard note lengths
@@ -96,21 +98,38 @@ zplay("5353 5653 4242 4542 5353 5653 w5 q5432 w1")
 - **t** = Thirty-second = 1/32 = 0.03125 beat
 - **f** = Sixty-fourth = 1/64 = 0.015625 beat
 
-### Alternative ways to define note lengths
+### Other ways to define note lengths
 
 Same note lengths can also be defined using different escape notations:
 
-**Decimals:**
+**Z escape notation**
 ```
-zplay("5353 5653 4242 4542 5353 5653 Z1 5 Z0.25 5432 Z1 1")
+zplay "5353 5653 4242 4542 5353 5653 Z1 5 Z0.25 5432 Z1 1"
 ```
 
 **Fractions**
 ```
-zplay("1/4 5353 5653 4242 4542 5353 5653 4/4 5 1/4 5432 4/4 1")
+zplay "1/4 5353 5653 4242 4542 5353 5653 4/4 5 1/4 5432 4/4 1"
 ```
 
 **Note that only 1/1*n works. No support fractions where numerator is bigger than 9, eg. 12/64**
+
+**List notation and triplets**
+```
+zplay "(5353) (5653) (4242) (4542) (5353) (5653) 5 (5432) 1"
+```
+
+List notation divides the previous note length to equal proportions and can be used to create complex patterns:
+```
+zplay "w (1234) h (1234) q (1234) w (12(34)) h (1(2(3(4))))"
+```
+
+It can also be used to play triplets, for example:
+```
+zplay "q 2 6 h (132) q 5 1 h (432)"
+```
+
+**Parameters**
 
 Default note length can also be changed via parameter, for example:
 ```
@@ -143,8 +162,8 @@ print zpreparse "1/4 cdefg - abg", :e
 
 Use zplay with note names by defining the **parsekey**. These two play exactly same melody:
 ```
-zplay("|:1/4 1231:|:34 2/4 5:|@:1/8 5654 1/4 31:|:1 -5+ 2/4 1:@|", key: :e)
-zplay("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|", parsekey: :c, key: :e)
+zplay "|:1/4 1231:|:34 2/4 5:|@:1/8 5654 1/4 31:|:1 -5+ 2/4 1:@|", key: :e
+zplay "|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c -g+ 2/4 c:@|", parsekey: :c, key: :e
 ```
 
 ## Rest or silence
@@ -175,7 +194,7 @@ Use **:** as basic repeat, for example in Frere Jacques:
 
 ```
 # Repeat every bar
-zplay("|: 1231 :|: 34w5 :|: q5654h31 :|: 1_5^w1 :|")
+zplay "|: 1231 :|: 34w5 :|: q5654h31 :|: 1_5^w1 :|"
 ```
 
 ### Alternative sections or numbered endings
@@ -185,8 +204,8 @@ Use **;** in repeats for alternative sections, like "|: 123 ; 432 ; 543 :|".
 Alternative endings in ievan polkka:
 
 ```
-zplay("|:q1e11q12| q3113 |;q2_77^2 |q31h1;q.5e4q32|q31h1:|"\
-      "|:q5e55q43|q2_77^2|;q4e44q32|q3113;q4e44q32|q31h1:|", :g, :minor)
+zplay "|:q1e11q12| q3113 |;q2_77^2 |q31h1;q.5e4q32|q31h1:|"\
+      "|:q5e55q43|q2_77^2|;q4e44q32|q3113;q4e44q32|q31h1:|", :g, :minor
 ```
 
 ### D.S repeat
@@ -194,7 +213,7 @@ zplay("|:q1e11q12| q3113 |;q2_77^2 |q31h1;q.5e4q32|q31h1:|"\
 Use **@ ... @** to repeat multiple sections. For example this play row row row your boat 2 times and then the last section 2 times at the end:
 
 ```
-zplay("|:.1.1|1q2h.3|3q2h3q4|w.5|@q888555333111|5q4h3q2|w.1:@|")
+zplay "|:.1.1|1q2h.3|3q2h3q4|w.5|@q888555333111|5q4h3q2|w.1:@|"
 ```
 
 ### Jump repeat, D.C:ish
@@ -202,7 +221,7 @@ zplay("|:.1.1|1q2h.3|3q2h3q4|w.5|@q888555333111|5q4h3q2|w.1:@|")
 Use **\*** to start from beginning and continue until first **\***. If & is at the end it works like D.C, otherwise the song will continue after the & character. For example:
 
 ```
-zplay("| 7162 *| 6354 |*")
+zplay "| 7162 *| 6354 |*"
 ```
 
 # Control characters
@@ -235,7 +254,7 @@ For example:
 ```
 zplay "~ 123456789"
 # Note slide set to 0.4
-zplay("~0.4 12321 ")
+zplay "~0.4 12321 "
 ```
 
 (TODO: release and sleep not working after the note_slide)
@@ -334,31 +353,33 @@ zplay "<a=1234><b=321>abab"
 
 Chords can be used within the notation using roman numerals: i ii iii iv v vi vii
 
-By default chords are played simultaniously with the degrees for example:
+Chords can be played simultaniously with the melody using chord_sleep parameter:
 
 ```
-zplay "|: iv 123 iii 234 ii 432 i 123 :|"
+zplay "|: iv 123 iii 234 ii 432 i 123 :|", chord_sleep: 0
 ```
 
-Separate length for the chords can be set using **chord_sleep* or by using default lengths and rests:
-
-```
-zplay "i ii iii iv v vi vii", chord_sleep: 1
-zplay "h i r ii r iii r iv r v r vi r vii"
-```
-
-Custom chords can be played using custom chord syntax **{1,3,5}** or in simultanious mode **zplay "135", simultanious: true**. Chord syntax will perform better usually without timing issues.
+Custom chords can be played using custom chord syntax **{1,3,5}** or in simultanious mode **zplay "135", groups: true**.
 
 Chord key is assigned with **key** parameter (defaults to major). Alternatively **chord_key** can be used to change the key for the chords.
 
-Chords can also be customized using chord names (See Sonic Pi:s chord_names in help). Notice that current key is ignored if the chord_name is used. Set chord name for all chords using **chord_name** or for single chords using **^**.
+Chords can be customized by taking more notes from the scale or by using chord names.
+
+```
+zplay "i"   # Plays trichord, same as i/3
+zplay "i/1" # Plays root
+zplay "i/4" # Plays 7th chord
+zplay "i/5" # Plays 9th chord
+```
+
+For using chord names see **Sonic Pi:s chord and chord_names** in help. Notice that current key is ignored if the chord_name is used. Set chord name for all chords using **chord_name** or for single chords using **^**.
 
 Examples:
 ```
-zplay "i vi", chord_name: :dim, chord_sleep: 1
-zplay "i vi^dim", chord_sleep: 1
-zplay "i vi", chord_name: "m11+", chord_sleep: 1
-zplay "i vi^m11+", chord_sleep: 1
+zplay "i vi", chord_name: :dim
+zplay "i vi^dim"
+zplay "i vi", chord_name: "m11+"
+zplay "i vi^m11+"
 ```
 
 Chords can also be inverted using % char, for example %1 to invert all following chords up by one:
@@ -401,7 +422,7 @@ It can also play samples, use samples as synths and send MIDI out messages. Run 
 Use **port** and **channel** parameters to play external keyboards or virtual synths.
 
 ```
-zplay "(123..456~)", scale: :hex_sus, port: "loopmidi", channel: 3
+zplay "(123..456)?", scale: :hex_sus, port: "loopmidi", channel: 3
 ```
 
 ### Using sample as a synth
@@ -415,21 +436,21 @@ zplay("554e56 12323456 q 334e56 e75645343", {sample: :guit_e_fifths, start: 0.2,
 
 Rate based:
 ```
-zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25}, rateBased: true)
+zplay "|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25}, rateBased: true
 ```
 
 ### Playing samples with character assignation
 
-Ziffers *zplay* can also play rhythms with custom samples. Use *samples* to define characters to fire samples. All capital letters are safe to use as sample characters. Some letters may overwrite other control characters like 'A', but it doesnt matter if you are not using it to change amplitude. There is two ways to define length of musical rest:
+Ziffers *zplay* can also play rhythms with custom samples. **use** parameter can be used to define characters to fire samples. All capital letters are safe to use as sample characters. Some letters may overwrite other control characters like 'A', but it doesnt matter if you are not using it to change amplitude. There is two ways to define length of musical rest:
 
 Sleep time after the samples are denoted with [note length characters](#standard-note-lengths):
 ```
-zplay "|: X O e XX q O :4|", samples: {"X": :bd_tek, "O": :drum_snare_soft}
+zplay "|: X O e XX q O :4|", use: {"X": :bd_tek, "O": :drum_snare_soft}
 ```
 
 Alternatively you can play multiple samples at the same time. To define sample specific sleep times or any sample properties like rate, sustain, release etc. define sample as hash object and use *opts* parameter:
 ```
-zplay "|: O X X X X :4|", samples: {"X": :bd_tek, "O": {sample: :ambi_choir, opts: {rate: 0.3, sleep: 0}}}
+zplay "|: O X X X X :4|", use: {"X": :bd_tek, "O": {sample: :ambi_choir, rate: 0.3, sleep: 0}}
 ```
 
 ## zmidi

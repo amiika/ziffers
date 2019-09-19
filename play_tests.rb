@@ -1,34 +1,45 @@
 load "~/ziffers/ziffers.rb"
 
 use_synth :piano
-Ziffers.set_default_opts({sleep: 0.25, amp: 0.5})
+Ziffers.set_default_opts({amp: 0.5})
 
 def testzplay
-  # row row
-  zplay("|:.1.1|q1e2q.3|3e2q3e4|h.5|e888555333111|q5e4q3e2|h.1:|")
   # frere jacques
-  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", key: :e, scale: :major)
+  zplay "|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", key: :e, scale: :major
   # Same using fractions as note length / sleep
-  zplay("|:1/4 1231:|:34 2/4 5:|@:1/8 5654 1/4 31:|:1 _5^ 2/4 1:@|", key: :e, scale: :major)
+  zplay "|:1/4 1231:|:34 2/4 5:|@:1/8 5654 1/4 31:|:1 _5^ 2/4 1:@|", key: :e, scale: :major
+  # Same using list notation
+  zplay "|:(1231):|:((34)5):|@:((56)(54)31):|:((1_5)^1):@|", key: :e, scale: :major
+  # row row
+  zplay "|:q.1.1|q1e2q.3|3e2q3e4|h.5|e888555333111|q5e4q3e2|h.1:|"
   # jericho
-  zplay "|:1_7^12&32&345h55r;q4h44rq5h55r;&q34h54&321:|", key: :d, scale: :major
+  zplay "|:q1_7^12&32&345h55r;q4h44rq5h55r;&q34h54&321:|", key: :d, scale: :major
   # ode to joy
-  zplay("|:3345|5432|1123|;q32h2;q21h1:|q2231|2e34q31|2e34q32|q12h_5|^q3345|5432|1123|21h1|")
+  zplay "|:q3345|5432|1123|;q32h2;q21h1:|q2231|2e34q31|2e34q32|q12h_5|^q3345|5432|1123|21h1|"
   # twinkle twinkle
-  zplay("115566h5q443322h1 *|: q554433h2 :|*")
+  zplay "q115566h5q443322h1 *|: q554433h2 :|*"
   # Test transposing degrees
-  zplay("s12345678987654321",{scale: "major_pentatonic"})
+  zplay "s12345678987654321",{scale: "major_pentatonic"}
   # Numbered loops
-  zplay("|:1234:3|616|:4321:3|")
+  zplay "|:q1234:3|616|:4321:3|"
   # Test negative degree
-  zplay "987654321-1-2-3-4-5-6-7-8-9", key: :c
+  zplay "q987654321-1-2-3-4-5-6-7-8-9", key: :c
 end
 
-def testZeroBased
-  Ziffers.set_zero_based true
-  zplay "q210r q210r e00001111 q210r"
-  zplay "q0123456789TE", scale: :chromatic
-  Ziffers.set_zero_based false
+def testchords
+  # Chord synth test
+  zplay "i ii iii iv v vi vii", chord_name: "major", chord_sleep: 0.25, chord_synth: :piano
+  zplay "i ii iii iv v vi vii", chord_name: "minor", chord_sleep: 0.25, chord_synth: :piano
+  zplay "|:iv 123 iii 234 ii 432 i 123:|", chord_key: :e4, key: :e4, scale: "mixolydian", chord_sleep: 0, sleep: 0.25
+  zplay "|:iv 123 iii 234 ii 432 i 123:|", chord_key: "f", key: "e", scale: "mixolydian", chord_sleep: 0, sleep: 0.25
+  zplay "|: i^major7 vi^dim ii^m7 v^dim7 :|", chord_sleep: 0.5, scale: :aeolian
+  zplay "%-2 vii %-1 iii vi %0 ii v %1 i iv", chord_sleep: 0.5
+  zplay "Gq1232 |: i^7 :3||: %-1 iv^dim :3|"
+  zplay "Gq12e^3212 |: i^7 :3||: %-1 iv^dim7 :3|", key: :d4, scale: :mixolydian
+  zplay "G'q1 234' |: i^7 :4||: %-1 iv :4|", groups: true
+  zplay "Ge987654321 %-1 ii^m9 v^add13 %2 i^maj9 %-2 vi^m9", key: :e3
+  zplay "Ge(1,6)*3 i r v r vi"
+  zplay "Ge(1..6) i r v r vi"
 end
 
 def testinverseoffset
@@ -44,46 +55,6 @@ def testcontrolchars
   with_synth :beep do
     zplay("q R1 1234 R2 1234 R3 1234 R4 1234")
   end
-end
-
-def testslide
-  with_synth :chiplead do
-    zplay "q |: ~ 91 ~ 61 :|"
-    zplay "q ~0.1 1234"
-    zplay "q ~1 1234 "
-    zplay("h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222")
-  end
-end
-
-def testsingledegrees
-  (scale :gong).reflect.each do |k|
-    [1,3,6].each do |d|
-      zplay d, key: 40+k, scale: :blues_minor
-      sleep 0.1
-    end
-  end
-end
-
-def testarraydegrees
-  zplay [4,4,3,3,2,2,3,3,4,4,3,3,2,2,3,3], key: :c, scale: :chromatic, sleep: 0.12
-  zplay (scale :gong).reflect.to_a,  key: 60, scale: :blues_minor, sleep: 0.125
-  zplay [[1, 0.375], [1, 0.375], [1, 0.25], [2, 0.125], [3, 0.375], [3, 0.25], [2, 0.125], [3, 0.25], [4, 0.125], [5, 0.75], [8, 0.125], [8, 0.125], [8, 0.125], [5, 0.125], [5, 0.125], [5, 0.125], [3, 0.125], [3, 0.125], [3, 0.125], [1, 0.125], [1, 0.125], [1, 0.125], [5, 0.25], [4, 0.125], [3, 0.25], [2, 0.125], [1, 0.75]], sleep: 0.125, scale: :aeolian
-  zplay [1,2,4,5,6,7].zip(0.1.step(0.7,0.1).to_a), sleep: 0.125
-end
-
-def testchords
-  # Chord synth test
-  zplay("i ii iii iv v vi vii",{chord_name: "major", chord_sleep: 0.25, chord_synth: :piano})
-  zplay("i ii iii iv v vi vii",{chord_name: "minor", chord_sleep: 0.25, chord_synth: :piano})
-  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chord_key: :e4, key: :e4, scale: "mixolydian"})
-  zplay("|:iv 123 iii 234 ii 432 i 123:|",{chord_key: "f", key: "e", scale: "mixolydian"})
-  zplay("|: i^major7 vi^dim ii^m7 v^dim7 :|", chord_sleep: 0.5, scale: :aeolian)
-  zplay("%-2 vii %-1 iii vi %0 ii v %1 i iv", chord_sleep: 0.5)
-  zplay "G1232 |: i^7 :3||: %-1 iv^dim :3|"
-  zplay "Gq12e^3212 |: i^7 :3||: %-1 iv^dim7 :3|", key: :d4, scale: :mixolydian
-  zplay "N3 G987654321 %-1 ii^m9 v^add13 %2 i^maj9 %-2 vi^m9", key: :e3
-  zplay "N2 G(1,6)*3 i r v r vi"
-  zplay "N2 G(1..6) i r v r vi"
 end
 
 def testrandom
@@ -122,9 +93,33 @@ def testrandom
   zplay "q Z0.? ???? Z[0.25,0.5,1] ???? Z0.(1,5) ????"
   sleep 0.5
   with_synth :beep do
-    3.times do zplay("q ii 554e56 iv 12323456 i q 334e56 v [q7765,e75645342,q????]") end
+    3.times do zplay("q ii 554e56 iv 12323456 i q 334e56 v [q7765,e75645342,q????]",{chord_sleep: 0}) end
     zplay("q $ I? C0.? (1,2) I? C0.? (2,3) I? C0.? (3,4) $ [1,2,3] I? [4,5,6] I? [4,5,6] ~ ????????? ")
   end
+end
+
+def testslide
+  with_synth :chiplead do
+    zplay "q |: ~ 91 ~ 61 :|"
+    zplay "q ~0.1 1234"
+    zplay "q ~1 1234 "
+    zplay("h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222")
+  end
+end
+
+def testsingledegrees
+  (scale :gong).reflect.each do |k|
+    [1,3,6].each do |d|
+      zplay d, key: 40+k, scale: :blues_minor, sleep: 0.125
+    end
+  end
+end
+
+def testarraydegrees
+  zplay [4,4,3,3,2,2,3,3,4,4,3,3,2,2,3,3], key: :c, scale: :chromatic, sleep: 0.12
+  zplay (scale :gong).reflect.to_a,  key: 60, scale: :blues_minor, sleep: 0.125
+  zplay [[1, 0.375], [1, 0.375], [1, 0.25], [2, 0.125], [3, 0.375], [3, 0.25], [2, 0.125], [3, 0.25], [4, 0.125], [5, 0.75], [8, 0.125], [8, 0.125], [8, 0.125], [5, 0.125], [5, 0.125], [5, 0.125], [3, 0.125], [3, 0.125], [3, 0.125], [1, 0.125], [1, 0.125], [1, 0.125], [5, 0.25], [4, 0.125], [3, 0.25], [2, 0.125], [1, 0.75]], sleep: 0.125, scale: :aeolian
+  zplay [1,2,4,5,6,7].zip(0.1.step(0.7,0.1).to_a), sleep: 0.125
 end
 
 def testzsample
@@ -137,15 +132,6 @@ end
 
 def testzmidi
   zmidi "|: q 53 53 53 57 h 60 q 53 53 ; h 55 q 60 60 h 57 q 53 53 ; q 55 55 57 55 w 53 :|"
-end
-
-def testbinaural
-  with_synth :beep do zbin("q12345678") end
-  with_synth :beep do zbin("q12345678",{hz:10}) end
-  zbin("q12345678",{sustain: 0.25, sample: :ambi_glass_rub})
-  zbin("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub})
-  zbin("q12345678",{sustain: 0.25, sample: :ambi_glass_rub}, rate_based: true)
-  zbin("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub}, rate_based: true)
 end
 
 def testzdrums
@@ -173,11 +159,13 @@ def testSimult
     S: :drum_snare_soft,
     H: {sample: :drum_cymbal_closed, amp: 0.3}
   }
-  Ziffers.set_groupsfalse
+  Ziffers.set_groups false
 end
 
 def testListSyntax
   zplay "w 6 ((64)(4321)) 83"
+  zplay "w 6 q64 e4321 w 83"
+  zplay "h 2 (1324) 3 ((53)242) 6 (75(64)3) 4 (3425) "
   zplay "w (1(23(34(6))))"
   zplay "h 2 (64) w 2 (42(321)) -3 (-2 3 (4 5(89))) ^4 _9"
 end
@@ -189,10 +177,36 @@ def testUseChars
 end
 
 def testpreparse
-  # Parse degrees from c and play in e
-  zplay(zpreparse("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c _g^ 2/4 c:@|",:c),key: :e)
-  # same using Z escape char and parseKey param
-  zplay("|:Z0.25 cdec:|:ef Z0.5 g:|@:Z0.125 gagf Z0.25 ec:|:c _g^ Z0.5 c:@|", parsekey: :c, key: :e)
+  in_thread do # parse from c using Z escape char
+    zplay "|:Z0.25 cdec:|:ef Z0.5 g:|@:Z0.125 gagf Z0.25 ec:|:c _g^ Z0.5 c:@|", parsekey: :c, key: :e
+  end
+  in_thread do # parse from c using list notation
+    zplay "|:(cdec):|:((ef)g):|@:((ga)(gf)ec):|:((c_g)^c):@|", parsekey: :c, key: :e
+  end
+  # Parse degrees from c and play in e using zpreparse that is usually called under the hood
+  zplay zpreparse("|:1/4 cdec:|:ef 2/4 g:|@:1/8 gagf 1/4 ec:|:c _g^ 2/4 c:@|", :c), key: :e
+end
+
+def testZeroBased
+  Ziffers.set_zero_based true
+  zplay "q210r q210r e00001111 q210r"
+  zplay "q0123456789TE", scale: :chromatic
+  Ziffers.set_zero_based false
+end
+
+def testbinaural
+  with_synth :beep do zbin("q12345678") end
+  with_synth :beep do zbin("q12345678",{hz:10}) end
+  zbin("q12345678",{sustain: 0.25, sample: :ambi_glass_rub})
+  zbin("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub})
+  zbin("q12345678",{sustain: 0.25, sample: :ambi_glass_rub}, rate_based: true)
+  zbin("q12345678",{hz:10, sustain: 0.25, sample: :ambi_glass_rub}, rate_based: true)
+end
+
+def testeffects
+  zplay "Z5 B", use: {"B": :misc_cineboom, run:[{with_fx: :flanger, decay: 2, depth: 9 }]}
+  zplay "q 1234 5432", run: [{with_fx: :echo}]
+  zplay "q12 E 3453 !42", use:{"E": {run:[{with_fx: :echo}]}}
 end
 
 testzplay
@@ -202,16 +216,17 @@ testcontrolchars
 testrandom
 testslide
 testsingledegrees
+testarraydegrees
 testzsample
 testzmidi
-testUseChars
-testlsystem
-testpreparse
-testarraydegrees
 testzdrums
-testZeroBased
+testlsystem
 testSimult
 testListSyntax
+testUseChars
+testpreparse
+testZeroBased
+testeffects
 
 # These require ziffers_utils.rb
 #testbinaural
