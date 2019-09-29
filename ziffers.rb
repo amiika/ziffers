@@ -1,4 +1,4 @@
-print "Ziffers 0.92: Added effects and sample cutting. Changed chord default sleep to 1."
+print "Ziffers 1.0: See documentation for changes."
 
 module Ziffers
 
@@ -46,12 +46,18 @@ module Ziffers
 
   # Parses variable syntax and replaces the variables in a string
   # Example: "<x=2[1,2]> x b" -> "21 b"
+  # Example with propability: "<0.5%a=1> <0.9%b=2> a b" -> "1 2" or "2" or "1"
+  # Example with fallback: "<0.3%d=q1234!=wr> d" -> "q1234" or "wr"
   def replace_variable_syntax(n,rep={})
-    n = n.gsub(/\<(.)=(.*?)\>/) do
-      rep[$1] = replace_random_syntax($2)
+    n = n.gsub(/\<([0-9]*\.?[0-9]+)?%?(.)=(.*?)(?:(?:!=)(.*?))?\>/) do
+      alt_val = $4 ? $4 : ""
+      rep_val = (rand < $1.to_f ? $3 : alt_val) if $1
+      rep[$2] = replace_random_syntax(rep_val ? rep_val : $3)
       ""
     end
-    rep.each { |k,v| n.gsub!(/#{Regexp.escape(k)}/,v) }
+    rep.each do |k,v|
+      n.gsub!(/#{Regexp.escape(k)}/,v)
+    end
     n
   end
 
@@ -127,7 +133,11 @@ def zparse(n,opts={},shared={})
   control_chars = @@control_chars.clone
   control_chars.except!(*use.keys) if use
   n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
-  n = lsystem(n,opts[:rules],opts[:gen])[opts[:gen]-1] if opts[:rules]
+  if opts[:rules] and !shared[:lsystemloop] then
+    raise "gen: is not defined" if !opts[:gen]
+    gen = opts[:gen] ? opts[:gen] : 1
+    n = lsystem(n,opts[:rules],gen,nil)[gen-1]
+  end
   defaults = get_default_opts.merge(opts)
   noteLength = defaults[:sleep]
   adsr = defaults.slice(:attack,:decay,:sustain,:release)
@@ -227,6 +237,7 @@ def zparse(n,opts={},shared={})
             note = use_char[:note]
           elsif use_char[:sample]
             ziff[:sample_opts] = use_char
+            ziff[:sample_opts][:run] = use[:run] if !use_char[:run] and use[:run]
           elsif use_char[:run]
             raise ":run should be array of hashes" if !use_char[:run].kind_of?(Array)
             ziff[:run] = use_char[:run]
@@ -356,7 +367,7 @@ def zparse(n,opts={},shared={})
           end
         when '*' then # Recursive call from beginning to first *
           if dc then
-            notes = notes.concat(zparse(n.split('*')[0], defaults, shared.clone))
+            notes = notes.concat(zparse(n.split('*')[0], defaults.merge(pitch: ziff[:pitch]), shared.clone))
           else
             dc = !dc
           end
@@ -563,21 +574,13 @@ def play_ziff(ziff,defaults={})
       if defaults[:rate_based] && ziff[:note]!=nil then
         ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
       elsif ziff[:degree]!=nil && ziff[:degree]!=0 then
-        ziff[:pitch] = (scale 1, ziff[:scale])[ziff[:degree]-1]+ziff[:pitch]-0.999
+        ziff[:pitch] = (scale 1, ziff[:scale], num_octaves: 2)[ziff[:degree]-1]+ziff[:pitch]-0.999
       end
-      if ziff[:sample_dir] then
-        if ziff[:cut] then
-          ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration ziff[:sample_dir], ziff[:sample])+ziff[:cut]),1.0].sort[1] if ziff[:cut]
-          ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
-        end
-        c = sample ziff[:sample_dir], ziff[:sample], clean(ziff)
-      else
-        if ziff[:cut] then
-          ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration ziff[:sample])+ziff[:cut]),1.0].sort[1]
-          ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
-        end
-        c = sample ziff[:sample], clean(ziff)
+      if ziff[:cut] then
+        ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample])))*ziff[:cut],1.0].sort[1]
+        ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
       end
+      c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
     else
       if ziff[:synth] then
        c = synth ziff[:synth], clean(ziff)
@@ -604,7 +607,8 @@ def zmidi(melody,opts={},shared={})
 end
 
 def zplay(melody,opts={},defaults={})
-  effects = opts.delete(:run) if opts[:run]
+  defaults.merge!(opts.extract!(:rate_based)) # Extract common options to defaults
+  effects = opts.delete(:run) if opts[:run] # Get effects if any
   raise ":run should be array of hashes" if effects and !effects.kind_of?(Array)
   opts = get_default_opts.merge(opts)
   defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
@@ -652,6 +656,8 @@ def normalize_melody(melody, opts, defaults)
 end
 
 def zloop(name, ziff, opts={}, defaults={})
+  clean_loop_states # Clean loop states used with rules:
+  $zloop_states.delete(name) if opts.delete(:reset)
   raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
   raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
   if ziff.is_a?(Array) && ziff[0].is_a?(Hash) then
@@ -661,15 +667,60 @@ def zloop(name, ziff, opts={}, defaults={})
       defaults[:parsed] = true
   end
   live_loop name, opts.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
-    stop if opts[:stop] or (ziff.is_a?(String) and ziff.start_with? "//")
+    if opts[:stop] or (ziff.is_a?(String) and ziff.start_with? "//")
+      $zloop_states.delete(name)
+      stop
+    end
     if defaults[:preparsed] then
       zplay ziff, opts, defaults
     elsif parsed_ziff
       zplay parsed_ziff, opts.slice(:run), defaults
     else
-      zplay ziff, opts, defaults
+      if opts[:rules] and !opts[:gen] then
+        defaults[:lsystemloop] = true
+        if !$zloop_states[name] then # If first time
+          $zloop_states[name] = {}
+          $zloop_states[name][:ziff] = ziff
+          $zloop_states[name][:loop_i] = 0
+        else # Get new state from rules
+          $zloop_states[name][:loop_i] += 1
+          $zloop_states[name][:ziff] = (lsystem($zloop_states[name][:ziff], opts[:rules], 1, $zloop_states[name][:loop_i]))[0]
+        end
+        zplay $zloop_states[name][:ziff], opts, defaults
+      else
+        zplay ziff, opts, defaults
+      end
     end
   end
+end
+
+def clean_loop_states
+  if !$zloop_states then
+    $zloop_states = {}
+  else
+    $zloop_states = $zloop_states.select{|name| get_live_loops.include?(name)}
+  end
+end
+
+def get_live_loops(live_loops=[]) # TODO: Bit hacky. Maybe there is a better way?
+  Thread.list.each do |t|
+    sonic_thread = t.thread_variable_get(:sonic_pi_system_thread_locals)
+    if sonic_thread then
+      named_thread = sonic_thread.get(:sonic_pi_local_spider_users_thread_name)
+      if named_thread then
+        live_loops.push(named_thread.to_s.sub("live_loop_","").to_sym)
+      end
+    end
+  end
+  live_loops
+end
+
+def get_loop_states
+  $zloop_states
+end
+
+def reset_loop_states(states={})
+  $zloop_states = states
 end
 
 def block_with_effects(x,&block)
@@ -728,22 +779,33 @@ def lgen(ax,rules,gen)
   r+n.join
 end
 
-def lsystem(ax,rules,gen)
+def lsystem(ax,rules,gen,loopGen)
   gen.times.collect.with_index do |i|
+    i = loopGen if loopGen # If lsystem is used in loop instead of gens
     ax = rules.each_with_object(ax.dup) do |(k,v),s|
       v = v[i] if (v.is_a? Array or v.is_a? SonicPi::Core::RingVector) # [nil,"1"].ring -> every other
-      prob = v.match(/([0-9]*\.?[0-9]+)%=(.+)/) if v
-      v = prob[2] if prob
       if v then
         s.gsub!(/{{.*?}}|(#{k.is_a?(String) ? Regexp.escape(k) : k})/) do |m|
         g = Regexp.last_match.captures
-        if g[0] && (prob==nil || (prob && (rand < prob[1].to_f))) then
+        if v.is_a? Proc
+          if v.arity == 1 then
+            v = v.(i).to_s
+          elsif v.arity == 2
+            regexp_lambda = true
+            v = v.(i,g).to_s
+          else
+            v = v.().to_s
+          end
+        end
+        if g[0] then
           rep = replace_random_syntax(replace_variable_syntax(v))
-          rep = g.length>1 ? rep.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : rep.gsub("$",m)
-          rep = rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep
+          if !regexp_lambda then
+            rep = g.length>1 ? rep.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : rep.gsub("$",m)
+            rep = rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep
+          end
           "{{#{rep}}}" # Escape
         else
-          m # If escaped or rand<prob
+          m # If escaped
         end
       end
     end

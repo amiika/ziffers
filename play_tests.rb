@@ -123,11 +123,11 @@ def testarraydegrees
 end
 
 def testzsample
-  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", {hz: 4, sample:  :ambi_drone, key: "c1", sustain: 0.25})
-  zplay("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", {sample:  :ambi_drone, key: "c1", sustain: 0.25}, rate_based: true)
-  zplay("h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})
-  zplay("h3q323 q ~0.1 3666 h5.3 q ~0.25 3666 53 q ~0.2 3232222",{sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3})
-  zplay("q115566h5q443322h1 *|: q554433h2 :|*", sample: :ambi_glass_rub, rate: 2.1, amp: 0.2)
+  zplay "|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", sample: :ambi_drone, key: "c1", sustain: 0.25
+  zplay "|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|", sample: :ambi_drone, key: "c1", sustain: 0.25, rate_based: true
+  zplay "h3q323 ..q ~0.15 36 h5.3 ..q ~0.25 36 53 q ~0.25 3232222", sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3
+  zplay "h3q323 q ~0.1 3666 h5.3 q ~0.25 3666 53 q ~0.2 3232222", sample: :ambi_piano, sustain: 0.25, key: "c", amp: 3
+  zplay "q115566h5q443322h1 *|: q554433h2 :|*", sample: :ambi_glass_rub, rate: 2.1, amp: 0.2
 end
 
 def testzmidi
