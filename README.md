@@ -540,9 +540,24 @@ Loops can be stopped by commenting out the content like:
 zloop :foo, "//4321"
 ```
 
+It is also possible to use predefined mapping with **use** parameter and predefined loops **z0-z20**.
+
+Example
+```
+s = { B: :bd_fat, H: :drum_cymbal_closed, C: :bass_voxy_hit_c } # Predefined sample mappings
+
+zloop :beat, "q B H (B B) H", use: s # Named loop
+
+z1 "q B H (B B) H", use: s # Predefined loop :z1
+
+z2 "(r (C C) r (C C) )", use: s # Predefined loop :z2
+```
+
 ### z0 - z20
 
-There are 20 prenamed loops *z0* to *z20* which are just shorthands for **zloop** (Because you need shorthands for shorthands). For example:
+There are 20 prenamed loops *z0* to *z20* which are just shorthands for **zloop** (Because you need shorthands for shorthands).
+
+Example:
 ```
 z1 "| h (BH r H) (H r BH) | (BS H S) (HB r (H H)) |", groups: true, B: :drum_bass_hard, H: :drum_cymbal_closed, S: :drum_snare_soft
 ```
@@ -633,20 +648,6 @@ Helper that creates array from hash, for example:
 n = zparse("1,2")
 print zparams(n,:note)
 # Prints [60,62]
-```
-
-## zloop and z0 - z20
-
-Looper function that wraps **zplay** inside **live_loop**.
-
-```
-s = { B: :bd_fat, H: :drum_cymbal_closed, C: :bass_voxy_hit_c } # Predefined sample mappings
-
-zloop :beat, "q B H (B B) H", use: s # Named loop
-
-z1 "q B H (B B) H", use: s # Predefined loop :z1
-
-z2 "(r (C C) r (C C) )", use: s # Predefined loop :z2
 ```
 
 # Using ziffers with Sonic Pi methods
