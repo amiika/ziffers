@@ -398,7 +398,6 @@ Examples using the scale:
 # * multiply the chord notes by octave
 # / take n notes from the scale
 zplay "i"   # Plays trichord, same as i/3
-zplay "i*2" # Plays chord in two octaves
 zplay "i/1" # Plays root
 zplay "i/4" # Plays 7th chord
 zplay "i/5" # Plays 9th chord
@@ -412,6 +411,7 @@ zplay "i vi", chord_name: :dim
 zplay "i vi^dim"
 zplay "i vi", chord_name: "m11+"
 zplay "i vi^m11+"
+zplay "i^maj*2" # Plays chord in two octaves
 ```
 
 Chords can also be inverted using % char, for example %1 to invert all following chords up by one:
@@ -555,7 +555,7 @@ z2 "(r (C C) r (C C) )", use: s # Predefined loop :z2
 
 ### z0 - z20
 
-There are 20 prenamed loops *z0* to *z20* which are just shorthands for **zloop** (Because you need shorthands for shorthands).
+There are 20 prenamed loops **z0** to **z20** which are just shorthands for **zloop** (Because you need shorthands for shorthands).
 
 Example:
 ```

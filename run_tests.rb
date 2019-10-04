@@ -35,7 +35,6 @@ def test2
 end
 
 def test3
-  
   m3_1 = zparse "w 6 ((64)(4321)) 83"
   m3_2 = zparse "w 6 q64 e4321 w 83"
   m3_1_s = zparams(m3_1,:sleep)
@@ -48,8 +47,31 @@ def test3
   
 end
 
+def test4
+  t4 = zparse "i", key: :d, scale: :major
+  t4_n = zparams(t4,:notes)[0].to_a
+  assert_equal(t4_n,(chord_degree :i, :d, :major, 3).to_a)
+  
+  t4_2 = zparse "i/1", key: :d, scale: :major
+  t4_2_n = zparams(t4_2,:notes)[0].to_a
+  assert_equal(t4_2_n,(chord_degree :i, :d, :major, 1).to_a)
+  
+  t4_3 = zparse "i^maj*2", key: :d, scale: :major
+  t4_3_n = zparams(t4_3,:notes)[0].to_a
+  assert_equal(t4_3_n,(chord :d, :major, num_octaves: 2).to_a)
+  
+end
+
+def test5
+  t5 = zparse "q987654321-1-2-3-4-5-6-7-8-9", key: :c
+  t5n = zparams t5, :note
+  assert_equal(t5n,[74, 72, 71, 69, 67, 65, 64, 62, 60, 59, 57, 55, 53, 52, 50, 48, 47, 45])
+end
+
 test1
 test2
 test3
+test4
+test5
 
 print "All tests passed!"
