@@ -562,6 +562,26 @@ Example:
 z1 "| h (BH r H) (H r BH) | (BS H S) (HB r (H H)) |", groups: true, B: :drum_bass_hard, H: :drum_cymbal_closed, S: :drum_snare_soft
 ```
 
+## Sync, cue and wait
+
+Ziffers loops can be controlled using cue, sync and wait. Syncing is required to sync new loops while live coding.
+
+If you forget sync while live coding things will get south!
+
+Sync example:
+```
+z1 "q 1234"
+# Uncomment following row later to sync z2 with z1
+# z2 "q 3456", sync: :z1
+```
+
+Cues can be assingned with characters assignation in the middle of the melody. This way other loops may wait for the cues and only play partial melody and wait for the next cue:
+
+```
+z1 "q 1324 C 4321 4321", C: {cue: :foo}
+z2 "q 6666", wait: :foo
+```
+
 ## Run with Effects
 
 Ziffers methods like **zplay**, **zloop**, **z1** etc. can be run with Sonic Pi FX effects (and some other blocks) by defining **run** array.
@@ -602,6 +622,50 @@ use: {
   K: { sample: :drum_snare_soft },
   run: [{with_fx: :echo}]
 }
+```
+
+## Adjust parameters
+
+Parameters can be adjusted on the fly using **adjust** and **zrange**. Adjust parameter takes in array or ring. Array is used for fade in and fade out. Ring can be used to continuously adjust some parameter like **pan**.
+
+Examples:
+```
+
+z1 "1234567", adjust: {amp: range(0,1,step:0.1).to_a}
+
+z1 "1234567", adjust: {amp: zrange(:linear,0,1,20)}
+
+z1 "1234567", adjust: {pan: zrange(:cubic,-1,1,10).ring}
+
+z1 "q1234567", adjust: {pan: zrange(:expo,-1,1,10).ring.mirror
+```
+
+### zrange
+
+**zrange** creates array that can be used in fading etc.  
+
+Available easing / fading functions:
+
+:sine, :quad, :cubic, :quart, :quint, :expo, :circ, :back, :bounce
+
+For visual aid see [easings.net](https://easings.net/).
+
+Examples:
+
+```
+quad = (zrange :quad,-1,1,10).ring.mirror
+expo = (zrange :expo,0,10,30).ring.mirror
+sine = (zrange :cubic,0,30,100).ring.mirror
+quint = (zrange :quint,0,20,40).ring.mirror
+
+live_loop :beat do
+  with_fx :pan, pan: quad.tick do
+    play 60+expo.look
+    play 30+sine.look
+    play 70+quint.look, amp: 0.1
+    sleep 0.1
+  end
+end
 ```
 
 ## zmidi
@@ -670,6 +734,39 @@ play_pattern_timed notes, durations
 ```
 
 Look under examples to see other ways to use zparse and other Sonic Pi projects, such as Markov chains.
+
+# Modifying melodies
+
+Ziffers melodies can be changed using during "compile" using **phase**, **inverse**, **offset** or **retrograde**. Some changes can also be done "realtime" during playing, like **detune**.
+
+Inverse, offset and add is guaranteed to work only with the zero based notation. Documentation TBD.
+
+## Phase
+
+Phase can be used to alter the start of the melody causing phasing effect when multiple loops are playing.
+
+Example:
+```
+z1 "q 1234"
+z2 "q 1234", sync: :z1, phase: 0.1
+```
+
+## Retrograde
+
+Retrograde inverses the melody. Use **retrograde: true** to inverse the whole melody.
+
+Partial melody **retrograde: [2,4]** where first value is the start index and last valie is the end index.
+
+Splitted melody **retrograde: 3** where value is the number of parts the melody is splitted before the reverse.
+
+## Detune
+
+Detune can be used to alter the tuning of the synths with hz offset. This can be used to produce dissonance or for example binaural frequencies:
+
+```
+z1 "P1 q1234", detune: 10
+z2 "P-1 q1234"
+```
 
 # Fractal melodies
 

@@ -43,10 +43,13 @@ def testchords
 end
 
 def testinverseoffset
+  Ziffers.set_zero_based true
+  # inverse and offset works only for zero based notation
   in_thread do
-    zplay "|:q.1.1|q1e2q.3|3e2q3e4|h.5|e888555333111|q5e4q3e2|h.1:|", inverse: 1, offset: -2
+    zplay "|:q.0.0|q0e1q.2|2e1q2e3|h.4|e777444222000|q4e3q2e1|h.0:|", inverse: true, offset: -4
   end
-  zplay "|:q.1.1|q1e2q.3|3e2q3e4|h.5|e888555333111|q5e4q3e2|h.1:|"
+  zplay "|:q.0.0|q0e1q.2|2e1q2e3|h.4|e777444222000|q4e3q2e1|h.0:|"
+  Ziffers.set_zero_based false
 end
 
 def testcontrolchars

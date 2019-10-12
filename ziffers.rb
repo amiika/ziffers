@@ -1,4 +1,4 @@
-print "Ziffers 1.0: See documentation for changes."
+print "Ziffers 1.1: Added adjust, zrange, cue and wait, detune, phase, lambda support for rules"
 
 module Ziffers
 
@@ -7,6 +7,39 @@ module Ziffers
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
   @@zero_based = false
   @@groups = false
+  $easing = {
+     linear: -> (t, b, c, d) { c * t / d + b },
+     in_quad: -> (t, b, c, d) { c * (t/=d)*t + b },
+     out_quad: -> (t, b, c, d) { -c * (t/=d)*(t-2) + b },
+     quad: -> (t, b, c, d) { ((t/=d/2) < 1) ? c/2*t*t + b : -c/2 * ((t-=1)*(t-2) - 1) + b },
+     in_cubic: -> (t, b, c, d) { c * (t/=d)*t*t + b },
+     out_cubic: -> (t, b, c, d) { c * ((t=t/d-1)*t*t + 1) + b },
+     cubic: -> (t, b, c, d) { ((t/=d/2) < 1) ? c/2*t*t*t + b : c/2*((t-=2)*t*t + 2) + b },
+     in_quart: -> (t, b, c, d) { c * (t/=d)*t*t*t + b },
+     out_quart: -> (t, b, c, d) { -c * ((t=t/d-1)*t*t*t - 1) + b },
+     quart: -> (t, b, c, d) { ((t/=d/2) < 1) ? c/2*t*t*t*t + b : -c/2 * ((t-=2)*t*t*t - 2) + b },
+     in_quint: -> (t, b, c, d) { c * (t/=d)*t*t*t*t + b},
+     out_quint: -> (t, b, c, d) { c * ((t=t/d-1)*t*t*t*t + 1) + b },
+     quint: -> (t, b, c, d) { ((t/=d/2) < 1) ? c/2*t*t*t*t*t + b : c/2*((t-=2)*t*t*t*t + 2) + b },
+     in_sine: -> (t, b, c, d) { -c * Math.cos(t/d * (Math::PI/2)) + c + b },
+     out_sine: -> (t, b, c, d) { c * Math.sin(t/d * (Math::PI/2)) + b},
+     sine: -> (t, b, c, d) { -c/2 * (Math.cos(Math::PI*t/d) - 1) + b },
+     in_expo: -> (t, b, c, d) { (t==0) ? b : c * (2 ** (10 * (t/d - 1))) + b},
+     out_expo: -> (t, b, c, d) { (t==d) ? b+c : c * (-2**(-10 * t/d) + 1) + b },
+     expo: -> (t, b, c, d) { t == 0 ? b : (t == d ? b + c : (((t /= d/2) < 1) ? (c/2) * 2**(10 * (t-1)) + b : ((c/2) * (-2**(-10 * t-=1) + 2) + b))) },
+     in_circ: -> (t, b, c, d) { -c * (Math.sqrt(1 - (t/=d)*t) - 1) + b },
+     out_circ: -> (t, b, c, d) { c * Math.sqrt(1 - (t=t/d-1)*t) + b },
+     circ: -> (t, b, c, d) { ((t/=d/2) < 1) ? -c/2 * (Math.sqrt(1 - t*t) - 1) + b : c/2 * (Math.sqrt(1 - (t-=2)*t) + 1) + b },
+     out_back: -> (t, b, c, d, s=1.70158) { ((t/=d/2) < 1) ? c/2*(t*t*(((s*=(1.525))+1)*t - s)) + b : c/2*((t-=2)*t*(((s*=(1.525))+1)*t + s) + 2) + b },
+     in_back: -> (t, b, c, d, s=1.70158) { c*(t/=d)*t*((s+1)*t - s) + b },
+     back: -> (t, b, c, d, s=1.70158) { ((t/=d/2) < 1) ? c/2*(t*t*(((s*=(1.525))+1)*t - s)) + b : c/2*((t-=2)*t*(((s*=(1.525))+1)*t + s) + 2) + b},
+     out_bounce: -> (t, b, c, d) { ((t/=d) < (1/2.75)) ? c*(7.5625*t*t) + b :  (t < (2/2.75)) ? c*(7.5625*(t-=(1.5/2.75))*t + 0.75) + b : (t < (2.5/2.75)) ? c*(7.5625*(t-=(2.25/2.75))*t + 0.9375) + b : c*(7.5625*(t-=(2.625/2.75))*t + 0.984375) + b },
+     in_bounce: -> (t, b, c, d) { c - ($easing[:out_bounce].call((d-t), 0, c, d)) + b },
+     bounce: -> (t, b, c, d) { (t < d/2) ?  $easing[:in_bounce].call(t*2, 0, c, d) * 0.5 + b : $easing[:in_bounce].call(t*2-d, 0, c, d) * 0.5 + c*0.5 + b }
+     # Derived from:
+     # https://github.com/danro/jquery-easing/blob/master/jquery.easing.js
+     # https://github.com/Michaelangel007/easing/blob/master/js/core/easing.js
+  }
 
   def get_default_opts
     @@default_opts
@@ -42,6 +75,10 @@ module Ziffers
 
   def merge_synth_defaults
     @@default_opts.merge!(Hash[current_synth_defaults.to_a])
+  end
+
+  def zrange(func,start,finish,duration,time=nil)
+    (0..duration).map { |t| time ? $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f,time.to_f) : $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f) }
   end
 
   # Parses variable syntax and replaces the variables in a string
@@ -236,6 +273,7 @@ def zparse(n,opts={},shared={})
           if use_char[:port] or use_char[:channel] then
             ziff[:port] = use_char[:port] if use_char[:port]
             ziff[:channel] = use_char[:channel] if use_char[:channel]
+            ziff[:cue] = use_char[:cue] if use_char[:cue]
             current_ziff_keys+=[:port,:channel]
             note = use_char[:note] if use_char[:note]
             ziff[:notes] = use_char[:notes] if use_char[:notes]
@@ -246,6 +284,7 @@ def zparse(n,opts={},shared={})
             raise ":run should be array of hashes" if use_char[:run] and !use_char[:run].kind_of?(Array)
             ziff.merge! use_char
           end
+          current_ziff_keys+=[:cue] if use_char[:cue]
         else
           ziff[:sample_opts] = {sample: use_char} if use_char.is_a? Symbol
           ziff[:sample_opts][:run] = use[:run] if use[:run]
@@ -394,11 +433,23 @@ def zparse(n,opts={},shared={})
       end
       # If any degree was parsed, parse note and add to hasharray
       if dgr!=nil || note!=0 then
+
         if dgr!=nil then
+
           dgr = -(dgr) if negative
-          dgr = -(dgr)+ziff[:inverse]+(ziff[:offset] ? ziff[:offset] : 0) if ziff[:inverse] && dgr!=ziff[:inverse] && dgr!=0
-          dgr = ((dgr+ziff[:offset])<=0) ? (dgr+ziff[:offset])-1 : dgr+ziff[:offset] if ziff[:offset]
+          dgr = dgr+ziff[:add] if ziff[:add]
+
+          if ziff[:inverse] then
+            if (ziff[:inverse].is_a? Numeric) && dgr!=ziff[:inverse] then
+              dgr = -((dgr-ziff[:inverse])-ziff[:inverse])
+            elsif (ziff[:inverse].is_a? TrueClass)
+              dgr = -(dgr)
+            end
+          end
+
+          dgr = dgr+ziff[:offset] if ziff[:offset]
           note = get_note_from_dgr(dgr, ziff[:key], ziff[:scale])
+
         end
         if slideNext then
           controlZiff[:degree] = dgr
@@ -430,6 +481,7 @@ def zparse(n,opts={},shared={})
 
           ziff[:degree] = dgr
           ziff[:note] = note
+          ziff[:note] = hz_to_midi(midi_to_hz(ziff[:note])+shared[:detune]) if shared[:detune]
 
           if dgr_lengths then # Custom map for degree lengths: { 1:0.5, 2:0.25 }
             dgr_sleep = dgr_lengths[dgr] # Try -1 or 9 etc. otherwise try with real degrees
@@ -584,7 +636,7 @@ def zparams(hash, name)
 end
 
 def clean(ziff)
-  ziff.except(:rules,:eval,:gen,:arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
+  ziff.except(:cue,:rules,:eval,:gen,:arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
 end
 
 def play_midi_out(md, opts)
@@ -592,6 +644,7 @@ def play_midi_out(md, opts)
 end
 
 def play_ziff(ziff,defaults={})
+  cue ziff[:cue] if ziff[:cue]
   if ziff[:skip] then
     print "Skipping note"
   elsif ziff[:notes] then
@@ -657,6 +710,8 @@ end
 def zplay(melody,opts={},defaults={})
   defaults.merge!(opts.extract!(:rate_based)) # Extract common options to defaults
   effects = opts.delete(:run) if opts[:run] # Get effects if any
+  defaults[:detune] = opts.delete(:detune) if opts[:detune]
+  defaults[:adjust] = opts.delete(:adjust) if opts[:adjust]
   raise ":run should be array of hashes" if effects and !effects.kind_of?(Array)
   opts = get_default_opts.merge(opts)
   defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
@@ -671,8 +726,16 @@ def zplay(melody,opts={},defaults={})
 end
 
 def zplayer(melody,opts={},defaults={})
+  tick_reset(:adjust) if defaults.delete(:readjust)
   melody.each do |ziff|
       ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
+      if defaults[:adjust] then
+        defaults[:adjust].each do |key,val|
+          t = tick(:adjust)
+          #TODO: Not optimal solution. This overwrites all following changes on the fly.
+          ziff[key] = val[t] ? val[t] : val[val.length-1]
+        end
+      end
       if ziff[:run] then
         block_with_effects ziff[:run].clone do
           play_ziff(ziff,defaults)
@@ -706,6 +769,16 @@ end
 def zloop(name, ziff, opts={}, defaults={})
   clean_loop_states # Clean unused loop states
   $zloop_states.delete(name) if opts.delete(:reset)
+  if opts[:adjust]
+    defaults[:adjust] = opts.delete(:adjust)
+    defaults[:readjust] = true if not (opts.delete(:readjust)==false)
+  end
+  defaults[:detune] = opts.delete(:detune) if opts[:detune]
+  defaults[:wait] = opts.delete(:wait) if opts[:wait]
+  if opts[:phase]
+    defaults[:phase] = opts.delete(:phase)
+    defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
+  end
   raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
   raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
   if ziff.is_a?(Array) && ziff[0].is_a?(Hash) then
@@ -720,6 +793,11 @@ def zloop(name, ziff, opts={}, defaults={})
   end
   $zloop_states[name][:when] = opts.delete(:when) if opts[:when]
   live_loop name, opts.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
+    sync defaults[:wait] if defaults[:wait]
+    if defaults[:phase]
+      phase = defaults[:phase].is_a?(Array) ? defaults[:phase][$zloop_states[name][:loop_i] % defaults[:phase].length] : defaults[:phase]
+      sleep phase
+    end
     if opts[:stop] or (ziff.is_a?(String) and ziff.start_with? "//")
       $zloop_states.delete(name)
       stop
@@ -741,14 +819,14 @@ def zloop(name, ziff, opts={}, defaults={})
     else
       if opts[:rules] and !opts[:gen] then
         defaults[:lsystemloop] = true
-        $zloop_states[name][:ziff] = ziff
+        $zloop_states[name][:ziff] = ziff if !$zloop_states[name][:ziff]
         $zloop_states[name][:ziff] = (lsystem($zloop_states[name][:ziff], opts[:rules], 1, $zloop_states[name][:loop_i]))[0]
         zplay $zloop_states[name][:ziff], opts, defaults
       else
         zplay ziff, loop_opts ? loop_opts : opts, defaults
       end
-      $zloop_states[name][:loop_i] += 1
     end
+    $zloop_states[name][:loop_i] += 1
   end
 end
 
@@ -844,32 +922,30 @@ def lsystem(ax,rules,gen,loopGen)
       v = v[i] if (v.is_a? Array or v.is_a? SonicPi::Core::RingVector) # [nil,"1"].ring -> every other
       if v then
         s.gsub!(/{{.*?}}|(#{k.is_a?(String) ? Regexp.escape(k) : k})/) do |m|
-        g = Regexp.last_match.captures
-        if v.is_a? Proc
-          if v.arity == 1 then
-            v = v.(i).to_s
-          elsif v.arity == 2
-            regexp_lambda = true
-            v = v.(i,g).to_s
+          g = Regexp.last_match.captures
+          if g[0] and !g[0].empty? then # If there is at least one match
+            if v.is_a? Proc then
+              if v.arity == 1 then
+                rep = v.(i).to_s
+              elsif v.arity == 2
+                rep = v.(i,g).to_s
+              else
+                rep = v.().to_s
+              end
+            else # If not using lambda
+              rep = replace_random_syntax(replace_variable_syntax(v))
+              rep = g.length>1 ? rep.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : rep.gsub("$",m)
+              rep = rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep
+            end
+            "{{#{rep}}}" # Escape
           else
-            v = v.().to_s
+            m # If escaped
           end
-        end
-        if g[0] then
-          rep = replace_random_syntax(replace_variable_syntax(v))
-          if !regexp_lambda then
-            rep = g.length>1 ? rep.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : rep.gsub("$",m)
-            rep = rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep
-          end
-          "{{#{rep}}}" # Escape
-        else
-          m # If escaped
         end
       end
     end
+    ax = ax.gsub(/{{(.*?)}}/) {$1}
   end
-  ax = ax.gsub(/{{(.*?)}}/) {$1}
-end
 end
 
 def zpreparse(n,key)
