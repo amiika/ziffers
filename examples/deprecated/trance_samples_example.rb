@@ -1,10 +1,6 @@
 load "~/ziffers/ziffers.rb"
 
-Ziffers.setSimultanious true
-
 use_bpm 120
-
-print Ziffers.durations
 
 live_loop :ambient do
   with_synth :dark_ambience do

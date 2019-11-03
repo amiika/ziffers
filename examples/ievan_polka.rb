@@ -1,10 +1,10 @@
 require "~/ziffers/ziffers.rb"
 
 ievanpolka = \
-  "@|:q1e11q12|q3113;q2_77^2|q31h1;q.5e4q32|q31h1:|"\
-  " |:q5e55q43|q2_77^2;q4e44q32|q3113;q4e44q32|q31h1:|@"
+  "|:q0 e0 0 q0 1| q2 0 0 2 |;q1 _6 6 ^1 |q2 0 h0 ; q. 4 e3 q2 1|q2 0 h0:|"\
+  "|:q4 e4 4 q3 2|q1 _6 6 ^1|;q3 e3 3 q2 1|q2 0 0 2;q3 e3 3 q2 1|q2 0 h0:|"
 
-n = zparse(ievanpolka,{key:"g", scale:"minor"})
+n = zparse ievanpolka, key:"g", scale:"minor"
 notes = zparams(n, :note)
 pitch = zparams(n, :pitch)
 notes = [notes,pitch].transpose.map {|x| x.reduce(:+)}

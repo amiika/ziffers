@@ -1,5 +1,7 @@
 require "~/ziffers/ziffers.rb"
 
+# TODO: Fix this example! zrdums is removed.
+
 live_loop :boom do
   zdrums("q 1 r r 1",{key: :c,scale: :minor})
 end

@@ -1,12 +1,11 @@
-print "Ziffers 1.1: Added adjust, zrange, cue and wait, detune, phase, lambda support for rules"
+print "Ziffers 1.2: Breaking changes. Read new wiki."
 
 module Ziffers
 
   @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, "=": :eval }
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
-  @@zero_based = false
-  @@groups = false
+
   $easing = {
      linear: -> (t, b, c, d) { c * t / d + b },
      in_quad: -> (t, b, c, d) { c * (t/=d)*t + b },
@@ -51,22 +50,6 @@ module Ziffers
 
   def self.set_default_sleep(sleep)
     @@default_sleep[:sleep] = sleep.to_f
-  end
-
-  def self.set_zero_based(bool)
-    @@zero_based = bool
-  end
-
-  def self.is_zero_based
-    @@zero_based
-  end
-
-  def self.set_groups(bool)
-    @@groups = bool
-  end
-
-  def self.is_grouped
-    @@groups
   end
 
   def self.durations
@@ -120,7 +103,7 @@ end
 def replace_random_sequence(n)
   return n if !n.include?("(")
   # Debug: https://www.debuggex.com/r/1VusJWIiV_hRy3zt
-  n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\.\.\d+))\)\+?(\d+)?(\?)?(\d+)?@?([1-9.\(\)\+\?]+)?(%[\w])?\^?([a-z]+)?\*?(\d+)?'?(.*?)'?/) do
+  n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\.\.\d+))\)\+?(\d+)?(\?)?(\d+)?@?([1-9.\(\)\+\?]+)?(%[\w])?\^?([a-z]+)?\*?(\d+)?(?:'(.*)')?/) do
     m = Regexp.last_match.captures
     resultArr=[]
     (m[12] ? m[12].to_i : 1).times do # *3
@@ -130,7 +113,7 @@ def replace_random_sequence(n)
         e = m[2].to_i
         ms = s>e ? e : s # 1..7
         me = e>s ? e : s # 7..1
-        nArr = (m[6] ? (ms..me).step(m[6].to_i).to_a : (ms..me).to_a) - [0]
+        nArr = (m[6] ? (ms..me).step(m[6].to_i).to_a : (ms..me).to_a)
         nArr = nArr.reverse if s>e
       end
       nArr = rrand_i(m[3].to_i,m[4].to_i).to_s.chars if m[3] && m[4] # 1,3
@@ -143,7 +126,7 @@ def replace_random_sequence(n)
       nArr = (lArr.length<nArr.length ? lArr*(nArr.length/lArr.length) : lArr).zip(nArr) if lArr
       resultArr += nArr
     end
-    m[13] ? resultArr.join(m[13]) : resultArr.join
+    m[13] ? resultArr.join(m[13]) : resultArr.join(' ')
   end
   n
 end
@@ -157,8 +140,11 @@ def zparse(n,opts={},shared={})
   dotLength = 1.0
   sfaddition, dot, loopCount, note = 0, 0, 0, 0, 0
   escapeType = nil
-  midi = shared[:midi] ? true : false
-  groups = (opts[:groups] ? opts.delete(:groups) : @@groups)
+  midi = opts.key?(:midi) ? opts.delete(:midi) : false
+  if !midi then
+    shared[:groups] = (shared.key?(:groups) ? shared[:groups] : opts.key?(:groups) ? opts.delete(:groups) : true)
+    groups = shared[:groups]
+  end
   if opts[:use] then
     use = opts.delete(:use)
   else
@@ -168,10 +154,10 @@ def zparse(n,opts={},shared={})
       use = parsed_use
     end
   end
-  retrograde = opts.delete(:retrograde) if opts[:retrograde]
   dgr_lengths = opts.delete(:lengths) if opts[:lengths]
   control_chars = @@control_chars.clone
   control_chars.except!(*use.keys) if use
+  n = lsystem(n,opts.delete(:replace),1,nil)[0] if opts[:replace]
   n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
   if opts[:rules] and !shared[:lsystemloop] then
     raise "gen: is not defined" if !opts[:gen]
@@ -209,8 +195,8 @@ def zparse(n,opts={},shared={})
             dgr = eval(stringFloat)
           elsif escapeType == :scale || escapeType == :synth then
             ziff[escapeType] = search_list(escapeType == :scale ? scale_names : synth_names, stringFloat)
-          elsif escapeType == :key then
-            ziff[:key] = stringFloat.to_s
+          elsif escapeType == :key or escapeType == :value then
+            ziff[escapeType] = stringFloat.to_s
           elsif escapeType == :arpeggio then
             ziff[:arpeggio] = zparse stringFloat, key: ziff[:key], scale: ziff[:scale], groups: groups
           elsif escapeType == :chord_invert || escapeType == :channel then
@@ -244,18 +230,21 @@ def zparse(n,opts={},shared={})
             if sfaddition > 0 then
               ziff[:notes] = ziff[:notes]+sfaddition
             end
-          elsif escapeType == :sleep then
-            if stringFloat.include? "/" then
-              sarr = stringFloat.split("/")
-              noteLength = sarr[0].to_f/sarr[1].to_f
-            else
-              noteLength = stringFloat.to_f
+            if !chord_octaves  && ziff[:chord_octaves] && ziff[:chord_octaves]>1 then
+              octave_notes = []
+              1.upto(ziff[:chord_octaves]-1) do |ci|
+                ziff[:notes].each do |n|
+                  octave_notes.push(ci*12+n)
+                end
+              end
+              ziff[:notes]+=octave_notes
             end
-            ziff[:sleep] = noteLength
+          elsif escapeType == :sleep then
+            noteLength = stringFloat.to_f
           elsif [:release,:sustain,:attack,:decay].include?(escapeType) then
             adsr[escapeType] = stringFloat.to_f
           else
-            # ~ and something else?
+            # ~ and something else?"
             ziff[escapeType] = stringFloat.to_f
           end
         else
@@ -266,10 +255,17 @@ def zparse(n,opts={},shared={})
         quoted = false
       elsif escape && (["=",".","+","-","/","*","^"," ",")","("].include?(c) || c=~/^[a-zA-Z0-9]+$/) then
         stringFloat+=c
+      elsif escape && (ziff[:lambda] or ziff[:send])
+        stringFloat+=c
       elsif use and use.key?(c.to_sym) then
         use_char = use[c.to_sym]
         raise ":run should be array of hashes" if use[:run] and !use[:run].kind_of?(Array)
-        if (use_char.is_a? Hash) then
+        if (use_char.is_a? Proc) then
+          ziff[:lambda] = use_char
+          current_ziff_keys+=[:lambda,:value]
+          escape = true
+          escapeType = :value
+        elsif (use_char.is_a? Hash) then
           if use_char[:port] or use_char[:channel] then
             ziff[:port] = use_char[:port] if use_char[:port]
             ziff[:channel] = use_char[:channel] if use_char[:channel]
@@ -285,9 +281,20 @@ def zparse(n,opts={},shared={})
             ziff.merge! use_char
           end
           current_ziff_keys+=[:cue] if use_char[:cue]
+          current_ziff_keys+=[:lambda] if use_char[:lambda]
         else
-          ziff[:sample_opts] = {sample: use_char} if use_char.is_a? Symbol
-          ziff[:sample_opts][:run] = use[:run] if use[:run]
+          if use_char.is_a? Symbol then
+            if respond_to? use_char then
+              # If symbol is define function
+              ziff[:send] = use_char
+              current_ziff_keys+=[:send,:value]
+              escape = true
+              escapeType = :value
+            else
+              ziff[:sample_opts] = {sample: use_char}
+              ziff[:sample_opts][:run] = use[:run] if use[:run]
+            end
+          end
           note = use_char if use_char.is_a? Integer
         end
       elsif @@default_durs.key?(c.to_sym) then
@@ -308,17 +315,12 @@ def zparse(n,opts={},shared={})
           end
         when "'" then
           quoted = true
-        when 'T' then
-          dgr = 10
-        when 'E' then
-          dgr = 11
         when 'r' then
           note = :r
         when '/' then
+          # Removed fraction sleep syntax!
           if next_c=='/' then
             ziff[:skip]=!ziff[:skip]
-          else
-            stringFloat+=c
           end
         when '!' then
           # Reset node options to defaults
@@ -329,31 +331,28 @@ def zparse(n,opts={},shared={})
         when '.' then
           dot+=1
           dotLength = (2.0-(1.0/(2*dot))) # https://en.wikipedia.org/wiki/Dotted_note
-        when "0" then
-          if midi then
-          stringFloat+=c
-        elsif @@zero_based
-          dgr = 0
-        end
-        when /^[1-9]+$/ then
-          if midi then
+      when /^[0-9TE]+$/ then
+          if c == "T" then
+           c_int = 10
+          elsif c == "E"
+           c_int = 11
+          else
+           c_int = c.to_i
+          end
+          if midi && c!="T" && c!="E" then
             stringFloat+=c
-          elsif next_c=='/' then
-            escape = true
-            escapeType = :sleep
-            stringFloat = c
-          elsif groups and (next_c =~ /[0-9#&^_-]/)
-            customChord.push(get_note_from_dgr(c.to_i,(ziff[:chord_key]!=nil ? ziff[:chord_key] : ziff[:key]),ziff[:scale])+sfaddition)
-            customChordDegrees.push(c.to_i)
-          elsif groups and customChord.length>0 and !(next_c =~ /[0-9#&^_-]/)
-            customChord.push(get_note_from_dgr(c.to_i,(ziff[:chord_key]!=nil ? ziff[:chord_key] : ziff[:key]),ziff[:scale])+sfaddition)
-            customChordDegrees.push(c.to_i)
+          elsif !slideNext and groups and (next_c =~ /[0-9TE#&^_-]/)
+            customChord.push(get_note_from_dgr(c_int,(ziff[:chord_key]!=nil ? ziff[:chord_key] : ziff[:key]),ziff[:scale])+sfaddition)
+            customChordDegrees.push(c_int)
+          elsif !slideNext and groups and customChord.length>0 and !(next_c =~ /[0-9TE#&^_-]/)
+            customChord.push(get_note_from_dgr(c_int,(ziff[:chord_key]!=nil ? ziff[:chord_key] : ziff[:key]),ziff[:scale])+sfaddition)
+            customChordDegrees.push(c_int)
             ziff[:notes] = customChord
             ziff[:degrees] = customChordDegrees
             customChord=[]
             customChordDegrees=[]
           else
-            dgr = c.to_i # Plain degrees 1234 etc.
+            dgr = c_int # Plain degrees 1234 etc.
           end
         when '?' then
           if escape then
@@ -438,6 +437,7 @@ def zparse(n,opts={},shared={})
 
           dgr = -(dgr) if negative
           dgr = dgr+ziff[:add] if ziff[:add]
+          dgr = dgr+get_real_dgr(ziff[:addmod].to_i, ziff[:key], ziff[:scale]) if ziff[:addmod]
 
           if ziff[:inverse] then
             if (ziff[:inverse].is_a? Numeric) && dgr!=ziff[:inverse] then
@@ -448,9 +448,14 @@ def zparse(n,opts={},shared={})
           end
 
           dgr = dgr+ziff[:offset] if ziff[:offset]
+          dgr = dgr+get_real_dgr(ziff[:offsetmod],ziff[:key],ziff[:scale]) if ziff[:offsetmod]
+
+          dgr = get_real_dgr(dgr, ziff[:key], ziff[:scale]) if ziff[:real]
+
           note = get_note_from_dgr(dgr, ziff[:key], ziff[:scale])
 
         end
+
         if slideNext then
           controlZiff[:degree] = dgr
           controlZiff[:note] = note
@@ -465,6 +470,7 @@ def zparse(n,opts={},shared={})
           if next_c == nil || next_c == ' ' then
             slideNext = false # Slide ends
             ziff[:control] = controlBuffer
+            # TODO: Change release to calculated value from all control ziffs
             ziff[:release] = (ziff[:sleep]==0 ? 1 : ziff[:sleep]) * (ziff[:control].length+1)
             noteBuffer.push(ziff.clone) if loop && loopCount<1 # : buffer
             ziff = ziff.clone # Clone opts to next object
@@ -472,6 +478,7 @@ def zparse(n,opts={},shared={})
             controlBuffer = []
           end
         else
+
           if escapeType==:note_slide then
             slideNext=true # Slide starts
             escapeType=nil
@@ -481,7 +488,6 @@ def zparse(n,opts={},shared={})
 
           ziff[:degree] = dgr
           ziff[:note] = note
-          ziff[:note] = hz_to_midi(midi_to_hz(ziff[:note])+shared[:detune]) if shared[:detune]
 
           if dgr_lengths then # Custom map for degree lengths: { 1:0.5, 2:0.25 }
             dgr_sleep = dgr_lengths[dgr] # Try -1 or 9 etc. otherwise try with real degrees
@@ -542,37 +548,29 @@ def zparse(n,opts={},shared={})
         notes.push(sampleZiff)
         noteBuffer.push(sampleZiff) if loop && loopCount<1 # : buffer
         sub.push(sampleZiff) if sampleZiff[:sleep]>0 and subList.length>0
+      elsif !escape and (ziff[:lambda] or ziff[:send])
+        callZiff = ziff.clone
+        callZiff[:sleep] = noteLength*dotLength
+        notes.push(callZiff)
+        noteBuffer.push(callZiff) if loop && loopCount<1 # : buffer
+        sub.push(callZiff) if callZiff[:sleep]>0 and subList.length>0
+        ziff.except!(*current_ziff_keys)
+        current_ziff_keys = []
       end
       # Continues loop
     end
   end
-  if retrograde then
-    if retrograde.is_a?(Array) then # Retrograding subarray
-      retrograde[1] = notes.length if retrograde[1]>notes.length or retrograde[1]<=retrograde[0]
-      retrograde[0] = 0 if retrograde[0]<0
-      rev_notes = []
-      rev_notes+=notes[0,retrograde[0]] if retrograde[0]>0
-      rev_notes += zretrograde notes[retrograde[0]..retrograde[1]]
-      rev_notes += (retrograde[1]<notes.length) ? notes[retrograde[1]+1..notes.length] : [notes[retrograde[1]]] if retrograde[1]+1<notes.length
-      return rev_notes
-    elsif retrograde.is_a?(Numeric) # Retrograding partial arrays splitted to equal parts
-      return notes.each_slice(retrograde).map{|part| zretrograde part }.flatten
-    else
-      return zretrograde notes # Normal retrograde
-    end
-  else
-    notes
-  end
+  notes
 end
 
 # Reverses degrees but keeps the chords in place
 # Example: "i 1234 v 2341" -> "i 1432 v 4321"
-def zretrograde(arr)
+def zreverse(arr,with_chords=false)
   i=0
   x=arr.length-1
   until x<=i do
-    if !arr[i][:notes] then
-      if !arr[x][:notes] then
+    if !arr[i][:notes] or with_chords then
+      if !arr[x][:notes] or with_chords then
         arr[i], arr[x] = arr[x], arr[i]
         i+=1
         x-=1
@@ -614,9 +612,8 @@ def get_real_dgr(dgr,zkey,zscale)
 end
 
 # Gets note from degree. Degree can also be negative or overflow to next octave
-# Degrees can also be zero based (0-T) which is useful for chromatic scale etc.
 def get_note_from_dgr(dgr, zkey, zscale)
-  dgr+=1 if @@zero_based and dgr>=0
+  dgr+=1 if dgr>=0 # 0 -> 1, etc.
   scaleLength = scale(zkey,zscale).length-1
   if dgr>=scaleLength || dgr<0 then
     oct = (dgr-1)/scaleLength*12
@@ -636,53 +633,84 @@ def zparams(hash, name)
 end
 
 def clean(ziff)
-  ziff.except(:cue,:rules,:eval,:gen,:arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
+  ziff.except(:send, :lambda, :synth, :cue,:rules,:eval,:gen,:arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
 end
 
 def play_midi_out(md, opts)
   midi md, opts
 end
 
+def detune_notes(ziff,detune)
+  if ziff[:notes] then
+    notes = ziff[:notes].to_a
+    notes.each_with_index do |n,i|
+      notes[i] = hz_to_midi(midi_to_hz(n)+detune)
+    end
+    ziff[:notes] = notes.ring
+  elsif ziff[:note]
+      ziff[:note] = hz_to_midi(midi_to_hz(ziff[:note])+detune)
+  end
+end
+
 def play_ziff(ziff,defaults={})
   cue ziff[:cue] if ziff[:cue]
-  if ziff[:skip] then
+  detune_notes ziff, defaults[:detune] if defaults[:detune]
+  if ziff[:send] then
+    send(ziff[:send],ziff)
+  elsif ziff[:skip] then
     print "Skipping note"
   elsif ziff[:notes] then
     if ziff[:arpeggio] then
       arp_opts = ziff.except(:key,:scale,:note,:notes,:arpeggio,:degree,:sleep)
       ziff[:arpeggio].each do |cn|
         if cn[:degrees] then
-          arp_chord = cn[:degrees].map{|d| ziff[:notes][d-1]}
+          arp_chord = cn[:degrees].map{|d| ziff[:notes][d]}
           arp_notes = {notes: arp_chord}
         else
-          arp_notes = {note: ziff[:notes][cn[:degree]-1]}
+          arp_notes = {note: ziff[:notes][cn[:degree]]}
         end
         arp_opts = cn.merge(arp_notes).except(:degrees)
-        synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : current_synth, arp_opts if cn[:degree]!=0 && ziff[:port]==nil
-        play_midi_out ziff[:notes][cn[:degree]-1]+cn[:pitch], {sustain: ziff[:chord_release], port: ziff[:port], channel: ziff[:channel]} if cn[:degree]!=0 && ziff[:port]
+          if ziff[:port] then
+            sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
+            if arp_notes[:notes] then
+              arp_notes[:notes].each do |arp_note|
+                play_midi_out arp_note+cn[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
+              end
+            else
+              play_midi_out arp_notes[:note]+cn[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
+            end
+          else
+            synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : current_synth, arp_opts
+          end
         sleep cn[:sleep]
       end
     else
-      synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : current_synth, clean(ziff) if ziff[:port]==nil
-      ziff[:notes].each { |cnote| play_midi_out(cnote, {sustain: ziff[:chord_release], port: ziff[:port], channel: ziff[:channel]}) } if ziff[:port]
+      if ziff[:port]
+        sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
+        ziff[:notes].each do |cnote|
+          play_midi_out(cnote, ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
+        end
+      else
+        synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : ziff[:synth] ? ziff[:synth] : current_synth, clean(ziff)
+      end
     end
   elsif ziff[:port] then
-    sustain = ziff[:sustain]!=nil ? ziff[:sustain] :  ziff[:release]
-    play_midi_out(ziff[:note]+ziff[:pitch], {sustain: sustain, port: ziff[:port], channel: ziff[:channel]})
+    sustain = ziff[:sustain]!=nil ? ziff[:sustain] : ziff[:release]
+    play_midi_out(ziff[:note]+ziff[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
   else
     slide = ziff.delete(:control)
     if ziff[:sample]!=nil then
       if defaults[:rate_based] && ziff[:note]!=nil then
         ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
-      elsif ziff[:degree]!=nil && ziff[:degree]!=0 then
-        ziff[:pitch] = (scale 1, ziff[:scale], num_octaves: 2)[ziff[:degree]-1]+ziff[:pitch]-0.999
+      elsif ziff[:degree]!=nil then
+        ziff[:pitch] = (scale 1, ziff[:scale], num_octaves: 2)[ziff[:degree]]+ziff[:pitch]-0.999
       end
       if ziff[:cut] then
         ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample])))*ziff[:cut],1.0].sort[1]
         ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
       end
       c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
-    else
+    elsif ziff[:note] or ziff[:notes]
       if ziff[:synth] then
        c = synth ziff[:synth], clean(ziff)
       else
@@ -692,7 +720,7 @@ def play_ziff(ziff,defaults={})
     if slide != nil then
       sleep ziff[:sleep]*(ziff[:note_slide] ? ziff[:note_slide] : 0.5)
       slide.each do |cziff|
-        cziff[:pitch] = (scale 1, cziff[:scale])[cziff[:degree]-1]+cziff[:pitch]-0.999 if cziff[:sample]!=nil && cziff[:degree]!=nil && cziff[:degree]!=0
+        cziff[:pitch] = (scale 1, cziff[:scale])[cziff[:degree]]+cziff[:pitch]-0.999 if cziff[:sample]!=nil && cziff[:degree]!=nil
         control c, clean(cziff)
         sleep cziff[:sleep]
       end
@@ -700,22 +728,28 @@ def play_ziff(ziff,defaults={})
   end
 end
 
-def zmidi(melody,opts={},shared={})
-  shared[:midi] = true
-  shared[:rate_based] = true if opts[:sample] && shared[:degreeBased]!=nil
-  opts[:degree] = melody-opts[:key] if shared[:degreeBased]
-  zplay(melody,opts,shared)
-end
-
 def zplay(melody,opts={},defaults={})
-  defaults.merge!(opts.extract!(:rate_based)) # Extract common options to defaults
+  # Extract common options to defaults
+  defaults.merge!(opts.extract!(:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde, :silence))
   effects = opts.delete(:run) if opts[:run] # Get effects if any
-  defaults[:detune] = opts.delete(:detune) if opts[:detune]
-  defaults[:adjust] = opts.delete(:adjust) if opts[:adjust]
   raise ":run should be array of hashes" if effects and !effects.kind_of?(Array)
   opts = get_default_opts.merge(opts)
   defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
-  melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
+  if defaults[:name] and $zloop_states[defaults[:name]][:enumeration] then
+    melody = $zloop_states[defaults[:name]][:enumeration].next
+  elsif defaults[:store] and defaults[:name] and $zloop_states[defaults[:name]][:parsed_ziff]
+    melody = $zloop_states[defaults[:name]][:parsed_ziff]
+  else
+    melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
+    if has_combinatorics(opts)
+      melody = parse_combinatorics(melody,opts).to_a.flatten
+    else
+      melody = parse_modifications(melody,opts)
+    end
+    $zloop_states[defaults[:name]][:parsed_ziff] = melody if defaults[:store] and defaults[:name]
+  end
+  apply_transformations(melody, defaults)
+  $zloop_states[defaults[:name]][:parsed_ziff] = melody if defaults[:store] and defaults[:name]
   if !opts[:port] and effects then
     block_with_effects effects.clone do
         zplayer(melody,opts,defaults)
@@ -727,13 +761,36 @@ end
 
 def zplayer(melody,opts={},defaults={})
   tick_reset(:adjust) if defaults.delete(:readjust)
-  melody.each do |ziff|
+  melody.each_with_index do |ziff,index|
+      if ziff[:lambda] then
+        ziff[:lambda].() if ziff[:lambda].arity == 0
+        ziff[:lambda].(ziff) if ziff[:lambda].arity == 1
+        ziff[:lambda].(ziff,index) if ziff[:lambda].arity == 2
+        ziff[:lambda].(ziff,index,(defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 1)) if ziff[:lambda].arity == 3
+      end
       ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
       if defaults[:adjust] then
-        defaults[:adjust].each do |key,val|
-          t = tick(:adjust)
-          #TODO: Not optimal solution. This overwrites all following changes on the fly.
-          ziff[key] = val[t] ? val[t] : val[val.length-1]
+          t_index = tick(:adjust)
+          # If adjust is lambda
+          if (defaults[:adjust].is_a? Proc) then
+            defaults[:adjust].() if defaults[:adjust].arity == 0
+            defaults[:adjust].(ziff) if defaults[:adjust].arity == 1
+            defaults[:adjust].(ziff,index) if defaults[:adjust].arity == 2
+            defaults[:adjust].(ziff,index,(defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 1)) if defaults[:adjust].arity == 3
+          else
+          defaults[:adjust].each do |key,val|
+            # If adjust value is lambda
+            if val.is_a? Proc then
+              ziff[key] = val.() if val.arity == 0
+              ziff[key] = val.(ziff[key]) if val.arity == 1
+              ziff[key] = val.(ziff[key], index) if val.arity == 2
+              ziff[key] = val.(ziff[key], index, (defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 1)) if val.arity == 3
+            else
+              # If adjust is ring or array
+              #TODO: Not optimal solution. This overwrites all following changes on the fly.
+              ziff[key] = val[t_index] ? val[t_index] : val[val.length-1]
+            end
+          end
         end
       end
       if ziff[:run] then
@@ -755,7 +812,7 @@ def normalize_melody(melody, opts, defaults)
     if defaults[:midi] then
       opts[:note] = melody
     else
-      opts[:note] = get_note_from_dgr(@@zero_based ? melody : (melody==0 ? 1 : melody), opts[:key], opts[:scale])
+      opts[:note] = get_note_from_dgr(melody, opts[:key], opts[:scale])
     end
     set_ADSR(opts,@@default_opts.slice(:attack,:decay,:sustain,:release))
     return [opts]
@@ -766,35 +823,62 @@ def normalize_melody(melody, opts, defaults)
   end
 end
 
+def create_loop_opts(opts, loop_opts)
+  opts.each do |key,val|
+    if key.to_s.length>1 and val.is_a? Proc then
+      loop_opts[:lambdas] = {} if !loop_opts[:lambdas]
+      loop_opts[:lambdas][key] = opts.delete(key)
+    end
+  end
+end
+
+def eval_loop_opts(opts,loop_opts)
+  if loop_opts[:lambdas] then
+    loop_opts[:lambdas].each do |key, val|
+      opts[key] = val.() if val.arity == 0
+      opts[key] = val.(loop_opts[:loop_i]) if val.arity == 1
+    end
+  end
+end
+
 def zloop(name, ziff, opts={}, defaults={})
+  defaults[:name] = name
   clean_loop_states # Clean unused loop states
   $zloop_states.delete(name) if opts.delete(:reset)
   if opts[:adjust]
     defaults[:adjust] = opts.delete(:adjust)
     defaults[:readjust] = true if not (opts.delete(:readjust)==false)
   end
-  defaults[:detune] = opts.delete(:detune) if opts[:detune]
-  defaults[:wait] = opts.delete(:wait) if opts[:wait]
-  if opts[:phase]
-    defaults[:phase] = opts.delete(:phase)
-    defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
-  end
   raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
   raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
-  if ziff.is_a?(Array) && ziff[0].is_a?(Hash) then
-    defaults[:preparsed] = true
-  elsif (ziff.is_a?(String) and !ziff.start_with? "//") and !opts[:seed]
-      parsed_ziff = normalize_melody ziff, opts, defaults
-      defaults[:parsed] = true
-  end
   if !$zloop_states[name] then # If first time
     $zloop_states[name] = {}
     $zloop_states[name][:loop_i] = 0
   end
-  $zloop_states[name][:when] = opts.delete(:when) if opts[:when]
+  $zloop_states[name][:cycle] = opts.delete(:cycle) if opts[:cycle]
+  create_loop_opts(opts,$zloop_states[name])
+  defaults.merge!(opts.extract!(:wait,:store,:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde))
+  if opts[:phase] then
+    defaults[:phase] = opts.delete(:phase)
+    defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
+  end
+  if ziff.is_a?(Array) && ziff[0].is_a?(Hash) then
+    defaults[:preparsed] = true
+  elsif (opts[:parse] or (has_combinatorics(opts)) and !$zloop_states[name][:enumeration]) and (ziff.is_a?(String) and !ziff.start_with? "//") and !opts[:seed]
+      parsed_ziff = normalize_melody ziff, opts.except(:division, :iteration, :combination, :permutation, :mirrored, :reflected, :reversed, :transposed, :repeated, :unique, :subset), defaults
+      enumeration = parse_combinatorics parsed_ziff, opts
+      if enumeration then
+        $zloop_states[name][:enumeration] = enumeration.cycle
+      else
+        parsed_ziff = parse_modifications parsed_ziff, opts
+      end
+      defaults[:parsed] = true
+  end
   live_loop name, opts.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
+    eval_loop_opts(opts,$zloop_states[name])
     sync defaults[:wait] if defaults[:wait]
-    if defaults[:phase]
+    if opts[:phase] or defaults[:phase] then
+      defaults[:phase] = opts.delete(:phase) if opts[:phase]
       phase = defaults[:phase].is_a?(Array) ? defaults[:phase][$zloop_states[name][:loop_i] % defaults[:phase].length] : defaults[:phase]
       sleep phase
     end
@@ -802,20 +886,29 @@ def zloop(name, ziff, opts={}, defaults={})
       $zloop_states.delete(name)
       stop
     end
-    if $zloop_states[name][:when] then
-      when_opts = $zloop_states[name][:when]
-      if when_opts[:every] then
-        loop_opts = opts.merge(when_opts[:do]) if ($zloop_states[name][:loop_i]+1) % when_opts[:every] == 0
-      elsif when_opts[:cycles]
-        mod_cycles = ($zloop_states[name][:loop_i]+1) % when_opts[:cycles]
-        mod_cycles = when_opts[:cycles] if mod_cycles == 0
-        loop_opts = opts.merge(when_opts[:do]) if (when_opts[:first] and mod_cycles <= when_opts[:first]) or (when_opts[:last] and mod_cycles>(when_opts[:cycles]-when_opts[:last]))
+
+    if $zloop_states[name][:cycle] then
+      loop_opts = opts.clone
+      cycle_array = ($zloop_states[name][:cycle].is_a? Array) ? $zloop_states[name][:cycle] : [$zloop_states[name][:cycle]]
+      cycle_array.each do |value|
+        raise "Expected :mod in :cycle object!" if !value[:mod]
+        if value[:first] or value[:last] or (value[:from] and value[:to]) then
+          mod_cycles = ($zloop_states[name][:loop_i]+1) % value[:mod]
+          mod_cycles = value[:mod] if mod_cycles == 0
+          if value[:from] and value[:to] and mod_cycles >= value[:from] and mod_cycles <= value[:to] then
+            loop_opts = get_loop_opts(value.except(:first,:last,:from,:to),loop_opts,$zloop_states[name][:loop_i])
+          elsif (value[:first] and mod_cycles <= value[:first]) or (value[:last] and mod_cycles>(value[:mod]-value[:last])) then
+            loop_opts = get_loop_opts(value.except(:first,:last,:from,:to),loop_opts,$zloop_states[name][:loop_i])
+          end
+        elsif ($zloop_states[name][:loop_i]+1) % value[:mod] == 0 then
+          loop_opts = get_loop_opts(value,loop_opts,$zloop_states[name][:loop_i])
+        end
       end
     end
     if defaults[:preparsed] then
       zplay ziff, opts, defaults
     elsif parsed_ziff
-      zplay parsed_ziff, opts.slice(:run), defaults
+      zplay parsed_ziff, opts.slice(:run,:detune), defaults
     else
       if opts[:rules] and !opts[:gen] then
         defaults[:lsystemloop] = true
@@ -830,7 +923,84 @@ def zloop(name, ziff, opts={}, defaults={})
   end
 end
 
-def clean_loop_states
+def has_combinatorics(opts)
+  return (opts[:division] or opts[:permutation] or opts[:iteration] or opts[:combination])
+end
+
+# Parses enum or returns nil
+def parse_combinatorics(parsed_ziff, opts)
+  division = opts.delete(:division)
+  iteration = opts.delete(:iteration)
+  combination = opts.delete(:combination)
+  permutation = opts.delete(:permutation)
+  repeated = opts.delete(:repeated)
+  if permutation or combination or iteration or division then
+    if permutation then
+      enumeration = repeated ? parsed_ziff.repeated_permutation(permutation) : parsed_ziff.permutation(permutation)
+    elsif combination
+      enumeration = repeated ? parsed_ziff.repeated_combination(combination) : parsed_ziff.combination(combination)
+    elsif iteration
+      enumeration = parsed_ziff.each_cons(iteration)
+    elsif division
+      enumeration = parsed_ziff.group_by {|z| z[:degree].to_i %  division }.values.to_enum
+    end
+    print "Enumeration size: "+enumeration.size.to_s
+    enumeration = parse_modifications enumeration, opts if opts[:mirrored] or opts[:reflected] or opts[:reversed] or opts[:transposed] or opts[:unique] or opts[:subset]
+    return enumeration
+  end
+  return nil
+end
+
+def parse_modifications(parsed_ziff, opts)
+  if parsed_ziff.is_a? Enumerator then
+    enumeration = parsed_ziff
+    part_a = enumeration.to_a
+  else
+    part_a = parsed_ziff
+  end
+  mirrored = opts.delete(:mirrored)
+  reflected = opts.delete(:reflected)
+  reversed = opts.delete(:reversed)
+  transposed = opts.delete(:transposed)
+  unique = opts.delete(:unique)
+  subset = opts.delete(:subset)
+  part_a = part_a.transpose if enumeration and transposed
+  if mirrored then
+    part_a = part_a+part_a.reverse
+  elsif reflected
+    part_b = part_a.reverse
+    if enumeration then
+      part_b = part_b.map { |arr| arr.reverse }
+      part_b[0].shift
+      part_b.delete_at(0) if part_b[0].empty?
+      part_b[part_b.length-1].pop
+      part_b.delete_at(part_b.length-1) if part_b[part_b.length-1].empty?
+    else
+      part_b.shift
+      part_b.pop
+    end
+    part_a = (part_a+part_b)
+  end
+  part_a = part_a.map(&:uniq) if unique
+  part_a = (subset.is_a? Numeric) ? [part_a[subset]] : part_a[subset] if subset
+  part_a = part_a.reverse if reversed
+  return part_a.to_enum if enumeration
+  return part_a
+end
+
+def get_loop_opts(when_opts, opts, loop_i)
+  when_opts.each do |key,val|
+    if val.is_a? Proc then
+      opts[key] = val.() if val.arity == 0
+      opts[key] = val.(loop_i) if val.arity == 1
+    else
+      opts[key] = val
+    end
+  end
+  opts
+end
+
+def clean_loop_states()
   if !$zloop_states then
     $zloop_states = {}
   else
@@ -953,7 +1123,7 @@ def zpreparse(n,key)
   key = (key.is_a? Symbol) ? key.to_s.chars[0].downcase : key.chars[0].downcase
   ind = noteList.index(key)
   noteList = noteList[ind...noteList.length]+noteList[0...ind]
-  n.chars.map { |c| noteList.index(c)!=nil ? noteList.index(c)+1 : c  }.join('')
+  n.chars.map { |c| noteList.index(c)!=nil ? noteList.index(c) : c  }.join('')
 end
 
 def zarray(arr, opts=get_default_opts)
@@ -983,14 +1153,91 @@ def zbeats(arr)
   zparams(arr,:sleep).inject(0){|sum,x| sum+x }
 end
 
-def zdrums(melody,opts={synth: :beep},defaults={})
-  if melody.is_a? String then
-    melody = zparse(melody,opts,defaults)
+# TRANSFORMATIONS
+
+def apply_transformations(melody, defaults)
+  defaults.each do |key,val|
+    case key
+    when :retrograde then
+      melody = zretrograde melody, val
+    when :swap then
+      melody = swap melody, *val
+    when :rotate then
+      melody = melody.rotate(val)
+    when :augment then
+      melody = augment melody, val
+    when :flex then
+      melody = flex melody, val
+    when :silence then
+      melody = silence melody, val
+    end
   end
+end
+
+def zretrograde(notes,retrograde,chords=false)
+    if retrograde.is_a?(Array) then # Retrograding subarray
+      retrograde[1] = notes.length if retrograde[1]>notes.length or retrograde[1]<=retrograde[0]
+      retrograde[0] = 0 if retrograde[0]<0
+      rev_notes = []
+      rev_notes += notes[0,retrograde[0]] if retrograde[0]>0
+      rev_notes += zreverse notes[retrograde[0]..retrograde[1]], chords
+      rev_notes += (retrograde[1]<notes.length) ? notes[retrograde[1]+1..notes.length] : [notes[retrograde[1]]] if retrograde[1]+1<notes.length
+      return rev_notes
+    elsif retrograde.is_a?(Numeric) # Retrograding partial arrays splitted to equal parts
+      return notes.each_slice(retrograde).map{|part| zreverse part, chords }.flatten
+    else
+      return zreverse notes, chords # Normal retrograde
+    end
+end
+
+def swap(melody,n,x=1)
+  n = n % melody.length if n>=melody.length
+  n2 = (n+x)>=melody.length ? ((n+x) % melody.length) : n+x
+  melody[n], melody[n2] = melody[n2], melody[n]
+  melody
+end
+
+def flex(melody,ratio)
   melody.each do |ziff|
-    c = synth ziff[:synth], clean(ziff) if ziff[:note]!=nil
-    control c, note: 0, amp: ziff[:amp]*2
-    sleep ziff[:sleep] if melody.length>1
+    if ziff[:sleep] then
+      ziff[:sleep] = ziff[:sleep] + ziff[:sleep]*ratio
+      set_ADSR(ziff,@@default_opts.slice(:attack,:decay,:sustain,:release))
+    end
+  end
+end
+
+def silence(melody,degrees)
+  melody.each do |ziff|
+    if ziff[:note] and ziff[:degree] then
+      if degrees.include? ziff[:degree] then
+        ziff[:note] = :r
+      end
+    end
+  end
+end
+
+def augment(melody,additions)
+  melody.each do |ziff|
+    if ziff[:note] then
+      add = additions[ziff[:degree]]
+      add = add.() if (add.is_a? Proc)
+      if add then
+        add_to = 0
+        if (add.is_a? String) then
+          if add.include? "#"
+            add = add.sub "#",""
+            add_to += 1
+          elsif add.include? "&"
+            add = add.sub "&",""
+            add_to -= 1
+          end
+        end
+        ziff[:degree] = ziff[:degree]+add.to_i
+        new_note = get_note_from_dgr ziff[:degree], ziff[:key], ziff[:scale]
+        new_note = new_note+add_to
+        ziff[:note] = new_note
+      end
+    end
   end
 end
 

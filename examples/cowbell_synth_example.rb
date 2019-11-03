@@ -1,5 +1,5 @@
 require "~/ziffers/ziffers.rb"
 
 live_loop :te do
-  zplay("q554e56 12323456 q 334e56 [q7765,e75645343,e????????]", {sample: :drum_cowbell}, rateBased: true)
+  zplay "q443e45 01212345 q 223e45 [q6654,e64534232,e????????]", sample: :drum_cowbell, rateBased: true, groups: false
 end

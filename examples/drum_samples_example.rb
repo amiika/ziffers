@@ -2,8 +2,6 @@ load "~/ziffers/ziffers.rb"
 
 use_bpm 100
 
-Ziffers.set_groups true
-
 breakbeat = "| h HB H | h HS q H B | q H B H B  | h HS q H B  |
              | h HB H | h HS h H | q H H r B | h HS q H H |"
 
