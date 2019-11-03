@@ -730,7 +730,7 @@ end
 
 def zplay(melody,opts={},defaults={})
   # Extract common options to defaults
-  defaults.merge!(opts.extract!(:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde, :silence))
+  defaults.merge!(opts.extract!(:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde, :silence, :division))
   effects = opts.delete(:run) if opts[:run] # Get effects if any
   raise ":run should be array of hashes" if effects and !effects.kind_of?(Array)
   opts = get_default_opts.merge(opts)
@@ -748,7 +748,7 @@ def zplay(melody,opts={},defaults={})
     end
     $zloop_states[defaults[:name]][:parsed_ziff] = melody if defaults[:store] and defaults[:name]
   end
-  apply_transformations(melody, defaults)
+  melody = apply_transformations(melody, defaults)
   $zloop_states[defaults[:name]][:parsed_ziff] = melody if defaults[:store] and defaults[:name]
   if !opts[:port] and effects then
     block_with_effects effects.clone do
@@ -857,7 +857,7 @@ def zloop(name, ziff, opts={}, defaults={})
   end
   $zloop_states[name][:cycle] = opts.delete(:cycle) if opts[:cycle]
   create_loop_opts(opts,$zloop_states[name])
-  defaults.merge!(opts.extract!(:wait,:store,:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde))
+  defaults.merge!(opts.extract!(:wait,:store,:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde,:silence,:division))
   if opts[:phase] then
     defaults[:phase] = opts.delete(:phase)
     defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
@@ -924,25 +924,22 @@ def zloop(name, ziff, opts={}, defaults={})
 end
 
 def has_combinatorics(opts)
-  return (opts[:division] or opts[:permutation] or opts[:iteration] or opts[:combination])
+  return (opts[:permutation] or opts[:iteration] or opts[:combination])
 end
 
 # Parses enum or returns nil
 def parse_combinatorics(parsed_ziff, opts)
-  division = opts.delete(:division)
   iteration = opts.delete(:iteration)
   combination = opts.delete(:combination)
   permutation = opts.delete(:permutation)
   repeated = opts.delete(:repeated)
-  if permutation or combination or iteration or division then
+  if permutation or combination or iteration then
     if permutation then
       enumeration = repeated ? parsed_ziff.repeated_permutation(permutation) : parsed_ziff.permutation(permutation)
     elsif combination
       enumeration = repeated ? parsed_ziff.repeated_combination(combination) : parsed_ziff.combination(combination)
     elsif iteration
       enumeration = parsed_ziff.each_cons(iteration)
-    elsif division
-      enumeration = parsed_ziff.group_by {|z| z[:degree].to_i %  division }.values.to_enum
     end
     print "Enumeration size: "+enumeration.size.to_s
     enumeration = parse_modifications enumeration, opts if opts[:mirrored] or opts[:reflected] or opts[:reversed] or opts[:transposed] or opts[:unique] or opts[:subset]
@@ -1159,19 +1156,22 @@ def apply_transformations(melody, defaults)
   defaults.each do |key,val|
     case key
     when :retrograde then
-      melody = zretrograde melody, val
+      return zretrograde melody, val
     when :swap then
-      melody = swap melody, *val
+      return swap melody, *val
     when :rotate then
-      melody = melody.rotate(val)
+      return melody.rotate(val)
     when :augment then
-      melody = augment melody, val
+      return augment melody, val
     when :flex then
-      melody = flex melody, val
+      return flex melody, val
     when :silence then
-      melody = silence melody, val
+      return silence melody, val
+    when :division then
+      return melody.group_by {|z| z[:degree].to_i % val}.values.flatten
     end
   end
+  return melody
 end
 
 def zretrograde(notes,retrograde,chords=false)
