@@ -15,7 +15,7 @@ def testzplay
   # row row
   zplay "|:q .0 .0|q0 e1 q.2|2 e1 q2 e3|h.4|e7 7 7 4 4 4 2 2 2 0 0 0|q4 e3 q2 e1|h.0:|"
   # jericho
-  zplay "|:q0 _6 ^0 1 &2 1 &2 3 4 h4 4 r ;q3 h3 3 r q4 h4 4 r; &q2 3 h4 3 &2 1 0:|", key: :d, scale: :major
+  zplay "|:q0 _6 ^0 1 b2 1 b2 3 4 h4 4 r ;q3 h3 3 r q4 h4 4 r; q b2 3 h4 3 b2 1 0:|", key: :d, scale: :major
   # ode to joy
   zplay "|:q2 2 3 4|4 3 2 1|0 0 1 2|;q2 1 h1;q1 0 h0:|q1 1 2 0|1 e2 3 q2 0|1 e2 3 q2 1|q0 1h _4|^q2 2 3 4|4 3 2 1|0 0 1 2|1 0 h0|"
   # twinkle twinkle

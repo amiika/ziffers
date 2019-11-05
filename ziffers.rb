@@ -368,7 +368,7 @@ module Ziffers
             end
           when '#' then
             sfaddition += 1
-          when '&' then
+          when 'b' then
             sfaddition -= 1
           when '^' then
             ziff[:pitch] += 12
@@ -730,7 +730,7 @@ module Ziffers
 
   def zplay(melody,opts={},defaults={})
     # Extract common options to defaults
-    defaults.merge!(opts.extract!(:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde, :silence, :division, :compound))
+    defaults.merge!(opts.extract!(:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde,:silence,:division,:compound,:harmonize))
     effects = opts.delete(:run) if opts[:run] # Get effects if any
     raise ":run should be array of hashes" if effects and !effects.kind_of?(Array)
     opts = get_default_opts.merge(opts)
@@ -858,7 +858,7 @@ module Ziffers
     end
     $zloop_states[name][:cycle] = opts.delete(:cycle) if opts[:cycle]
     create_loop_opts(opts,$zloop_states[name])
-    defaults.merge!(opts.extract!(:wait,:store,:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde,:silence,:division,:compound))
+    defaults.merge!(opts.extract!(:wait,:store,:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde,:silence,:division,:compound,:harmonize))
     if opts[:phase] then
       defaults[:phase] = opts.delete(:phase)
       defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
@@ -1188,8 +1188,8 @@ module Ziffers
         return flex ziff, val
       when :silence then
         return silence ziff, val
-      when :compound then
-        return compound ziff, val
+      when :harmonize then
+        return harmonize ziff, defaults
       end
     end
     return ziff
@@ -1249,26 +1249,82 @@ module Ziffers
     return ziff
   end
 
-  def augment(ziff,additions)
-    if ziff[:note] then
-      add = additions[ziff[:degree]]
-      add = add.() if (add.is_a? Proc)
-      if add then
-        add_to = 0
-        if (add.is_a? String) then
-          if (add.include? "#")
-            add = add.sub "#",""
-            add_to += 1
-          elsif (add.include? "&")
-            add = add.sub "&",""
-            add_to -= 1
-          end
-        end
-        ziff[:degree] = ziff[:degree]+add.to_i
-        new_note = get_note_from_dgr ziff[:degree], ziff[:key], ziff[:scale]
-        new_note = new_note+add_to
-        ziff[:note] = new_note
+  def get_interval_note(degree, interval, compound, key, scale)
+    add_to = 0
+    if (interval.is_a? String) then
+      if (interval.include? "#")
+        interval = interval.sub "#",""
+        add_to += 1
+      elsif (interval.include? "b")
+        interval = interval.sub "b",""
+        add_to -= 1
       end
+    end
+    interval = interval.to_i
+    interval = interval==0 ? interval+compound : interval>0 ? interval-1+compound : interval+1-compound
+    return (get_note_from_dgr (degree+interval+compound), key, scale)+add_to
+  end
+
+  def harmonize(ziff,opts)
+    print ziff
+    if opts[:harmonize] then
+      if ziff[:note] and ziff[:degree] then
+        degrees = opts[:harmonize]
+        ziff[:notes] = []
+        ziff[:notes].push ziff[:note]
+        compound = 0
+        if opts[:compound] then
+          scale_length = scale(ziff[:key],ziff[:scale]).length-1
+          compound = scale_length*opts[:compound]
+        end
+        if degrees.is_a? Hash then
+          degree_intervals = degrees[ziff[:degree]]
+          if degree_intervals then
+            if degree_intervals.is_a? Array then
+              degree_intervals.each do |interval|
+                ziff[:notes].push get_interval_note ziff[:degree], interval, compound, ziff[:key], ziff[:scale]
+              end
+            else
+              ziff[:notes].push get_interval_note ziff[:degree], degree_intervals, compound, ziff[:key], ziff[:scale]
+            end
+          end
+        elsif degrees.is_a? Array
+          degrees.each do |interval|
+            ziff[:notes].push get_interval_note ziff[:degree], interval, compound, ziff[:key], ziff[:scale]
+          end
+        else
+          ziff[:notes].push get_interval_note ziff[:degree], degrees, compound, ziff[:key], ziff[:scale]
+        end
+        ziff[:notes] = ziff[:notes].ring
+        ziff[:notes] = chord_invert ziff[:notes], ziff[:chord_invert] if ziff[:chord_invert]
+        ziff.delete(:note)
+      end
+    end
+    return ziff
+  end
+
+  def get_interval_note(degree, interval, compound, key, scale)
+    add_to = 0
+    if (interval.is_a? String) then
+      if (interval.include? "#")
+        interval = interval.sub "#",""
+        add_to += 1
+      elsif (interval.include? "b")
+        interval = interval.sub "b",""
+        add_to -= 1
+      end
+    end
+    interval = interval.to_i
+    interval = interval==0 ? interval+compound : interval>0 ? interval-1+compound : interval+1-compound
+    print interval
+    return (get_note_from_dgr (degree+interval), key, scale)+add_to
+  end
+
+  def augment(ziff,additions)
+    if ziff[:note] and ziff[:degree] then
+      interval = additions[ziff[:degree]]
+      interval = interval.() if (interval.is_a? Proc)
+      ziff[:note] = get_interval_note ziff[:degree], interval, 0, ziff[:key], ziff[:scale]
     end
     return ziff
   end
