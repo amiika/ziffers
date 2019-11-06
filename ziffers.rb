@@ -5,7 +5,7 @@ module Ziffers
   @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, "=": :eval }
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
-  @@default_keys = [:store, :rate_based, :adjust, :iteration, :combination, :permutation, :mirrored, :reflected, :reversed, :transposed, :repeated, :unique, :subset, :rotate, :detune, :augment, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
+  @@default_keys = [:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
 
   $easing = {
     linear: -> (t, b, c, d) { c * t / d + b },
@@ -742,20 +742,22 @@ module Ziffers
       melody = $zloop_states[defaults[:name]][:parsed_ziff]
     else
       melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
-      if has_combinatorics(opts)
-        melody = parse_combinatorics(melody,opts).to_a.flatten
-      else
-        melody = parse_modifications(melody,opts)
+      if has_combinatorics(defaults)
+        enum = parse_combinatorics(melody,defaults)
+        melody = enum.next
       end
-      $zloop_states[defaults[:name]][:parsed_ziff] = melody if defaults[:store] and defaults[:name]
     end
-    melody = apply_transformations(melody, defaults)
-    if !opts[:port] and effects then
-      block_with_effects effects.clone do
+    loop do
+      melody = apply_array_transformations(melody, defaults) if !defaults[:transform_single]
+      if !opts[:port] and effects then
+        block_with_effects effects.clone do
+          zplayer(melody,opts,defaults)
+        end
+      else
         zplayer(melody,opts,defaults)
       end
-    else
-      zplayer(melody,opts,defaults)
+      break if !enum
+      melody = enum.next
     end
   end
 
@@ -877,6 +879,7 @@ module Ziffers
       defaults[:parsed] = true
     end
     live_loop name, opts.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
+
       eval_loop_opts(opts,$zloop_states[name])
       sync defaults[:wait] if defaults[:wait]
 
@@ -938,6 +941,7 @@ module Ziffers
     combination = opts.delete(:combination)
     permutation = opts.delete(:permutation)
     repeated = opts.delete(:repeated)
+    transposed = opts.delete(:transpose)
     if permutation or combination or iteration then
       if permutation then
         enumeration = repeated ? parsed_ziff.repeated_permutation(permutation) : parsed_ziff.permutation(permutation)
@@ -947,47 +951,14 @@ module Ziffers
         enumeration = parsed_ziff.each_cons(iteration)
       end
       print "Enumeration size: "+enumeration.size.to_s
-      enumeration = parse_modifications enumeration, opts if opts[:mirrored] or opts[:reflected] or opts[:reversed] or opts[:transposed] or opts[:unique] or opts[:subset]
+      if opts.delete(:transform_enum) then
+        enum_arr = apply_array_transformations enumeration.to_a, opts
+        enum_arr = enum_arr.transpose if transposed
+        enumeration = enum_arr.to_enum
+      end
       return enumeration
     end
     return nil
-  end
-
-  def parse_modifications(parsed_ziff, opts)
-    if parsed_ziff.is_a? Enumerator then
-      enumeration = parsed_ziff
-      part_a = enumeration.to_a
-    else
-      part_a = parsed_ziff
-    end
-    mirrored = opts.delete(:mirrored)
-    reflected = opts.delete(:reflected)
-    reversed = opts.delete(:reversed)
-    transposed = opts.delete(:transposed)
-    unique = opts.delete(:unique)
-    subset = opts.delete(:subset)
-    part_a = part_a.transpose if enumeration and transposed
-    if mirrored then
-      part_a = part_a+part_a.reverse
-    elsif reflected
-      part_b = part_a.reverse
-      if enumeration then
-        part_b = part_b.map { |arr| arr.reverse }
-        part_b[0].shift
-        part_b.delete_at(0) if part_b[0].empty?
-        part_b[part_b.length-1].pop
-        part_b.delete_at(part_b.length-1) if part_b[part_b.length-1].empty?
-      else
-        part_b.shift
-        part_b.pop
-      end
-      part_a = (part_a+part_b)
-    end
-    part_a = part_a.map(&:uniq) if unique
-    part_a = (subset.is_a? Numeric) ? [part_a[subset]] : part_a[subset] if subset
-    part_a = part_a.reverse if reversed
-    return part_a.to_enum if enumeration
-    return part_a
   end
 
   def get_loop_opts(when_opts, opts, loop_i)
@@ -1167,7 +1138,22 @@ module Ziffers
 
   # TRANSFORMATIONS
 
-  def apply_transformations(melody, defaults)
+  def reflect_collection(part_a)
+    part_b = part_a.reverse
+    if part_b[0].is_a?(Array) then
+      part_b = part_b.map { |arr| arr.reverse }
+      part_b[0].shift
+      part_b.delete_at(0) if part_b[0].empty?
+      part_b[part_b.length-1].pop
+      part_b.delete_at(part_b.length-1) if part_b[part_b.length-1].empty?
+    else
+      part_b.shift
+      part_b.pop
+    end
+    return (part_a+part_b)
+  end
+
+  def apply_array_transformations(melody, defaults)
     defaults.each do |key,val|
       case key
       when :retrograde then
@@ -1178,6 +1164,16 @@ module Ziffers
         return melody.rotate(val)
       when :division then
         return melody.group_by {|z| z[:degree].to_i % val}.values.flatten
+      when :mirror then
+        return melody+melody.reverse
+      when :reverse then
+        return melody.reverse
+      when :reflect then
+        return reflect_collection melody
+      when :unique then
+        return melody.map(&:uniq)
+      when :subset then
+        return (val.is_a? Numeric) ? [melody[val]] : melody[val]
       end
     end
     return melody
