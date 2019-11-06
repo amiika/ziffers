@@ -5,6 +5,7 @@ module Ziffers
   @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, "=": :eval }
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
+  @@default_keys = [:store, :rate_based, :adjust, :iteration, :combination, :permutation, :mirrored, :reflected, :reversed, :transposed, :repeated, :unique, :subset, :rotate, :detune, :augment, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
 
   $easing = {
     linear: -> (t, b, c, d) { c * t / d + b },
@@ -730,7 +731,7 @@ module Ziffers
 
   def zplay(melody,opts={},defaults={})
     # Extract common options to defaults
-    defaults.merge!(opts.extract!(:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde,:silence,:division,:compound,:harmonize))
+    defaults = defaults.merge(opts.extract!(*@@default_keys))
     effects = opts.delete(:run) if opts[:run] # Get effects if any
     raise ":run should be array of hashes" if effects and !effects.kind_of?(Array)
     opts = get_default_opts.merge(opts)
@@ -858,7 +859,7 @@ module Ziffers
     end
     $zloop_states[name][:cycle] = opts.delete(:cycle) if opts[:cycle]
     create_loop_opts(opts,$zloop_states[name])
-    defaults.merge!(opts.extract!(:wait,:store,:rate_based,:rotate,:detune,:adjust,:augment,:flex,:swap,:retrograde,:silence,:division,:compound,:harmonize))
+    defaults.merge!(opts.extract!(:wait))
     if opts[:phase] then
       defaults[:phase] = opts.delete(:phase)
       defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
@@ -866,7 +867,7 @@ module Ziffers
     if ziff.is_a?(Array) && ziff[0].is_a?(Hash) then
       defaults[:preparsed] = true
     elsif (opts[:parse] or (has_combinatorics(opts)) and !$zloop_states[name][:enumeration]) and (ziff.is_a?(String) and !ziff.start_with? "//") and !opts[:seed]
-      parsed_ziff = normalize_melody ziff, opts.except(:division, :iteration, :combination, :permutation, :mirrored, :reflected, :reversed, :transposed, :repeated, :unique, :subset), defaults
+      parsed_ziff = normalize_melody ziff, opts.except(*@@default_keys), defaults
       enumeration = parse_combinatorics parsed_ziff, opts
       if enumeration then
         $zloop_states[name][:enumeration] = enumeration.cycle
@@ -878,12 +879,14 @@ module Ziffers
     live_loop name, opts.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
       eval_loop_opts(opts,$zloop_states[name])
       sync defaults[:wait] if defaults[:wait]
+
       if opts[:phase] or defaults[:phase] then
         defaults[:phase] = opts.delete(:phase) if opts[:phase]
         phase = defaults[:phase].is_a?(Array) ? defaults[:phase][$zloop_states[name][:loop_i] % defaults[:phase].length] : defaults[:phase]
         sleep phase
       end
-      if opts[:stop] or (ziff.is_a?(String) and ziff.start_with? "//")
+
+      if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or (opts[:stop].is_a? TrueClass) or (ziff.is_a?(String) and ziff.start_with? "//") then
         $zloop_states.delete(name)
         stop
       end
@@ -897,15 +900,16 @@ module Ziffers
             mod_cycles = ($zloop_states[name][:loop_i]+1) % value[:mod]
             mod_cycles = value[:mod] if mod_cycles == 0
             if value[:from] and value[:to] and mod_cycles >= value[:from] and mod_cycles <= value[:to] then
-              loop_opts = get_loop_opts(value.except(:first,:last,:from,:to),loop_opts,$zloop_states[name][:loop_i])
+              loop_opts = get_loop_opts(value.except(:mod,:first,:last,:from,:to),loop_opts,$zloop_states[name][:loop_i])
             elsif (value[:first] and mod_cycles <= value[:first]) or (value[:last] and mod_cycles>(value[:mod]-value[:last])) then
-              loop_opts = get_loop_opts(value.except(:first,:last,:from,:to),loop_opts,$zloop_states[name][:loop_i])
+              loop_opts = get_loop_opts(value.except(:mod,:first,:last,:from,:to),loop_opts,$zloop_states[name][:loop_i])
             end
           elsif ($zloop_states[name][:loop_i]+1) % value[:mod] == 0 then
-            loop_opts = get_loop_opts(value,loop_opts,$zloop_states[name][:loop_i])
+            loop_opts = get_loop_opts(value.except(:mod),loop_opts,$zloop_states[name][:loop_i])
           end
         end
       end
+
       if defaults[:preparsed] then
         zplay ziff, opts, defaults
       elsif parsed_ziff
@@ -1266,7 +1270,6 @@ module Ziffers
   end
 
   def harmonize(ziff,opts)
-    print ziff
     if opts[:harmonize] then
       if ziff[:note] and ziff[:degree] then
         degrees = opts[:harmonize]
@@ -1316,7 +1319,6 @@ module Ziffers
     end
     interval = interval.to_i
     interval = interval==0 ? interval+compound : interval>0 ? interval-1+compound : interval+1-compound
-    print interval
     return (get_note_from_dgr (degree+interval), key, scale)+add_to
   end
 
