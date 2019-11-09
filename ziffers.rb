@@ -6,6 +6,7 @@ module Ziffers
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
   @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
+  @@debug = false
 
   $easing = {
     linear: -> (t, b, c, d) { c * t / d + b },
@@ -43,6 +44,10 @@ module Ziffers
 
   def get_default_opts
     @@default_opts
+  end
+
+  def debug(debug=!@@debug)
+    @@debug = debug
   end
 
   def set_default_opts(opts)
@@ -742,7 +747,6 @@ module Ziffers
       melody = $zloop_states[defaults[:name]][:enumeration].next
     elsif defaults[:store] and defaults[:name] and $zloop_states[defaults[:name]][:parsed_ziff]
       melody = $zloop_states[defaults[:name]][:parsed_ziff]
-      print zparams melody, :degree
     else
       melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
       if has_combinatorics(defaults)
@@ -751,7 +755,7 @@ module Ziffers
       end
     end
     loop do
-      melody = apply_array_transformations(melody, defaults) if !defaults[:transform_single]
+      melody = apply_array_transformations(melody, defaults, defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 0) if !defaults[:transform_single]
       if !opts[:port] and defaults[:run] then
         block_with_effects defaults[:run].clone do
           zplayer(melody,opts,defaults)
@@ -810,7 +814,13 @@ module Ziffers
       sleep ziff[:sleep] if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
     end
     # Save loop state
-    $zloop_states[defaults[:name]][:parsed_ziff] = melody if defaults[:store] and defaults[:name]
+    if defaults[:store] and defaults[:name] then
+      $zloop_states[defaults[:name]][:parsed_ziff] = melody
+      if @@debug then
+        print "Stored:"
+        print zparams melody, :degree
+      end
+    end
   end
 
   def normalize_melody(melody, opts, defaults)
@@ -1159,8 +1169,12 @@ module Ziffers
     return (part_a+part_b)
   end
 
-  def apply_array_transformations(melody, defaults)
+  def apply_array_transformations(melody, defaults,loop_i=0)
     defaults.each do |key,val|
+      if val.is_a? Proc then
+        val = val.() if val.arity == 0
+        val = val.(loop_i) if val.arity == 1
+      end
       case key
       when :retrograde then
         return zretrograde melody, val
