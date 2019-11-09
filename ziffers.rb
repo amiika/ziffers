@@ -736,7 +736,11 @@ module Ziffers
     raise ":run should be array of hashes" if effects and !effects.kind_of?(Array)
     opts = get_default_opts.merge(opts)
     defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
-    if defaults[:name] and $zloop_states[defaults[:name]][:enumeration] then
+    if melody.is_a? Enumerator then
+      enum = melody
+      melody = enum.next
+      melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
+    elsif defaults[:name] and $zloop_states[defaults[:name]][:enumeration] then
       melody = $zloop_states[defaults[:name]][:enumeration].next
     elsif defaults[:store] and defaults[:name] and $zloop_states[defaults[:name]][:parsed_ziff]
       melody = $zloop_states[defaults[:name]][:parsed_ziff]
@@ -758,6 +762,7 @@ module Ziffers
       end
       break if !enum
       melody = enum.next
+      melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed] if melody.is_a? String
     end
   end
 
