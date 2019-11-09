@@ -5,7 +5,7 @@ module Ziffers
   @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, "=": :eval }
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
-  @@default_keys = [:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
+  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
 
   $easing = {
     linear: -> (t, b, c, d) { c * t / d + b },
@@ -732,8 +732,6 @@ module Ziffers
   def zplay(melody,opts={},defaults={})
     # Extract common options to defaults
     defaults = defaults.merge(opts.extract!(*@@default_keys))
-    effects = opts.delete(:run) if opts[:run] # Get effects if any
-    raise ":run should be array of hashes" if effects and !effects.kind_of?(Array)
     opts = get_default_opts.merge(opts)
     defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
     if melody.is_a? Enumerator then
@@ -744,6 +742,7 @@ module Ziffers
       melody = $zloop_states[defaults[:name]][:enumeration].next
     elsif defaults[:store] and defaults[:name] and $zloop_states[defaults[:name]][:parsed_ziff]
       melody = $zloop_states[defaults[:name]][:parsed_ziff]
+      print zparams melody, :degree
     else
       melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
       if has_combinatorics(defaults)
@@ -753,8 +752,8 @@ module Ziffers
     end
     loop do
       melody = apply_array_transformations(melody, defaults) if !defaults[:transform_single]
-      if !opts[:port] and effects then
-        block_with_effects effects.clone do
+      if !opts[:port] and defaults[:run] then
+        block_with_effects defaults[:run].clone do
           zplayer(melody,opts,defaults)
         end
       else
@@ -852,6 +851,7 @@ module Ziffers
 
   def zloop(name, ziff, opts={}, defaults={})
     defaults[:name] = name
+    defaults = defaults.merge(opts.extract!(*@@default_keys))
     clean_loop_states # Clean unused loop states
     $zloop_states.delete(name) if opts.delete(:reset)
     if opts[:adjust]
@@ -1008,6 +1008,7 @@ module Ziffers
   end
 
   def block_with_effects(x,&block)
+    raise ":run should be array of hashes" if x and !x.kind_of?(Array)
     if x.length>0 then
       n = x.shift
       if n[:with_fx] then
