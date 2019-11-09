@@ -762,7 +762,7 @@ module Ziffers
       end
       break if !enum
       melody = enum.next
-      melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed] if melody.is_a? String
+      melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed] if melody.is_a? String or melody.is_a? Numeric
     end
   end
 

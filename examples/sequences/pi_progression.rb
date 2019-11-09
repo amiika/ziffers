@@ -1,6 +1,6 @@
 load "~/ziffers/ziffers.rb"
 
-def pi_number
+def pi
   Enumerator.new do |y|
     q, r, t, k, n, l = 1, 0, 1, 1, 3, 3
     while true do
@@ -24,9 +24,5 @@ def pi_number
     end
   end
   
-  enum = pi_number
-  
-  live_loop :pi do
-    zplay enum.next, sleep: 0.125
-  end
+  z1 pi, sleep: 0.125
   
