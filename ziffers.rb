@@ -5,7 +5,7 @@ module Ziffers
   @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, "=": :eval }
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
-  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
+  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :shuffle, :drop, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
   @@debug = false
 
   $easing = {
@@ -755,7 +755,7 @@ module Ziffers
       end
     end
     loop do
-      melody = apply_array_transformations(melody, defaults, defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 0) if !defaults[:transform_single]
+      melody = apply_array_transformations(melody, opts, defaults, defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 0) if !defaults[:transform_single]
       if !opts[:port] and defaults[:run] then
         block_with_effects defaults[:run].clone do
           zplayer(melody,opts,defaults)
@@ -771,13 +771,14 @@ module Ziffers
 
   def zplayer(melody,opts={},defaults={})
     tick_reset(:adjust) if defaults.delete(:readjust)
+    loop_i = defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 1
     melody.each_with_index do |ziff,index|
-      ziff = apply_transformation(ziff, defaults)
+      ziff = apply_transformation(ziff, defaults, loop_i)
       if ziff[:lambda] then
         ziff[:lambda].() if ziff[:lambda].arity == 0
         ziff[:lambda].(ziff) if ziff[:lambda].arity == 1
         ziff[:lambda].(ziff,index) if ziff[:lambda].arity == 2
-        ziff[:lambda].(ziff,index,(defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 1)) if ziff[:lambda].arity == 3
+        ziff[:lambda].(ziff,index,loop_i) if ziff[:lambda].arity == 3
       end
       ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
       if defaults[:adjust] then
@@ -787,7 +788,7 @@ module Ziffers
           defaults[:adjust].() if defaults[:adjust].arity == 0
           defaults[:adjust].(ziff) if defaults[:adjust].arity == 1
           defaults[:adjust].(ziff,index) if defaults[:adjust].arity == 2
-          defaults[:adjust].(ziff,index,(defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 1)) if defaults[:adjust].arity == 3
+          defaults[:adjust].(ziff,index,loop_i) if defaults[:adjust].arity == 3
         else
           defaults[:adjust].each do |key,val|
             # If adjust value is lambda
@@ -795,7 +796,7 @@ module Ziffers
               ziff[key] = val.() if val.arity == 0
               ziff[key] = val.(ziff[key]) if val.arity == 1
               ziff[key] = val.(ziff[key], index) if val.arity == 2
-              ziff[key] = val.(ziff[key], index, (defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 1)) if val.arity == 3
+              ziff[key] = val.(ziff[key], index, loop_i) if val.arity == 3
             else
               # If adjust is ring or array
               #TODO: Not optimal solution. This overwrites all following changes on the fly.
@@ -967,7 +968,7 @@ module Ziffers
       end
       print "Enumeration size: "+enumeration.size.to_s
       if opts.delete(:transform_enum) then
-        enum_arr = apply_array_transformations enumeration.to_a, opts
+        enum_arr = apply_array_transformations enumeration.to_a, opts, defaults
         enum_arr = enum_arr.transpose if transposed
         enumeration = enum_arr.to_enum
       end
@@ -1169,7 +1170,7 @@ module Ziffers
     return (part_a+part_b)
   end
 
-  def apply_array_transformations(melody, defaults,loop_i=0)
+  def apply_array_transformations(melody, opts, defaults, loop_i=0)
     defaults.each do |key,val|
       if val.is_a? Proc then
         val = val.() if val.arity == 0
@@ -1194,13 +1195,30 @@ module Ziffers
         return melody.map(&:uniq)
       when :subset then
         return (val.is_a? Numeric) ? [melody[val]] : melody[val]
+      when :inject then
+        return melody.inject(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)){|a,j| print a; a.flat_map{|n| [n,augment(j, n)]}}
+      when :zip then
+        return melody.zip(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)).flatten
+      when :append then
+        return melody + (val.is_a?(Array) ? val : (normalize_melody val, opts, defaults))
+      when :prepend then
+        return (val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)) + melody
+      when :shuffle then
+        return val.is_a? TrueClass ? melody.shuffle : (melody[val] = val[val].shuffle)
+      when :drop then
+        melody.slice!(val)
+        return melody
       end
     end
     return melody
   end
 
-  def apply_transformation(ziff, defaults)
+  def apply_transformation(ziff, defaults,loop_i=0)
     defaults.each do |key,val|
+      if val.is_a? Proc then
+        val = val.() if val.arity == 0
+        val = val.(loop_i) if val.arity == 1
+      end
       case key
       when :augment then
         return augment ziff, val
@@ -1340,7 +1358,12 @@ module Ziffers
 
   def augment(ziff,additions)
     if ziff[:note] and ziff[:degree] then
-      interval = additions[ziff[:degree]]
+      if additions[:degree] then
+        interval = additions[:degree]
+        print interval
+      else
+        interval = additions[ziff[:degree]]
+      end
       interval = interval.() if (interval.is_a? Proc)
       ziff[:note] = get_interval_note ziff[:degree], interval, 0, ziff[:key], ziff[:scale]
     end
