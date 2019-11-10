@@ -5,7 +5,7 @@ module Ziffers
   @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, "=": :eval }
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
-  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
+  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
   @@debug = false
 
   $easing = {
@@ -775,9 +775,9 @@ module Ziffers
       stop
     end
     tick_reset(:adjust) if defaults.delete(:readjust)
-    loop_i = defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 1
+    loop_i = defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 0
     melody.each_with_index do |ziff,index|
-      ziff = apply_transformation(ziff, defaults, loop_i)
+      ziff = apply_transformation(ziff, defaults, loop_i, index)
       if ziff[:lambda] then
         ziff[:lambda].() if ziff[:lambda].arity == 0
         ziff[:lambda].(ziff) if ziff[:lambda].arity == 1
@@ -1236,12 +1236,14 @@ module Ziffers
         return melody.pick(val)
       when :stretch
         return (stretch melody, val).to_a
+      when :order_transform
+        return send(val, melody, loop_i)
       end
     end
     return melody
   end
 
-  def apply_transformation(ziff, defaults,loop_i=0)
+  def apply_transformation(ziff, defaults,loop_i=0,note_i=0)
     defaults.each do |key,val|
       if val.is_a? Proc then
         val = val.() if val.arity == 0
@@ -1256,6 +1258,8 @@ module Ziffers
         return silence ziff, val
       when :harmonize then
         return harmonize ziff, defaults
+      when :object_transform
+        return send(val,ziff,loop_i,note_i)
       end
     end
     return ziff
