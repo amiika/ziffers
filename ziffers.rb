@@ -5,7 +5,7 @@ module Ziffers
   @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, "=": :eval }
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
-  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :drop, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
+  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
   @@debug = false
 
   $easing = {
@@ -1038,6 +1038,10 @@ module Ziffers
         with_bpm n[:with_bpm] do
           block_with_effects(x,&block)
         end
+      elsif n[:density]
+        density n[:density ] do
+          block_with_effects(x,&block)
+        end
       elsif n[:with_cent_tuning]
         with_cent_tuning n[:with_cent_tuning] do
           block_with_effects(x,&block)
@@ -1212,6 +1216,8 @@ module Ziffers
       when :drop then
         melody.slice!(val)
         return melody
+      when :slice then
+        return melody.slice(val)
       when :pop then
         if val.is_a? TrueClass
           melody.pop
@@ -1226,6 +1232,10 @@ module Ziffers
           melody.shift(val)
         end
         return melody
+      when :pick
+        return melody.pick(val)
+      when :stretch
+        return (stretch melody, val).to_a
       end
     end
     return melody
