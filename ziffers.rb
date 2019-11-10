@@ -5,7 +5,7 @@ module Ziffers
   @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, "=": :eval }
   @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
   @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
-  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :shuffle, :drop, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
+  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :unique, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :drop, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
   @@debug = false
 
   $easing = {
@@ -770,6 +770,10 @@ module Ziffers
   end
 
   def zplayer(melody,opts={},defaults={})
+    if melody.length==0 then
+      $zloop_states.delete(defaults[:name]) if defaults[:name]
+      stop
+    end
     tick_reset(:adjust) if defaults.delete(:readjust)
     loop_i = defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 1
     melody.each_with_index do |ziff,index|
@@ -1196,7 +1200,7 @@ module Ziffers
       when :subset then
         return (val.is_a? Numeric) ? [melody[val]] : melody[val]
       when :inject then
-        return melody.inject(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)){|a,j| print a; a.flat_map{|n| [n,augment(j, n)]}}
+        return melody.inject(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)){|a,j| a.flat_map{|n| [n,augment(j, n)]}}
       when :zip then
         return melody.zip(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)).flatten
       when :append then
@@ -1207,6 +1211,20 @@ module Ziffers
         return val.is_a? TrueClass ? melody.shuffle : (melody[val] = val[val].shuffle)
       when :drop then
         melody.slice!(val)
+        return melody
+      when :pop then
+        if val.is_a? TrueClass
+          melody.pop
+        else
+          melody.pop(val)
+        end
+        return melody
+      when :shift
+        if val.is_a? TrueClass
+          melody.shift
+        else
+          melody.shift(val)
+        end
         return melody
       end
     end
@@ -1244,8 +1262,10 @@ module Ziffers
       return rev_notes
     elsif retrograde.is_a?(Numeric) # Retrograding partial arrays splitted to equal parts
       return notes.each_slice(retrograde).map{|part| zreverse part, chords }.flatten
-    else
+    elsif retrograde.is_a?(TrueClass)
       return zreverse notes, chords # Normal retrograde
+    else
+      return notes
     end
   end
 
@@ -1360,7 +1380,6 @@ module Ziffers
     if ziff[:note] and ziff[:degree] then
       if additions[:degree] then
         interval = additions[:degree]
-        print interval
       else
         interval = additions[ziff[:degree]]
       end
