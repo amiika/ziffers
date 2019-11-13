@@ -2,10 +2,54 @@ print "Ziffers 1.2: Breaking changes. Read new wiki."
 
 module Ziffers
 
-  @@control_chars = {'A': :amp, 'C': :attack, 'P': :pan, 'D': :decay, 'S': :sustain, 'R': :release, 'Z': :sleep, 'X': :chord_sleep, 'I': :pitch,  'K': :key, 'L': :scale, '~': :note_slide, 'i': :chord, 'v': :chord, '%': :chord_invert, 'O': :channel, 'G': :arpeggio, "=": :eval }
-  @@default_durs = {'m': 8.0, 'l': 4.0, 'd': 2.0, 'w': 1.0, 'h': 0.5, 'q': 0.25, 'e': 0.125, 's': 0.0625, 't': 0.03125, 'f': 0.015625, 'z': 0.0 }
-  @@default_opts = { :key => :c, :scale => :major, :release => 1.0, :sleep => 1.0, :pitch => 0.0, :amp => 1, :pan => 0, :skip => false }
+  @@control_chars = {
+    'A': :amp,
+    'C': :attack,
+    'P': :pan,
+    'D': :decay,
+    'S': :sustain,
+    'R': :release,
+    'Z': :sleep,
+    'X': :chord_sleep,
+    'I': :pitch,
+    'K': :key,
+    'L': :scale,
+    '~': :note_slide,
+    'i': :chord,
+    'v': :chord,
+    '%': :chord_invert,
+    'O': :channel,
+    'G': :arpeggio,
+    "=": :eval
+  }
+
+  @@default_durs = {
+    'm': 8.0,
+    'l': 4.0,
+    'd': 2.0,
+    'w': 1.0,
+    'h': 0.5,
+    'q': 0.25,
+    'e': 0.125,
+    's': 0.0625,
+    't': 0.03125,
+    'f': 0.015625,
+    'z': 0.0
+  }
+
+  @@default_opts = {
+    :key => :c,
+    :scale => :major,
+    :release => 1.0,
+    :sleep => 1.0,
+    :pitch => 0.0,
+    :amp => 1,
+    :pan => 0,
+    :skip => false
+  }
+
   @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
+
   @@debug = false
 
   $easing = {
@@ -100,7 +144,18 @@ module Ziffers
       result
     end
     n = replace_random_sequence(n)
+    n = replace_multi_syntax(n)
     n
+  end
+
+  def replace_multi_syntax(n)
+    n = n.gsub(/([A-Z]+|[0-9]+|{.*})(\+|\/)(\d+)/) do
+      if $2=="+" then
+        (($1.tr("{}","")+" ")*$3.to_i).strip
+      else
+        "("+(($1.tr("{}","")+" ")*$3.to_i).strip+")"
+      end
+    end
   end
 
   # Replaces random sequence syntax in a string
@@ -111,6 +166,7 @@ module Ziffers
     # Debug: https://www.debuggex.com/r/1VusJWIiV_hRy3zt
     n = n.gsub(/\(((-?\d+)\.\.(\d+)|(-?\d+),(\d+)|(\.\.\d+))\)\+?(\d+)?(\?)?(\d+)?@?([1-9.\(\)\+\?]+)?(%[\w])?\^?([a-z]+)?\*?(\d+)?(?:'(.*)')?/) do
       m = Regexp.last_match.captures
+      sequence = true
       resultArr=[]
       (m[12] ? m[12].to_i : 1).times do # *3
         nArr = m[5].chars.drop(2).map(&:to_i) if m[5] # (1234)
@@ -122,7 +178,10 @@ module Ziffers
           nArr = (m[6] ? (ms..me).step(m[6].to_i).to_a : (ms..me).to_a)
           nArr = nArr.reverse if s>e
         end
-        nArr = rrand_i(m[3].to_i,m[4].to_i).to_s.chars if m[3] && m[4] # 1,3
+        if m[3] && m[4] then # 1,3
+          nArr = rrand_i(m[3].to_i,m[4].to_i).to_s.chars
+          sequence = false
+        end
         nArr = nArr.shuffle if m[7] # ?
         nArr = nArr.take(m[8].to_i) if m[8] # ?3
         nArr = nArr.inject(replace_random_sequence(m[9]).split("").map(&:to_i)) {|a,j| a.flat_map{|n|[n,n+j]}} if m[9] # @(4)
@@ -132,7 +191,7 @@ module Ziffers
         nArr = (lArr.length<nArr.length ? lArr*(nArr.length/lArr.length) : lArr).zip(nArr) if lArr
         resultArr += nArr
       end
-      m[13] ? resultArr.join(m[13]) : resultArr.join(' ')
+      m[13] ? resultArr.join(m[13]) : sequence ? resultArr.join(' ') : resultArr.join('')
     end
     n
   end
