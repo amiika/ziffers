@@ -1,5 +1,4 @@
-
-require "~/ziffers/ziffers.rb"
+load "~/ziffers/ziffers.rb"
 
 # Todo: Add more tests
 

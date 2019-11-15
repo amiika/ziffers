@@ -24,17 +24,27 @@ module Ziffers
   }
 
   @@default_durs = {
-    'm': 8.0,
-    'l': 4.0,
-    'd': 2.0,
-    'w': 1.0,
-    'h': 0.5,
-    'q': 0.25,
-    'e': 0.125,
-    's': 0.0625,
-    't': 0.03125,
-    'f': 0.015625,
-    'z': 0.0
+    'm': 8.0, # 15360
+    'n': 5.333333333333333, # 10240
+    'l': 4.0, # 7680
+    'k': 2.666666666666667, # 5120
+    'd': 2.0, # 3840
+    'x': 1.333333333333333, # 2560
+    'w': 1.0, # 1920
+    'y': 0.6666666666666667, # 1280
+    'h': 0.5, # 960 - 1/2
+    'u': 0.3333333333333333, # 640
+    'q': 0.25, # 480 - 1/4
+    'i': 0.1666666666666667, # 320
+    'e': 0.125, # 240 - 1/8
+    'o': 0.0833333333333333, # 160
+    's': 0.0625, # 120 - 1/16
+    'p': 0.0416666666666667, # 80
+    't': 0.03125, # 60 - 1/32
+    'j': 0.0208333333333333, # 40
+    'f': 0.015625, # 30 - 1/64
+    'k': 0.0104166666666667, # 20
+    'z': 0.0 # 0
   }
 
   @@default_opts = {
@@ -305,7 +315,11 @@ module Ziffers
                 ziff[:notes]+=octave_notes
               end
             elsif escapeType == :sleep then
-              noteLength = stringFloat.to_f
+              if stringFloat.to_f < 20 or stringFloat =~/[0-9]*\.[0-9]+/ then
+                noteLength = stringFloat.to_f
+              else
+                noteLength = stringFloat.to_f / 1920
+              end
             elsif [:release,:sustain,:attack,:decay].include?(escapeType) then
               adsr[escapeType] = stringFloat.to_f
             else
