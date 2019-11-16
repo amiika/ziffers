@@ -1,4 +1,4 @@
-print "Ziffers 1.2: Breaking changes. Read new wiki."
+print "Ziffers 1.3: The return of the degrees"
 
 module Ziffers
 
@@ -62,6 +62,8 @@ module Ziffers
 
   @@debug = false
 
+  @@degree_based = false
+
   $easing = {
     linear: -> (t, b, c, d) { c * t / d + b },
     in_quad: -> (t, b, c, d) { c * (t/=d)*t + b },
@@ -102,6 +104,10 @@ module Ziffers
 
   def debug(debug=!@@debug)
     @@debug = debug
+  end
+
+  def set_degree_based(degrees=!@@degree_based)
+    @@degree_based = degrees
   end
 
   def set_default_opts(opts)
@@ -210,11 +216,14 @@ module Ziffers
   # Example "1 2"->[{degree:1, key: :c},{degree:2}] ... etc.
   def zparse(n,opts={},shared={})
     notes, noteBuffer, controlBuffer, customChord, customChordDegrees, subList, sub = Array.new(7){ [] }
-    loop, dc, ds, escape, quoted, skip, slideNext, negative = false, false, false, false, false, false, false, false
+    loop, dc, ds, escape, quoted, skip, slideNext, negative, degree_based = false, false, false, false, false, false, false, false, false
     stringFloat = ""
     dotLength = 1.0
     sfaddition, dot, loopCount, note = 0, 0, 0, 0, 0
     escapeType = nil
+    if opts[:degrees] then
+        degree_based = opts.delete(:degrees)
+    end
     midi = opts.key?(:midi) ? opts.delete(:midi) : false
     if !midi then
       shared[:groups] = (shared.key?(:groups) ? shared[:groups] : opts.key?(:groups) ? opts.delete(:groups) : true)
@@ -225,6 +234,12 @@ module Ziffers
     else
       parsed_use = opts.select{|k,v| k.length<2 and /[[:upper:]]/.match(k)} # Parse capital letters from the opts
       if !parsed_use.empty? then
+        parsed_use.each do |key,val|
+          if (val.is_a? String) then
+            n = n.gsub key.to_s, val
+            parsed_use.delete(:key)
+          end
+        end
         opts.except!(*parsed_use.keys)
         use = parsed_use
       end
@@ -417,6 +432,7 @@ module Ziffers
               c_int = 11
             else
               c_int = c.to_i
+              c_int = c_int - 1 if (@@degree_based or degree_based) and !negative and c_int>0
             end
             if midi && c!="T" && c!="E" then
               stringFloat+=c
