@@ -58,11 +58,11 @@ module Ziffers
     :skip => false
   }
 
-  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize]
+  @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm]
 
   @@debug = false
-
   @@degree_based = false
+  @@rmotive_lengths = nil
 
   $easing = {
     linear: -> (t, b, c, d) { c * t / d + b },
@@ -160,11 +160,21 @@ module Ziffers
       result
     end
     n = replace_random_sequence(n)
-    n = replace_multi_syntax(n)
+    n = expand_multi_syntax(n)
     n
   end
 
-  def replace_multi_syntax(n)
+  def expand_repeat_syntax(n)
+    n = n.gsub(/:(.*?):(\d*)/) do
+      if $2.empty? then
+        ([$1]*2).join("|")
+      else
+        ([$1]*$2.to_i).join("|")
+      end
+    end
+  end
+
+  def expand_multi_syntax(n)
     n = n.gsub(/([A-Z]+|[0-9]+|{.*})(\+|\/)(\d+)/) do
       if $2=="+" then
         (($1.tr("{}","")+" ")*$3.to_i).strip
@@ -825,6 +835,7 @@ module Ziffers
 
   def zplay(melody,opts={},defaults={})
     # Extract common options to defaults
+    parseCommonOpts(opts)
     defaults = defaults.merge(opts.extract!(*@@default_keys))
     opts = get_default_opts.merge(opts)
     defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
@@ -953,7 +964,13 @@ module Ziffers
     end
   end
 
+  # Sets common attributes for zloop and zplay
+  def parseCommonOpts(opts)
+    @@rmotive_lengths = (expand_repeat_syntax(opts[:rhythm]).split("").reduce([]) {|acc,c| (@@default_durs.keys.include? c.to_sym) ? acc << @@default_durs[c.to_sym] : acc}).ring if opts[:rhythm] and (opts[:rhythm].is_a? String)
+  end
+
   def zloop(name, ziff, opts={}, defaults={})
+    parseCommonOpts(opts)
     defaults[:name] = name
     defaults = defaults.merge(opts.extract!(*@@default_keys))
     clean_loop_states # Clean unused loop states
@@ -1337,17 +1354,30 @@ module Ziffers
         val = val.(loop_i) if val.arity == 1
       end
       case key
-      when :augment then
+      when :augment
         return augment ziff, val
-      when :flex then
+      when :flex
         return flex ziff, val
-      when :silence then
+      when :silence
         return silence ziff, val
-      when :harmonize then
+      when :harmonize
         return harmonize ziff, defaults
+      when :rhythm
+        return zrhythm_motive ziff, val, note_i
       when :object_transform
         return send(val,ziff,loop_i,note_i)
       end
+    end
+    return ziff
+  end
+
+  def zrhythm_motive(ziff, rmotive, note_i)
+    if @@rmotive_lengths then
+      ziff[:sleep] = @@rmotive_lengths[note_i]
+    elsif rmotive.is_a? Array then
+      ziff[:sleep] = rmotive.ring[note_i]
+    elsif rmotive.is_a? SonicPi::Core::RingVector then
+      ziff[:sleep] = rmotive[note_i]
     end
     return ziff
   end
