@@ -7,11 +7,11 @@ Writing and playing melodies in any key or scale will be as simple as:
 ```
 zplay "q 4 e 1 1 q 2 1 0 3 4", key: "f", scale: "major"
 ```
-or playing loops
+or playing loops:
 ```
 zloop :ride, "q2 e4 3 3 3 2 3 4 3 3 3 3 3 2 3", key: :c, scale: :chromatic
 ```
-or loops with generative live rules
+or loops with generative live rules:
 ```
 z1 "e1", rules: {
   "1"=>"3",
@@ -21,6 +21,19 @@ z1 "e1", rules: {
   "5"=>"1",
   "6"=>"2"
 }
+```
+or complex drumlines with custom sample or midi mapping:
+```
+breakbeat = "| q HB H | HS (H B) | (H B) (H B) | HS (H B)  |
+             |   HB H | HS H     | (H H) (r B) | HS (H H)  |"
+
+samples = {
+  B: :bd_tek,
+  S: :drum_snare_soft,
+  H: {sample: :drum_cymbal_closed, amp: 0.2}
+}
+
+z1 breakbeat, use: samples
 ```
 and much more ...
 
@@ -43,3 +56,7 @@ Try out [one line](https://github.com/amiika/ziffers/blob/master/play_tests.rb) 
 # Documentation
 
 Syntax and methods are documented in [Ziffers wiki](https://github.com/amiika/ziffers/wiki).
+
+# Help
+
+Post [issue](https://github.com/amiika/ziffers/issues) or ask help from [chat](https://chat.toplap.org/channel/ziffers).

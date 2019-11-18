@@ -854,35 +854,38 @@ module Ziffers
         melody = enum.next
       end
     end
+    loop_i = defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 0
     loop do
-      melody = apply_array_transformations(melody, opts, defaults, defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 0) if !defaults[:transform_single]
+      melody = apply_array_transformations(melody, opts, defaults, loop_i) if !defaults[:transform_single]
       if !opts[:port] and defaults[:run] then
         block_with_effects defaults[:run].clone do
-          zplayer(melody,opts,defaults)
+          zplayer(melody,opts,defaults,loop_i)
         end
       else
-        zplayer(melody,opts,defaults)
+        zplayer(melody,opts,defaults,loop_i)
       end
+      print "Cycle index: "+loop_i.to_s if @@debug
       break if !enum
       melody = enum.next
+      loop_i = loop_i+1
       melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed] if melody.is_a? String or melody.is_a? Numeric
     end
   end
 
-  def zplayer(melody,opts={},defaults={})
+  def zplayer(melody,opts={},defaults={},loop_i=0)
     if melody.length==0 then
       $zloop_states.delete(defaults[:name]) if defaults[:name]
       stop
     end
     tick_reset(:adjust) if defaults.delete(:readjust)
-    loop_i = defaults[:name] ? $zloop_states[defaults[:name]][:loop_i] : 0
     melody.each_with_index do |ziff,index|
-      ziff = apply_transformation(ziff, defaults, loop_i, index)
+      ziff = apply_transformation(ziff, defaults, loop_i, index, melody.length)
       if ziff[:lambda] then
         ziff[:lambda].() if ziff[:lambda].arity == 0
         ziff[:lambda].(ziff) if ziff[:lambda].arity == 1
         ziff[:lambda].(ziff,index) if ziff[:lambda].arity == 2
         ziff[:lambda].(ziff,index,loop_i) if ziff[:lambda].arity == 3
+        ziff[:lambda].(ziff,index,loop_i,melody.length) if ziff[:lambda].arity == 4
       end
       ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
       if defaults[:adjust] then
@@ -893,6 +896,7 @@ module Ziffers
           defaults[:adjust].(ziff) if defaults[:adjust].arity == 1
           defaults[:adjust].(ziff,index) if defaults[:adjust].arity == 2
           defaults[:adjust].(ziff,index,loop_i) if defaults[:adjust].arity == 3
+          defaults[:adjust].(ziff,index,loop_i,melody.length) if defaults[:adjust].arity == 4
         else
           defaults[:adjust].each do |key,val|
             # If adjust value is lambda
@@ -901,6 +905,7 @@ module Ziffers
               ziff[key] = val.(ziff[key]) if val.arity == 1
               ziff[key] = val.(ziff[key], index) if val.arity == 2
               ziff[key] = val.(ziff[key], index, loop_i) if val.arity == 3
+              ziff[key] = val.(ziff[key], index, loop_i, melody.length) if val.arity == 4
             else
               # If adjust is ring or array
               #TODO: Not optimal solution. This overwrites all following changes on the fly.
@@ -1347,7 +1352,7 @@ module Ziffers
     return melody
   end
 
-  def apply_transformation(ziff, defaults,loop_i=0,note_i=0)
+  def apply_transformation(ziff, defaults, loop_i=0, note_i=0, melody_size=1)
     defaults.each do |key,val|
       if val.is_a? Proc then
         val = val.() if val.arity == 0
@@ -1363,21 +1368,22 @@ module Ziffers
       when :harmonize
         return harmonize ziff, defaults
       when :rhythm
-        return zrhythm_motive ziff, val, note_i
+        return zrhythm_motive ziff, val, (loop_i>0 ? (melody_size*loop_i+note_i) : note_i)
       when :object_transform
-        return send(val,ziff,loop_i,note_i)
+        return send(val,ziff,loop_i,note_i,melody_size)
       end
     end
     return ziff
   end
 
-  def zrhythm_motive(ziff, rmotive, note_i)
+  def zrhythm_motive(ziff, rmotive, mot_i)
+    print mot_i
     if @@rmotive_lengths then
-      ziff[:sleep] = @@rmotive_lengths[note_i]
+      ziff[:sleep] = @@rmotive_lengths[mot_i]
     elsif rmotive.is_a? Array then
-      ziff[:sleep] = rmotive.ring[note_i]
+      ziff[:sleep] = rmotive.ring[mot_i]
     elsif rmotive.is_a? SonicPi::Core::RingVector then
-      ziff[:sleep] = rmotive[note_i]
+      ziff[:sleep] = rmotive[mot_i]
     end
     return ziff
   end
