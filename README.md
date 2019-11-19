@@ -39,7 +39,11 @@ and much more ...
 
 # Quick start
 
-## How to install
+## Requirements
+
+Install [Sonic Pi](https://sonic-pi.net/)
+
+## Install ziffers
 
 Install Ziffers to your Sonic Pi by cloning this project into your home directory (this makes referencing easier as most of the examples use ~ shorthand to require stuff). Ziffers can then be required to your Sonic Pi project using:
 
