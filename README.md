@@ -41,7 +41,9 @@ and much more ...
 
 ## Requirements
 
-Install [Sonic Pi](https://sonic-pi.net/)
+- [Sonic Pi](https://sonic-pi.net/)
+- Git (if you haven't used git before see [full instructions](https://github.com/amiika/ziffers/wiki/Install))
+
 
 ## Install ziffers
 
