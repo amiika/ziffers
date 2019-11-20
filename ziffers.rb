@@ -1,6 +1,10 @@
-print "Ziffers 1.3: The return of the degrees"
+require_relative "./enumerables.rb"
+
+print "Ziffers 1.4: The rise of enumerables"
 
 module Ziffers
+module Core
+  include Ziffers::Enumerables
 
   @@control_chars = {
     'A': :amp,
@@ -226,11 +230,12 @@ module Ziffers
   # Example "1 2"->[{degree:1, key: :c},{degree:2}] ... etc.
   def zparse(n,opts={},shared={})
     notes, noteBuffer, controlBuffer, customChord, customChordDegrees, subList, sub = Array.new(7){ [] }
-    loop, dc, ds, escape, quoted, skip, slideNext, negative, degree_based = false, false, false, false, false, false, false, false, false
+    loop, dc, ds, escape, quoted, skip, slideNext, negative, fixedNegative, degree_based = false, false, false, false, false, false, false, false, false, false
     stringFloat = ""
     dotLength = 1.0
     sfaddition, dot, loopCount, note = 0, 0, 0, 0, 0
     escapeType = nil
+    fixedNegative = true if opts[:negative]
     if opts[:degrees] then
         degree_based = opts.delete(:degrees)
     end
@@ -627,7 +632,7 @@ module Ziffers
             end
           end
           dot = 0
-          negative=false
+          negative=false if !fixedNegative
           dotLength = 1.0
           note = 0
           current_ziff_keys = []
@@ -738,7 +743,7 @@ module Ziffers
   end
 
   def clean(ziff)
-    ziff.except(:send, :lambda, :synth, :cue,:rules,:eval,:gen,:arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
+    ziff.except(:negative, :send, :lambda, :synth, :cue,:rules,:eval,:gen,:arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
   end
 
   def play_midi_out(md, opts)
@@ -839,14 +844,15 @@ module Ziffers
     defaults = defaults.merge(opts.extract!(*@@default_keys))
     opts = get_default_opts.merge(opts)
     defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
-    if melody.is_a? Enumerator then
+    if defaults[:name] and $zloop_states[defaults[:name]][:enumeration] then
+      enum = $zloop_states[defaults[:name]][:enumeration]
+      melody = normalize_melody(enum.next, opts, defaults)
+    elsif defaults[:store] and defaults[:name] and $zloop_states[defaults[:name]][:parsed_melody]
+      melody = $zloop_states[defaults[:name]][:parsed_melody]
+    elsif melody.is_a? Enumerator then
       enum = melody
       melody = enum.next
       melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
-    elsif defaults[:name] and $zloop_states[defaults[:name]][:enumeration] then
-      melody = $zloop_states[defaults[:name]][:enumeration].next
-    elsif defaults[:store] and defaults[:name] and $zloop_states[defaults[:name]][:parsed_ziff]
-      melody = $zloop_states[defaults[:name]][:parsed_ziff]
     else
       melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
       if has_combinatorics(defaults)
@@ -866,9 +872,8 @@ module Ziffers
       end
       print "Cycle index: "+loop_i.to_s if @@debug
       break if !enum
-      melody = enum.next
+      melody = normalize_melody(enum.next, opts, defaults)
       loop_i = loop_i+1
-      melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed] if melody.is_a? String or melody.is_a? Numeric
     end
   end
 
@@ -925,7 +930,7 @@ module Ziffers
     end
     # Save loop state
     if defaults[:store] and defaults[:name] then
-      $zloop_states[defaults[:name]][:parsed_ziff] = melody
+      $zloop_states[defaults[:name]][:parsed_melody] = melody
       if @@debug then
         print "Stored:"
         print zparams melody, :degree
@@ -940,10 +945,13 @@ module Ziffers
       if defaults[:midi] then
         opts[:note] = melody
       else
-        opts[:note] = get_note_from_dgr(melody, opts[:key], opts[:scale])
+        if melody<-9 then
+          # TODO: Negative parsing? For example: -12 -> "-1-2" or maybe fixed negative flag: zparse x, negative: true
+          return zparse(melody.to_s,opts,defaults)
+        else
+          return zparse(melody.to_s,opts,defaults)
+        end
       end
-      set_ADSR(opts,@@default_opts.slice(:attack,:decay,:sustain,:release))
-      return [opts]
     elsif melody.is_a?(Array)
       return zarray(melody,opts)
     else
@@ -974,7 +982,7 @@ module Ziffers
     @@rmotive_lengths = (expand_repeat_syntax(opts[:rhythm]).split("").reduce([]) {|acc,c| (@@default_durs.keys.include? c.to_sym) ? acc << @@default_durs[c.to_sym] : acc}).ring if opts[:rhythm] and (opts[:rhythm].is_a? String)
   end
 
-  def zloop(name, ziff, opts={}, defaults={})
+  def zloop(name, melody, opts={}, defaults={})
     parseCommonOpts(opts)
     defaults[:name] = name
     defaults = defaults.merge(opts.extract!(*@@default_keys))
@@ -997,18 +1005,24 @@ module Ziffers
       defaults[:phase] = opts.delete(:phase)
       defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
     end
-    if ziff.is_a?(Array) && ziff[0].is_a?(Hash) then
+
+    if melody.is_a?(Array) && melody[0].is_a?(Hash) then
       defaults[:preparsed] = true
-    elsif (opts[:parse] or (has_combinatorics(opts)) and !$zloop_states[name][:enumeration]) and (ziff.is_a?(String) and !ziff.start_with? "//") and !opts[:seed]
-      parsed_ziff = normalize_melody ziff, opts.except(*@@default_keys), defaults
-      enumeration = parse_combinatorics parsed_ziff, opts
+    elsif melody.is_a?(Enumerator) or ((opts[:parse] or (has_combinatorics(opts)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !opts[:seed])
+      if melody.is_a? Enumerator then
+        enumeration = melody
+      else
+        parsed_melody = normalize_melody melody, opts.except(*@@default_keys), defaults
+        enumeration = parse_combinatorics parsed_melody, opts
+      end
       if enumeration then
         $zloop_states[name][:enumeration] = enumeration.cycle
       else
-        parsed_ziff = parse_modifications parsed_ziff, opts
+        parsed_melody = parse_modifications parsed_melody, opts
       end
       defaults[:parsed] = true
     end
+
     live_loop name, opts.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
 
       eval_loop_opts(opts,$zloop_states[name])
@@ -1020,7 +1034,7 @@ module Ziffers
         sleep phase
       end
 
-      if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or (opts[:stop].is_a? TrueClass) or (ziff.is_a?(String) and ziff.start_with? "//") then
+      if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or (opts[:stop].is_a? TrueClass) or (melody.is_a?(String) and melody.start_with? "//") then
         $zloop_states.delete(name)
         stop
       end
@@ -1045,17 +1059,17 @@ module Ziffers
       end
 
       if defaults[:preparsed] then
-        zplay ziff, opts, defaults
-      elsif parsed_ziff
-        zplay parsed_ziff, opts.slice(:run,:detune), defaults
+        zplay melody, opts, defaults
+      elsif parsed_melody
+        zplay parsed_melody, opts.slice(:run,:detune), defaults
       else
         if opts[:rules] and !opts[:gen] then
           defaults[:lsystemloop] = true
-          $zloop_states[name][:ziff] = ziff if !$zloop_states[name][:ziff]
-          $zloop_states[name][:ziff] = (lsystem($zloop_states[name][:ziff], opts[:rules], 1, $zloop_states[name][:loop_i]))[0]
-          zplay $zloop_states[name][:ziff], opts, defaults
+          $zloop_states[name][:melody] = melody if !$zloop_states[name][:melody]
+          $zloop_states[name][:melody] = (lsystem($zloop_states[name][:melody], opts[:rules], 1, $zloop_states[name][:loop_i]))[0]
+          zplay $zloop_states[name][:melody], opts, defaults
         else
-          zplay ziff, loop_opts ? loop_opts : opts, defaults
+          zplay melody, loop_opts ? loop_opts : opts, defaults
         end
       end
       $zloop_states[name][:loop_i] += 1
@@ -1067,7 +1081,7 @@ module Ziffers
   end
 
   # Parses enum or returns nil
-  def parse_combinatorics(parsed_ziff, opts)
+  def parse_combinatorics(parsed_melody, opts)
     iteration = opts.delete(:iteration)
     combination = opts.delete(:combination)
     permutation = opts.delete(:permutation)
@@ -1075,11 +1089,11 @@ module Ziffers
     transposed = opts.delete(:transpose)
     if permutation or combination or iteration then
       if permutation then
-        enumeration = repeated ? parsed_ziff.repeated_permutation(permutation) : parsed_ziff.permutation(permutation)
+        enumeration = repeated ? parsed_melody.repeated_permutation(permutation) : parsed_melody.permutation(permutation)
       elsif combination
-        enumeration = repeated ? parsed_ziff.repeated_combination(combination) : parsed_ziff.combination(combination)
+        enumeration = repeated ? parsed_melody.repeated_combination(combination) : parsed_melody.combination(combination)
       elsif iteration
-        enumeration = parsed_ziff.each_cons(iteration)
+        enumeration = parsed_melody.each_cons(iteration)
       end
       print "Enumeration size: "+enumeration.size.to_s
       if opts.delete(:transform_enum) then
@@ -1377,7 +1391,6 @@ module Ziffers
   end
 
   def zrhythm_motive(ziff, rmotive, mot_i)
-    print mot_i
     if @@rmotive_lengths then
       ziff[:sleep] = @@rmotive_lengths[mot_i]
     elsif rmotive.is_a? Array then
@@ -1549,5 +1562,6 @@ module Ziffers
                       def z20(ziff="//", opts={})  zloop(:z20,ziff,opts) end
 
 end
+end
 
-include Ziffers
+include Ziffers::Core

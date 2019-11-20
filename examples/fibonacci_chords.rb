@@ -1,5 +1,7 @@
 load "~/ziffers/ziffers.rb"
 
+# Good 'old' way to use enumerations
+
 def fibonacci
   Enumerator.new do |y|
     a = b = 1

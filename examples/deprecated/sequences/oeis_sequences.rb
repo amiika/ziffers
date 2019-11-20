@@ -14,6 +14,7 @@ def recaman
   end
 end
 
+# https://oeis.org/A005185
 def hoffQ
   Enumerator.new do |y|
     q = []
