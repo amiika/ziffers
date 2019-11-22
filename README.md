@@ -41,7 +41,7 @@ zplay pi, rhythm: "|:q q h:|: h q ee :|"
 ```
 and much more ...
 
-See documentation in [Ziffers wiki](https://github.com/amiika/ziffers/wiki) for more examples.
+See [Ziffers wiki](https://github.com/amiika/ziffers/wiki) for how to make your own.
 
 # Quick start
 
