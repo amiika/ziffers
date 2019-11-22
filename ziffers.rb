@@ -743,7 +743,7 @@ module Core
   end
 
   def clean(ziff)
-    ziff.except(:negative, :send, :lambda, :synth, :cue,:rules,:eval,:gen,:arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
+    ziff.except(:inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
   end
 
   def play_midi_out(md, opts)
@@ -1043,17 +1043,15 @@ module Core
         loop_opts = opts.clone
         cycle_array = ($zloop_states[name][:cycle].is_a? Array) ? $zloop_states[name][:cycle] : [$zloop_states[name][:cycle]]
         cycle_array.each do |value|
-          raise "Expected :mod in :cycle object!" if !value[:mod]
-          if value[:first] or value[:last] or (value[:from] and value[:to]) then
-            mod_cycles = ($zloop_states[name][:loop_i]+1) % value[:mod]
-            mod_cycles = value[:mod] if mod_cycles == 0
-            if value[:from] and value[:to] and mod_cycles >= value[:from] and mod_cycles <= value[:to] then
-              loop_opts = get_loop_opts(value.except(:mod,:first,:last,:from,:to),loop_opts,$zloop_states[name][:loop_i])
-            elsif (value[:first] and mod_cycles <= value[:first]) or (value[:last] and mod_cycles>(value[:mod]-value[:last])) then
-              loop_opts = get_loop_opts(value.except(:mod,:first,:last,:from,:to),loop_opts,$zloop_states[name][:loop_i])
+          raise "Expected :on in :cycle object!" if !value[:on]
+          mod_cycles = ($zloop_states[name][:loop_i]+1) % value[:on]
+          if value[:range] and value[:range].is_a?(Range) then
+            mod_cycles = value[:on] if mod_cycles == 0
+            if mod_cycles >= value[:range].begin and mod_cycles <= value[:range].end then
+              loop_opts = get_loop_opts(value.except(:on,:range),loop_opts,$zloop_states[name][:loop_i])
             end
-          elsif ($zloop_states[name][:loop_i]+1) % value[:mod] == 0 then
-            loop_opts = get_loop_opts(value.except(:mod),loop_opts,$zloop_states[name][:loop_i])
+          elsif mod_cycles == 0 then
+            loop_opts = get_loop_opts(value.except(:on),loop_opts,$zloop_states[name][:loop_i])
           end
         end
       end
