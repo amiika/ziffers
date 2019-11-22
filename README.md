@@ -35,7 +35,13 @@ samples = {
 
 z1 breakbeat, use: samples
 ```
+or play infinite sequences. Easy as:
+```
+zplay pi, rhythm: "|:q q h:|: h q ee :|"
+```
 and much more ...
+
+See documentation in [Ziffers wiki](https://github.com/amiika/ziffers/wiki) for more examples.
 
 # Quick start
 
