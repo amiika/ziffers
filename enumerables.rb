@@ -71,30 +71,6 @@ module Ziffers
       end
     end
 
-    # TODO: Not working yet.
-    def square(num)
-      Enumerator.new do |y|
-        x = (1.0+(1.0/(num))).rationalize
-        z = ((x.numerator + num * x.denominator).to_f / (x.numerator + x.denominator).to_f).rationalize
-        a = x.numerator
-        b = x.denominator
-        a1 = z.numerator
-        b1 = z.denominator
-        k = num
-        while true do
-          p, q, k = 1, num, k+1
-          a, b, a1, b1 = a1, b1, p*a+q*a1, p*b+q*b1
-          d = a / b
-          d1 = a1 / b1
-          while d == d1
-            y << d
-            a, a1 = 10*(a%b), 10*(a1%b1)
-            d, d1 = a/b, a1/b1
-          end
-        end
-      end
-    end
-
     # https://www.mathpages.com/home/kmath312/kmath312.htm
     def reverse_sum(n=17509097067,base=10)
       Enumerator.new do |y|
@@ -127,6 +103,10 @@ module Ziffers
     # https://en.wikipedia.org/wiki/Quadratic_function
     def quadratic(a,b,c,s=0,e=Float::INFINITY)
       (s..e).lazy.collect {|n| a*(n**2)+(b*n)+c }
+    end
+
+    def primes(e=Float::INFINITY)
+      (2..e).lazy.reject {|n| (2..Math.sqrt(n)).any?{ |j| n % j == 0 }}
     end
 
     # https://oeis.org/A005132

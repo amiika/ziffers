@@ -1,6 +1,6 @@
 require_relative "./enumerables.rb"
 
-print "Ziffers 1.4: The rise of enumerables"
+print "Ziffers 1.5: Time to tie"
 
 module Ziffers
 module Core
@@ -230,9 +230,10 @@ module Core
   # Example "1 2"->[{degree:1, key: :c},{degree:2}] ... etc.
   def zparse(n,opts={},shared={})
     notes, noteBuffer, controlBuffer, customChord, customChordDegrees, subList, sub = Array.new(7){ [] }
-    loop, dc, ds, escape, quoted, skip, slideNext, negative, fixedNegative, degree_based = false, false, false, false, false, false, false, false, false, false
+    tie, loop, dc, ds, escape, quoted, skip, slideNext, negative, fixedNegative, degree_based, init_defaults = false, false, false, false, false, false, false, false, false, false, false, false
     stringFloat = ""
     dotLength = 1.0
+    tieLength = 0.0
     sfaddition, dot, loopCount, note = 0, 0, 0, 0, 0
     escapeType = nil
     fixedNegative = true if opts[:negative]
@@ -407,7 +408,13 @@ module Core
             note = use_char if use_char.is_a? Integer
           end
         elsif @@default_durs.key?(c.to_sym) then
-          noteLength = @@default_durs[c.to_sym]
+          if tie then
+            tieLength += @@default_durs[c.to_sym]
+          else
+            noteLength = @@default_durs[c.to_sym]
+            tieLength = @@default_durs[c.to_sym]
+            tie = true
+          end
         else
           case c
           when '(' then
@@ -420,7 +427,7 @@ module Core
               sub.push(addSub)
               subList.push(sub)
             else
-              subdivide(subList.pop(),noteLength,adsr)
+              subdivide(subList.pop(),(tie ? tieLength*dotLength : noteLength*dotLength),adsr)
             end
           when "'" then
             quoted = true
@@ -569,13 +576,9 @@ module Core
           if slideNext then
             controlZiff[:degree] = dgr
             controlZiff[:note] = note
-            controlZiff[:sleep] = noteLength*dotLength
+            controlZiff[:sleep] = tie ? tieLength*dotLength : noteLength*dotLength
             controlZiff[:pitch] = controlZiff[:pitch]+sfaddition
             controlZiff[:pitch_slide] = defaults[:pitch_slide] ? defaults[:pitch_slide] : 0.2
-            if sfaddition!=0 then
-              controlZiff[:pitch] = controlZiff[:pitch]-sfaddition
-              sfaddition=0
-            end
             controlBuffer.push(controlZiff.clone)
             if next_c == nil || next_c == ' ' then
               slideNext = false # Slide ends
@@ -611,7 +614,7 @@ module Core
               if dgr_sleep then
                 ziff[:sleep] = (dgr_sleep.is_a?(String) ? @@default_durs[dgr_sleep.to_sym] : dgr_sleep)*dotLength
               else
-                ziff[:sleep] = noteLength*dotLength
+                ziff[:sleep] = tie ? tieLength*dotLength : noteLength*dotLength
               end
             end
             set_ADSR(ziff,adsr)
@@ -625,20 +628,12 @@ module Core
               ziff.delete(:degree)
               ziff.delete(:note)
               ziff.except!(*current_ziff_keys)
-              if sfaddition!=0 then
-                ziff[:pitch] = ziff[:pitch]-sfaddition
-                sfaddition=0
-              end
             end
           end
-          dot = 0
-          negative=false if !fixedNegative
-          dotLength = 1.0
-          note = 0
-          current_ziff_keys = []
+          init_defaults = true
         elsif ziff[:notes]
           chordZiff = ziff.clone
-          chordZiff[:sleep] = defaults[:chord_sleep] ? defaults[:chord_sleep] : noteLength
+          chordZiff[:sleep] = defaults[:chord_sleep] ? defaults[:chord_sleep] : (tie ? tieLength*dotLength : noteLength*dotLength)
           set_ADSR(chordZiff,adsr)
           # TODO: Handle chord adsr with separate opts?
           chordZiff[:release] = defaults[:chord_release] if defaults[:chord_release]
@@ -648,25 +643,39 @@ module Core
           ziff.delete(:notes)
           ziff.delete(:degrees)
           ziff.except!(*current_ziff_keys)
-          current_ziff_keys = []
-          sfaddition=0
+          init_defaults = true
         elsif ziff[:sample_opts]
           sample_opts = ziff.delete(:sample_opts)
           sampleZiff = ziff.clone
           sampleZiff.merge!(sample_opts)
-          sampleZiff[:sleep] = (groups and next_c and use.key?(next_c.to_sym)) ?  0 : (noteLength*dotLength) if !sample_opts[:sleep]
+          sampleZiff[:sleep] = (groups and next_c and use.key?(next_c.to_sym)) ?  0 : (tie ? tieLength*dotLength : noteLength*dotLength) if !sample_opts[:sleep]
           notes.push(sampleZiff)
           noteBuffer.push(sampleZiff) if loop && loopCount<1 # : buffer
           sub.push(sampleZiff) if sampleZiff[:sleep]>0 and subList.length>0
+          init_defaults = true
         elsif !escape and (ziff[:lambda] or ziff[:send])
           callZiff = ziff.clone
-          callZiff[:sleep] = noteLength*dotLength
+          callZiff[:sleep] = (tie ? tieLength*dotLength : noteLength*dotLength)
           notes.push(callZiff)
           noteBuffer.push(callZiff) if loop && loopCount<1 # : buffer
           sub.push(callZiff) if callZiff[:sleep]>0 and subList.length>0
           ziff.except!(*current_ziff_keys)
-          current_ziff_keys = []
+          init_defaults = true
         end
+
+        if init_defaults then
+          negative=false if !fixedNegative
+          dotLength = 1.0
+          dot = 0
+          tieLength = 0.0
+          tie = false
+          note = 0
+          ziff[:pitch] = ziff[:pitch]-sfaddition if sfaddition!=0
+          sfaddition=0
+          current_ziff_keys = []
+          init_defaults = false
+        end
+
         # Continues loop
       end
     end
