@@ -269,24 +269,25 @@ module Ziffers
         shared[:groups] = (shared.key?(:groups) ? shared[:groups] : opts.key?(:groups) ? opts.delete(:groups) : true)
         groups = shared[:groups]
       end
+
       if opts[:use] then
-        shared[:use] = opts.delete(:use)
-      else
-        parsed_use = opts.select{|k,v| k.length<2 and /[[:upper:]]/.match(k)} # Parse capital letters from the opts
-        if !parsed_use.empty? then
-          parsed_use.each do |key,val|
-            if (val.is_a? String) then
-              n = n.gsub key.to_s, val
-              parsed_use.delete(:key)
-            end
-          end
-          opts.except!(*parsed_use.keys)
-          shared[:use] = parsed_use
-        end
+        use_object = opts.delete(:use)
       end
+
+      parsed_use = opts.select{|k,v| k.length<2 and /[[:upper:]]/.match(k)} # Parse capital letters from the opts
+      if !parsed_use.empty? then
+        parsed_use.each do |key,val|
+          if (val.is_a? String) then
+            n = n.gsub key.to_s, val
+            parsed_use.delete(:key)
+          end
+        end
+        opts.except!(*parsed_use.keys)
+        shared[:use] = parsed_use
+      end
+
       dgr_lengths = opts.delete(:lengths) if opts[:lengths]
-      control_chars = @@control_chars.clone
-      control_chars.except!(*shared[:use].keys) if shared[:use]
+
       n = lsystem(n,opts.delete(:replace),1,nil)[0] if opts[:replace]
       n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
       if opts[:rules] and !shared[:lsystemloop] then
@@ -301,6 +302,11 @@ module Ziffers
       current_ziff_keys = []
       n = replace_variable_syntax(n)
       n = replace_use_params(n,shared)
+
+      shared[:use] = shared[:use].merge(use_object) if use_object
+      control_chars = @@control_chars.clone
+      control_chars.except!(*shared[:use].keys) if shared[:use]
+
       n = replace_random_syntax(n)
       print "Ziffers: "+n
       chars = n.chars # Loop chars
