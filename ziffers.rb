@@ -777,7 +777,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
+      ziff.except(:phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
     end
 
     def play_midi_out(md, opts)
@@ -1101,7 +1101,11 @@ module Ziffers
             $zloop_states[name][:melody] = (lsystem($zloop_states[name][:melody], opts[:rules], 1, $zloop_states[name][:loop_i]))[0]
             zplay $zloop_states[name][:melody], opts, defaults
           else
-            zplay melody, loop_opts ? loop_opts : opts, defaults
+            if loop_opts then
+                zplay loop_opts[:pattern] ? loop_opts[:pattern] : melody, loop_opts, defaults
+            else
+              zplay melody, opts, defaults
+            end
           end
         end
         $zloop_states[name][:loop_i] += 1
