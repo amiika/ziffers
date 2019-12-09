@@ -1076,8 +1076,6 @@ module Ziffers
         end
         if enumeration then
           $zloop_states[name][:enumeration] = enumeration.cycle
-        else
-          parsed_melody = parse_modifications parsed_melody, opts
         end
         defaults[:parsed] = true
       end

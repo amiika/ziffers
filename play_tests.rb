@@ -1,6 +1,8 @@
 load "~/ziffers/ziffers.rb"
 
 use_synth :piano
+
+Ziffers.debug
 Ziffers.set_default_opts({amp: 0.5})
 
 def testzplay
