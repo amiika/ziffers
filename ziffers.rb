@@ -303,12 +303,12 @@ module Ziffers
       n = replace_variable_syntax(n)
       n = replace_use_params(n,shared)
 
-      shared[:use] = shared[:use].merge(use_object) if use_object
+      shared[:use] = shared[:use] ? shared[:use].merge(use_object) : use_object if use_object
       control_chars = @@control_chars.clone
       control_chars.except!(*shared[:use].keys) if shared[:use]
-
       n = replace_random_syntax(n)
-      print "Ziffers: "+n
+
+      print "Ziffers: "+n if @@debug
       chars = n.chars # Loop chars
       chars.to_enum.each_with_index do |c, index|
         next_c = chars[index+1]
@@ -415,6 +415,7 @@ module Ziffers
                 note = use_char[:note] if use_char[:note]
                 ziff[:notes] = use_char[:notes] if use_char[:notes]
               elsif use_char[:sample]
+                use_char[:char] = c
                 ziff[:sample_opts] = use_char
                 ziff[:sample_opts][:run] = shared[:use][:run] if !use_char[:run] and shared[:use][:run]
               else # If there are no :note or :sample then just pass the parameters on to the following ziffs
@@ -432,7 +433,7 @@ module Ziffers
                   escape = true
                   escapeType = :value
                 else
-                  ziff[:sample_opts] = {sample: use_char}
+                  ziff[:sample_opts] = {sample: use_char, char: c}
                   ziff[:sample_opts][:run] = shared[:use][:run] if shared[:use][:run]
                 end
               end
@@ -802,7 +803,7 @@ module Ziffers
       end
     end
 
-    def play_ziff(ziff,defaults={})
+    def play_ziff(ziff,defaults={},index,loop_i)
       cue ziff[:cue] if ziff[:cue]
       detune_notes ziff, defaults[:detune] if defaults[:detune]
       if ziff[:send] then
@@ -859,6 +860,7 @@ module Ziffers
             ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample])))*ziff[:cut],1.0].sort[1]
             ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
           end
+          normalize_sample_arrays(ziff,index,loop_i)
           c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
         elsif ziff[:note] or ziff[:notes]
           if ziff[:synth] then
@@ -873,6 +875,23 @@ module Ziffers
             cziff[:pitch] = (scale 1, cziff[:scale])[cziff[:degree]]+cziff[:pitch]-0.999 if cziff[:sample]!=nil && cziff[:degree]!=nil
             control c, clean(cziff)
             sleep cziff[:sleep]
+          end
+        end
+      end
+    end
+
+    def normalize_sample_arrays(ziff,index,loop_i)
+      ziff.each do |key,val|
+        if val.is_a?(SonicPi::Core::RingVector) or val.kind_of?(Array) then
+          ziff[key] = val.tick(ziff[:char]+"-"+key.to_s)
+        elsif val.is_a? Proc then
+          case val.arity
+          when 0 then
+            ziff[key] = val.()
+          when 1 then
+            ziff[key] = val.(index)
+          when 2 then
+            ziff[key] = val.(index, loop_i)
           end
         end
       end
@@ -961,10 +980,10 @@ module Ziffers
         end
         if ziff[:run] then
           block_with_effects ziff[:run].clone do
-            play_ziff(ziff,defaults)
+            play_ziff(ziff,defaults,index,loop_i)
           end
         else
-          play_ziff(ziff,defaults)
+          play_ziff(ziff,defaults,index,loop_i)
         end
         sleep ziff[:sleep] if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
       end
