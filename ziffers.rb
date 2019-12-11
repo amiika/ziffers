@@ -62,7 +62,7 @@ module Ziffers
       :skip => false
     }
 
-    @@default_keys = [:run,:store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm]
+    @@default_keys = [:run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm]
 
     @@debug = false
     @@degree_based = false
@@ -400,7 +400,7 @@ module Ziffers
             stringFloat+=c
           elsif shared[:use]and shared[:use].key?(c.to_sym) then
             use_char = shared[:use][c.to_sym]
-            raise ":run should be array of hashes" if shared[:use][:run] and !shared[:use][:run].kind_of?(Array)
+            raise ":run_each should be array of hashes" if shared[:use][:run_each] and !shared[:use][:run_each].kind_of?(Array)
             if (use_char.is_a? Proc) then
               ziff[:lambda] = use_char
               current_ziff_keys+=[:lambda,:value]
@@ -417,9 +417,9 @@ module Ziffers
               elsif use_char[:sample]
                 use_char[:char] = c
                 ziff[:sample_opts] = use_char
-                ziff[:sample_opts][:run] = shared[:use][:run] if !use_char[:run] and shared[:use][:run]
+                ziff[:sample_opts][:run_each] = shared[:use][:run_each] if !use_char[:run_each] and shared[:use][:run_each]
               else # If there are no :note or :sample then just pass the parameters on to the following ziffs
-                raise ":run should be array of hashes" if use_char[:run] and !use_char[:run].kind_of?(Array)
+                raise ":run_each should be array of hashes" if use_char[:run_each] and !use_char[:run_each].kind_of?(Array)
                 ziff.merge! use_char
               end
               current_ziff_keys+=[:cue] if use_char[:cue]
@@ -434,7 +434,7 @@ module Ziffers
                   escapeType = :value
                 else
                   ziff[:sample_opts] = {sample: use_char, char: c}
-                  ziff[:sample_opts][:run] = shared[:use][:run] if shared[:use][:run]
+                  ziff[:sample_opts][:run_each] = shared[:use][:run_each] if shared[:use][:run_each]
                 end
               end
               note = use_char if use_char.is_a? Integer
@@ -475,7 +475,7 @@ module Ziffers
               addition = 0
               slideNext = false
               ziff = ziff.merge(defaults)
-              ziff.delete(:run)
+              ziff.delete(:run_each)
             when '.' then
               dot+=1
               dotLength = (2.0-(1.0/(2*dot))) # https://en.wikipedia.org/wiki/Dotted_note
@@ -784,7 +784,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:sample)
+      ziff.except(:phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:run_each,:char,:sample)
     end
 
     def play_midi_out(md, opts)
@@ -923,7 +923,7 @@ module Ziffers
       loop do
         melody = apply_array_transformations(melody, opts, defaults, loop_i) if !defaults[:transform_single]
         if !opts[:port] and defaults[:run] then
-          block_with_effects defaults[:run].clone do
+          block_with_effects normalize_effects(defaults[:run]) do
             zplayer(melody,opts,defaults,loop_i)
           end
         else
@@ -978,8 +978,8 @@ module Ziffers
             end
           end
         end
-        if ziff[:run] then
-          block_with_effects ziff[:run].clone do
+        if ziff[:run_each] then
+          block_with_effects normalize_effects(ziff[:run_each],ziff[:char]) do
             play_ziff(ziff,defaults,index,loop_i)
           end
         else
@@ -993,6 +993,31 @@ module Ziffers
         if @@debug then
           print "Stored:"
           print zparams melody, :degree
+        end
+      end
+    end
+
+    def normalize_effects(run,char=nil)
+      run.map do |effect|
+        dup = {}
+        effect_name = effect[:with_fx] ? "run-"+effect[:with_fx].to_s : "run"
+        name = char ? char+"-"+effect_name : effect_name
+        effect.each do |key, val|
+        if val.is_a?(SonicPi::Core::RingVector) or val.kind_of?(Array) then
+          dup[key] = val.tick(name+"-"+key.to_s)
+        elsif val.is_a? Proc then
+            case val.arity
+            when 0 then
+              dup[key] = val.()
+            when 1 then
+              dup[key] = val.(tick(name+"-"+key.to_s))
+            end
+          end
+        end
+        if dup.size>0 then
+          effect.clone.merge(dup)
+        else
+          effect
         end
       end
     end
