@@ -57,7 +57,6 @@ module Ziffers
       :release => 1.0,
       :sleep => 1.0,
       :pitch => 0.0,
-      :amp => 1,
       :pan => 0,
       :skip => false
     }
@@ -812,8 +811,9 @@ module Ziffers
         print "Skipping note"
       elsif ziff[:notes] then
         if ziff[:arpeggio] then
-          arp_opts = ziff.except(:key,:scale,:note,:notes,:arpeggio,:degree,:sleep)
+          #shared_opts = ziff.except(:key,:scale,:note,:notes,:arpeggio,:degree,:sleep)
           ziff[:arpeggio].each do |cn|
+            cn[:amp] = ziff[:amp] if !cn[:amp] and ziff[:amp]
             if cn[:degrees] then
               arp_chord = cn[:degrees].map{|d| ziff[:notes][d]}
               arp_notes = {notes: arp_chord}
@@ -821,6 +821,7 @@ module Ziffers
               arp_notes = {note: ziff[:notes][cn[:degree]]}
             end
             arp_opts = cn.merge(arp_notes).except(:degrees)
+
             if ziff[:port] then
               sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
               if arp_notes[:notes] then
