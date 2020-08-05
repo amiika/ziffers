@@ -903,10 +903,7 @@ module Ziffers
       defaults = defaults.merge(opts.extract!(*@@default_keys))
       opts = get_default_opts.merge(opts)
       defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
-      if defaults[:loop_name] and $zloop_states[defaults[:loop_name]][:enumeration] then
-        enum = $zloop_states[defaults[:loop_name]][:enumeration]
-        melody = normalize_melody(enum.next, opts, defaults)
-      elsif defaults[:store] and defaults[:loop_name] and $zloop_states[defaults[:loop_name]][:parsed_melody]
+      if defaults[:store] and defaults[:loop_name] and $zloop_states[defaults[:loop_name]][:parsed_melody]
         melody = $zloop_states[defaults[:loop_name]][:parsed_melody]
       elsif melody.is_a? Enumerator then
         enum = melody
@@ -916,7 +913,7 @@ module Ziffers
         melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
         if has_combinatorics(defaults)
           enum = parse_combinatorics(melody,defaults)
-          melody = enum.next
+          melody = enum.next if enum.size != 0
         end
       end
       loop_i = defaults[:loop_name] ? $zloop_states[defaults[:loop_name]][:loop_i] : 0
@@ -929,9 +926,9 @@ module Ziffers
         else
           zplayer(melody,opts,defaults,loop_i)
         end
-        print "Cycle index: "+loop_i.to_s if @@debug
+        print "Cycle index: "+loop_i.to_s if @@debug and loop_i>0
         break if !enum
-        melody = normalize_melody(enum.next, opts, defaults)
+        melody = enum.next
         loop_i = loop_i+1
       end
     end
@@ -1092,12 +1089,12 @@ module Ziffers
 
       if melody.is_a?(Array) && melody[0].is_a?(Hash) then
         defaults[:preparsed] = true
-      elsif melody.is_a?(Enumerator) or ((opts[:parse] or (has_combinatorics(opts)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !opts[:seed])
+      elsif melody.is_a?(Enumerator) or ((opts[:parse] or (has_combinatorics(defaults)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !opts[:seed])
         if melody.is_a? Enumerator then
           enumeration = melody
         else
           parsed_melody = normalize_melody melody, opts.except(*@@default_keys), defaults
-          enumeration = parse_combinatorics parsed_melody, opts
+          enumeration = parse_combinatorics parsed_melody, defaults
         end
         if enumeration then
           $zloop_states[name][:enumeration] = enumeration.cycle
@@ -1138,7 +1135,10 @@ module Ziffers
           end
         end
 
-        if defaults[:preparsed] then
+        if $zloop_states[name][:enumeration] then
+          enum = $zloop_states[name][:enumeration]
+          zplay enum.next, opts, defaults
+        elsif defaults[:preparsed] then
           zplay melody, opts, defaults
         elsif parsed_melody
           zplay parsed_melody, opts.slice(:run,:detune), defaults
@@ -1179,7 +1179,11 @@ module Ziffers
         elsif iteration
           enumeration = parsed_melody.each_cons(iteration)
         end
-        print "Enumeration size: "+enumeration.size.to_s
+        if enumeration.size == 0 then
+          print "Permutation out of bounds"
+        elsif
+           print "Enumeration size: "+enumeration.size.to_s
+        end
         if opts.delete(:transform_enum) then
           enum_arr = apply_array_transformations enumeration.to_a, opts, defaults
           enum_arr = enum_arr.transpose if transposed
