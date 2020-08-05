@@ -831,7 +831,7 @@ module Ziffers
                 play_midi_out arp_notes[:note]+cn[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
               end
             else
-              synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : current_synth, arp_opts
+              synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), arp_opts
             end
             sleep cn[:sleep]
           end
@@ -842,7 +842,7 @@ module Ziffers
               play_midi_out(cnote, ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
             end
           else
-            synth ziff[:chord_synth]!=nil ? ziff[:chord_synth] : ziff[:synth] ? ziff[:synth] : current_synth, clean(ziff)
+            synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), clean(ziff)
           end
         end
       elsif ziff[:port] then
