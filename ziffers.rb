@@ -1,6 +1,6 @@
 require_relative "./enumerables.rb"
 
-print "Ziffers 1.6: Cycle and replace"
+print "Ziffers 1.6.1: New transpose and inverse functions and bug fixes for Sonic Pi v3.2.2."
 
 module Ziffers
   module Core
@@ -61,7 +61,7 @@ module Ziffers
       :skip => false
     }
 
-    @@default_keys = [:run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :transpose, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm]
+    @@default_keys = [:run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :inverse, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm]
 
     @@debug = false
     @@degree_based = false
@@ -584,16 +584,6 @@ module Ziffers
             if dgr!=nil then
 
               dgr = -(dgr) if negative
-              dgr = dgr+ziff[:add] if ziff[:add]
-              dgr = dgr+get_real_dgr(ziff[:addmod].to_i, ziff[:key], ziff[:scale]) if ziff[:addmod]
-
-              if ziff[:inverse] then
-                if (ziff[:inverse].is_a? Numeric) && dgr!=ziff[:inverse] then
-                  dgr = -((dgr-ziff[:inverse])-ziff[:inverse])
-                elsif (ziff[:inverse].is_a? TrueClass)
-                  dgr = -(dgr)
-                end
-              end
 
               dgr = dgr+ziff[:offset] if ziff[:offset]
               dgr = dgr+get_real_dgr(ziff[:offsetmod],ziff[:key],ziff[:scale]) if ziff[:offsetmod]
@@ -1094,6 +1084,7 @@ module Ziffers
         if melody.is_a? Enumerator then
           enumeration = melody
         else
+          "Parsing melody?"
           parsed_melody = normalize_melody melody, opts.except(*@@default_keys), defaults
           enumeration = parse_combinatorics parsed_melody, defaults
         end
@@ -1114,7 +1105,7 @@ module Ziffers
           sleep phase
         end
 
-        if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or (opts[:stop].is_a? TrueClass) or (melody.is_a?(String) and melody.start_with? "//") then
+        if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or ([true, false].include? opts[:stop]) or (melody.is_a?(String) and melody.start_with? "//") then
           $zloop_states.delete(name)
           stop
         end
@@ -1171,7 +1162,7 @@ module Ziffers
       combination = opts.delete(:combination)
       permutation = opts.delete(:permutation)
       repeated = opts.delete(:repeated)
-      transposed = opts.delete(:transpose)
+      transposed = opts.delete(:transpose_enum)
       if permutation or combination or iteration then
         if permutation then
           enumeration = repeated ? parsed_melody.repeated_permutation(permutation) : parsed_melody.permutation(permutation)
@@ -1399,6 +1390,10 @@ module Ziffers
         val = val.(loop_i) if val.arity == 1
       end
       case key
+      when :transpose then
+        return transposition melody, val, scale(opts[:scale]).length-1
+      when :inverse then
+        return inversion melody, val, scale(opts[:scale]).length-1
       when :retrograde then
         return zretrograde melody, val
       when :swap then
@@ -1424,21 +1419,21 @@ module Ziffers
       when :prepend then
         return (val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)) + melody
       when :shuffle then
-        return val.is_a? TrueClass ? melody.shuffle : (melody[val] = val[val].shuffle)
+        return ([true, false].include? val) ? melody.shuffle : (melody[val] = val[val].shuffle)
       when :drop then
         melody.slice!(val)
         return melody
       when :slice then
         return melody.slice(val)
       when :pop then
-        if val.is_a? TrueClass
+        if [true, false].include? val
           melody.pop
         else
           melody.pop(val)
         end
         return melody
       when :shift
-        if val.is_a? TrueClass
+        if [true, false].include? val
           melody.shift
         else
           melody.shift(val)
@@ -1501,14 +1496,39 @@ module Ziffers
       return rev_notes
     elsif retrograde.is_a?(Numeric) # Retrograding partial arrays splitted to equal parts
       return notes.each_slice(retrograde).map{|part| zreverse part, chords }.flatten
-    elsif retrograde.is_a?(TrueClass)
+    elsif [true, false].include? retrograde
       return zreverse notes, chords # Normal retrograde
     else
       return notes
     end
   end
 
+  def transposition_index(melody,i,n=nil,inv=false)
+    melody = Marshal.load(Marshal.dump(melody))
+    scaleLength = n.dup
+    melody.each do |ziff|
+      if ziff[:degree]
+        n = scale(ziff[:key], ziff[:scale]).length-1 if scaleLength == nil
+        originalDegree = ziff[:degree]
+        val = inv ? i-originalDegree : originalDegree+i
+        ziff[:pitch] += val/n*12 if val>=n or val<0
+        val = val % n
+        ziff[:degree] = val
+        ziff[:note] = (ziff[:pitch]<=-72 ? :r : get_note_from_dgr(val, ziff[:key], ziff[:scale]))
+      end
+    end
+  end
+
+  def transposition(melody,start,n=nil)
+    transposition_index(melody, start, n)
+  end
+
+  def inversion(melody,start,n=nil)
+    transposition(transposition_index(melody, -1, n, true), start, n)
+  end
+
   def swap(melody,n,x=1)
+    melody = melody.dup
     n = n % melody.length if n>=melody.length
     n2 = (n+x)>=melody.length ? ((n+x) % melody.length) : n+x
     melody[n], melody[n2] = melody[n2], melody[n]
@@ -1516,6 +1536,7 @@ module Ziffers
   end
 
   def flex(ziff,ratio)
+    ziff = ziff.dup
     if ziff[:sleep] then
       ziff[:sleep] = ziff[:sleep] + ziff[:sleep]*ratio
       set_ADSR(ziff,@@default_opts.slice(:attack,:decay,:sustain,:release))
