@@ -1,10 +1,153 @@
 require_relative "./enumerables.rb"
 
-print "Ziffers 1.6.1: New transpose and inverse functions and bug fixes for Sonic Pi v3.2.2."
+print "Ziffers 1.6.2: More bugfixes on transformations and enumerables. First version of the new Treetop parser."
 
 module Ziffers
   module Core
     include Ziffers::Enumerables
+
+    Treetop.load_from_string("
+      grammar Ziffers
+
+    rule line
+      (repeat / s / bar / control / chord / timed / parens)*
+      {
+        def value
+          elements.collect {|v|
+            v.value }
+        end
+      }
+    end
+
+    rule parens_line
+      (repeat / s / bar / degree / control / chord  / parens)*
+      {
+        def value
+          elements.collect {|v|
+          v.value }
+        end
+      }
+    end
+
+    rule timed
+      (group / sleep) 1..1
+      {
+       def value
+         elements.map {|v|
+         v.value }.flatten
+       end
+      }
+    end
+
+    rule sleep
+      [a-z]
+      {
+        def value
+        text_value
+       end
+      }
+    end
+
+    rule degree
+      [0-9]
+      {
+        def value
+        text_value + 'D'
+       end
+      }
+    end
+
+    rule chord
+    [0-9]+
+    {
+     def value
+      text_value
+     end
+    }
+    end
+
+    rule group
+    [\-a-z0-9]+
+    {
+     def value
+      text_value.split('')
+     end
+    }
+    end
+
+    rule parens
+      '(' parens_line ')'
+      {
+        def value
+          parens_line.elements.collect { |v| v.value }
+        end
+      }
+  end
+
+   rule control
+   [A-Z]+ (escaped_text / decimal) 1..1
+   {
+     def value
+      text_value
+     end
+    }
+  end
+
+  rule decimal
+    [0-9\.0-9]*
+    {
+      def value
+       text_value
+      end
+     }
+  end
+
+  rule escaped_text
+   '<' [a-zA-Z0-9]* '>'
+   {
+     def value
+      text_value
+     end
+    }
+end
+
+    rule repeat
+     '|:' line ':' num '|'
+     {
+     def value
+      text_value
+     end
+    }
+  end
+
+  rule num
+     [0-9]? {
+     def value
+      text_value
+     end }
+  end
+
+    rule s
+      [\s]
+      {
+        def value
+          ''
+        end
+      }
+    end
+
+    rule bar
+     '|' {
+       def value
+          '|'
+        end
+      }
+    end
+
+  end
+    ")
+
+    @@zparser = ZiffersParser.new
 
     @@control_chars = {
       'A': :amp,
@@ -61,7 +204,7 @@ module Ziffers
       :skip => false
     }
 
-    @@default_keys = [:run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :inverse, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm]
+    @@default_keys = [:run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :inverse, :array_inverse, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm]
 
     @@debug = false
     @@degree_based = false
@@ -247,6 +390,19 @@ module Ziffers
         m[13] ? resultArr.join(m[13]) : sequence ? resultArr.join(' ') : resultArr.join('')
       end
       n
+    end
+
+    # Parse shit using treeparse
+    def treeParse text
+      result = @@zparser.parse(text)
+
+      puts result.value
+
+      if !result
+        puts parser.failure_reason
+        puts parser.failure_line
+        puts parser.failure_column
+      end
     end
 
     # Parses ziffers notation to Hash array
@@ -919,12 +1075,13 @@ module Ziffers
         end
         print "Cycle index: "+loop_i.to_s if @@debug and loop_i>0
         break if !enum
-        melody = enum.next
+        melody = normalize_melody enum.next, opts, defaults
         loop_i = loop_i+1
       end
     end
 
     def zplayer(melody,opts={},defaults={},loop_i=0)
+      melody = [melody] if !melody.kind_of?(Array)
       if melody.length==0 then
         $zloop_states.delete(defaults[:loop_name]) if defaults[:loop_name]
         stop
@@ -1084,14 +1241,14 @@ module Ziffers
         if melody.is_a? Enumerator then
           enumeration = melody
         else
-          "Parsing melody?"
           parsed_melody = normalize_melody melody, opts.except(*@@default_keys), defaults
           enumeration = parse_combinatorics parsed_melody, defaults
         end
         if enumeration then
           $zloop_states[name][:enumeration] = enumeration.cycle
+        else
+          defaults[:parsed] = true
         end
-        defaults[:parsed] = true
       end
 
       live_loop name, opts.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
@@ -1105,7 +1262,7 @@ module Ziffers
           sleep phase
         end
 
-        if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or ([true, false].include? opts[:stop]) or (melody.is_a?(String) and melody.start_with? "//") then
+        if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or ([true].include? opts[:stop]) or (melody.is_a?(String) and melody.start_with? "//") then
           $zloop_states.delete(name)
           stop
         end
@@ -1129,7 +1286,7 @@ module Ziffers
 
         if $zloop_states[name][:enumeration] then
           enum = $zloop_states[name][:enumeration]
-          zplay enum.next, opts, defaults
+          zplay enum, opts, defaults
         elsif defaults[:preparsed] then
           zplay melody, opts, defaults
         elsif parsed_melody
@@ -1390,61 +1547,58 @@ module Ziffers
         val = val.(loop_i) if val.arity == 1
       end
       case key
-      when :transpose then
-        return transposition melody, val, scale(opts[:scale]).length-1
-      when :inverse then
-        return inversion melody, val, scale(opts[:scale]).length-1
+      when :array_transpose then
+        melody = array_transposition melody, val, scale(opts[:scale]).length-1
+      when :array_inverse then
+        melody = array_inversion melody, val, scale(opts[:scale]).length-1
       when :retrograde then
-        return zretrograde melody, val
+        melody = zretrograde melody, val
       when :swap then
-        return swap melody, *val
+        melody = swap melody, *val
       when :rotate then
-        return melody.rotate(val)
+        melody = melody.rotate(val)
       when :division then
-        return melody.group_by {|z| z[:degree].to_i % val}.values.flatten
+        melody = melody.group_by {|z| z[:degree].to_i % val}.values.flatten
       when :mirror then
-        return melody+melody.reverse
+        melody = melody+melody.reverse
       when :reverse then
-        return melody.reverse
+        melody = melody.reverse
       when :reflect then
-        return reflect_collection melody
+        melody = reflect_collection melody
       when :subset then
-        return (val.is_a? Numeric) ? [melody[val]] : melody[val]
+        melody = (val.is_a? Numeric) ? [melody[val]] : melody[val]
       when :inject then
-        return melody.inject(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)){|a,j| a.flat_map{|n| [n,augment(j, n)]}}
+        melody = melody.inject(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)){|a,j| a.flat_map{|n| [n,augment(j, n)]}}
       when :zip then
-        return melody.zip(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)).flatten
+        melody = melody.zip(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)).flatten
       when :append then
-        return melody + (val.is_a?(Array) ? val : (normalize_melody val, opts, defaults))
+        melody = melody + (val.is_a?(Array) ? val : (normalize_melody val, opts, defaults))
       when :prepend then
-        return (val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)) + melody
+        melody = (val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)) + melody
       when :shuffle then
-        return ([true, false].include? val) ? melody.shuffle : (melody[val] = val[val].shuffle)
+        melody = ([true].include? val) ? melody.shuffle : (melody[val] = val[val].shuffle)
       when :drop then
-        melody.slice!(val)
-        return melody
+        melody = melody.slice!(val)
       when :slice then
-        return melody.slice(val)
+        melody = melody.slice(val)
       when :pop then
-        if [true, false].include? val
-          melody.pop
+        if [true].include? val
+          melody = melody.pop
         else
-          melody.pop(val)
+          melody = melody.pop(val)
         end
-        return melody
       when :shift
-        if [true, false].include? val
-          melody.shift
+        if [true].include? val
+          melody = melody.shift
         else
-          melody.shift(val)
+          melody = melody.shift(val)
         end
-        return melody
       when :pick
-        return melody.pick(val)
+        melody = melody.pick(val)
       when :stretch
-        return (stretch melody, val).to_a
+        melody = (stretch melody, val).to_a
       when :order_transform
-        return send(val, melody, loop_i)
+        melody = send(val, melody, loop_i)
       end
     end
     return melody
@@ -1457,18 +1611,22 @@ module Ziffers
         val = val.(loop_i) if val.arity == 1
       end
       case key
+      when :transpose then
+        transposition ziff, val
+      when :inverse then
+        inversion ziff, val
       when :augment
-        return augment ziff, val
+        augment ziff, val
       when :flex
-        return flex ziff, val
+        flex ziff, val
       when :silence
-        return silence ziff, val
+        silence ziff, val
       when :harmonize
-        return harmonize ziff, defaults
+        harmonize ziff, defaults
       when :rhythm
-        return zrhythm_motive ziff, val, (loop_i>0 ? (melody_size*loop_i+note_i) : note_i)
+        zrhythm_motive ziff, val, (loop_i>0 ? (melody_size*loop_i+note_i) : note_i)
       when :object_transform
-        return send(val,ziff,loop_i,note_i,melody_size)
+        send(val,ziff,loop_i,note_i,melody_size)
       end
     end
     return ziff
@@ -1477,6 +1635,7 @@ module Ziffers
   def zrhythm_motive(ziff, rmotive, mot_i)
     if @@rmotive_lengths then
       ziff[:sleep] = @@rmotive_lengths[mot_i]
+        print @@rmotive_lengths[mot_i]
     elsif rmotive.is_a? Array then
       ziff[:sleep] = rmotive.ring[mot_i]
     elsif rmotive.is_a? SonicPi::Core::RingVector then
@@ -1496,35 +1655,48 @@ module Ziffers
       return rev_notes
     elsif retrograde.is_a?(Numeric) # Retrograding partial arrays splitted to equal parts
       return notes.each_slice(retrograde).map{|part| zreverse part, chords }.flatten
-    elsif [true, false].include? retrograde
+    elsif [true].include? retrograde
       return zreverse notes, chords # Normal retrograde
     else
       return notes
     end
   end
 
-  def transposition_index(melody,i,n=nil,inv=false)
+  def transpose_array(melody,i,scale_length=nil,inv=false)
     melody = Marshal.load(Marshal.dump(melody))
-    scaleLength = n.dup
     melody.each do |ziff|
-      if ziff[:degree]
-        n = scale(ziff[:key], ziff[:scale]).length-1 if scaleLength == nil
-        originalDegree = ziff[:degree]
-        val = inv ? i-originalDegree : originalDegree+i
-        ziff[:pitch] += val/n*12 if val>=n or val<0
-        val = val % n
-        ziff[:degree] = val
-        ziff[:note] = (ziff[:pitch]<=-72 ? :r : get_note_from_dgr(val, ziff[:key], ziff[:scale]))
-      end
+      transpose_note ziff, i, scale_length, inv
     end
+    melody
   end
 
-  def transposition(melody,start,n=nil)
-    transposition_index(melody, start, n)
+  def transpose_note(ziff,i,n=nil,inv=false)
+    if ziff[:degree]
+      n = scale(ziff[:key], ziff[:scale]).length-1 if n == nil
+      originalDegree = ziff[:degree]
+      val = inv ? i-originalDegree : originalDegree+i
+      ziff[:pitch] += val/n*12 if val>=n or val<0
+      val = val % n
+      ziff[:degree] = val
+      ziff[:note] = (ziff[:pitch]<=-72 ? :r : get_note_from_dgr(val, ziff[:key], ziff[:scale]))
+    end
+    ziff
   end
 
-  def inversion(melody,start,n=nil)
-    transposition(transposition_index(melody, -1, n, true), start, n)
+  def transposition(ziff,start,n=nil)
+    transpose_note(ziff, start, n)
+  end
+
+  def inversion(ziff,start,n=nil)
+    transpose_note(transpose_note(ziff, -1, n, true), start, n)
+  end
+
+  def array_transposition(melody,start,n=nil)
+    transpose_array(melody, start, n)
+  end
+
+  def array_inversion(melody,start,n=nil)
+    array_transposition(transpose_array(melody, -1, n, true), start, n)
   end
 
   def swap(melody,n,x=1)
