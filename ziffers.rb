@@ -1,6 +1,6 @@
 require_relative "./enumerables.rb"
 
-print "Ziffers 1.6.2: More bugfixes on transformations and enumerables. First version of the new Treetop parser."
+print "Ziffers 1.7: Last version before Treetop parser and major changes"
 
 module Ziffers
   module Core
