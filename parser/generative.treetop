@@ -149,7 +149,7 @@ grammar GenerativeSyntax
   end
 
   rule ignore
-   ([!~&@|{}()<>:=#-^%] / [a-zA-Z1-9] / '.')
+   ([!~&@|{}()<>:=#-^_%.] / [a-zA-Z1-9])
     {
       def value
         text_value
@@ -217,7 +217,6 @@ grammar GenerativeSyntax
        v[:add] = a.text_value if !a.text_value.empty?
        v[:octave] = o.text_value if !o.text_value.empty?
        v[:sleep] = z.text_value  if !z.text_value.empty?
-       v[:dot] = dot.text_value if !dot.text_value.empty?
        v
      end
     }
