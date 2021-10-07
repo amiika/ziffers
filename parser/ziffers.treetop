@@ -1,0 +1,472 @@
+grammar Ziffers
+
+  rule line
+    (s / bar / repeat / multisleep / arpeggio / chords / degrees / call / roman / eval / rest / control / use / slide / jumper  / octave / parens / reset)*
+    {
+      def value
+        e = elements.collect {|v| v.value }.flatten.filter_map do |v|
+          if v then
+              v = resolve_subsets(v[:subset], v[:sleep]/v[:subset].length) if v[:subset]
+              v
+          end
+        end
+        e.flatten
+      end
+    }
+  end
+
+  rule multisleep
+    sleep s
+    {
+    def value
+      $topts[:sleep] = sleep.value
+      nil
+    end
+    }
+  end
+
+  rule sleep
+    s:(zchar / decimal) negation:('-')? d:('.')*
+    {
+    def value
+        sum = s.value
+        sum = sum * (2.0-(1.0/(2*d.text_value.length))) if !d.text_value.empty?
+        sum = s.value-(sum-s.value) if !negation.text_value.empty?
+        sum
+     end
+    }
+  end
+
+  rule zchar
+  s:([mklpdcwyhnqaefsxtgujz]+) minus:(neg_sleep)?
+  {
+    def value
+      sum = s.text_value.split('').inject(0){|sum,x| sum + $default_durs[x.to_sym]}
+      sum = sum-minus.value if minus.methods.include?(:value)
+      sum.to_f
+   end
+  }
+  end
+
+  rule neg_sleep
+  '-' zchar
+  {
+  def value
+    zchar.value
+  end
+  }
+  end
+
+  rule arpeggio
+    '@(' a:(sleep / s / group / degrees)* ')'
+    {
+     def value
+    #  chord_list = n.elements.collect {|v| v.value }.filter_map {|v| v if v}
+      arp = a.elements.collect {|v| v.value }.filter_map do |v|
+        if v then
+          if v.is_a?(Float)
+              $topts[:sleep] = v
+              nil
+          else
+            v.merge!($topts) if v.is_a?(Hash)
+            v
+          end
+        end
+      end
+      $tarp = arp.length>0 ? arp : nil
+      nil
+     end
+    }
+  end
+
+  rule chords
+    a:(group / roman) '%'? inv:('-'? [0-9])?
+    {
+    def value
+      c = a.value
+      if !inv.text_value.empty?
+        c[:chord_invert] = inv.text_value.to_i
+        c[:notes] = chord_invert c[:notes], c[:chord_invert]
+      end
+      c.merge!($tcontrol) if c
+      c[:arpeggio] = $tarp if $tarp
+      c[:key] = $topts[:key]
+      c[:scale] = $topts[:scale]
+      c = apply_transformation c, $tshared
+      ZiffHash[c]
+   end
+   }
+  end
+
+  rule group
+     degrees 2..
+    {
+     def value
+      e = elements.collect {|v| v.value }
+      degree_list = []
+      note_list = []
+      e.each do |d|
+        degree_list.push(d[:degree])
+        note_list.push(d[:note])
+      end
+      v = {:notes=>note_list, :degrees=>degree_list}
+      v.merge!($topts)
+      v[:sleep] = $tchordsleep if $tchordsleep
+      v
+     end
+    }
+  end
+
+  rule roman
+    roman_number:([iv]+) '^'? chord_name:([a-z-0-9+-]*)? '*'? oct:([0-9])?
+    {
+      def value
+       name = chord_name.text_value.to_sym if !chord_name.text_value.empty?
+       roman = roman_number.text_value.to_sym
+        if name
+          root = degree roman, $topts[:key], $topts[:scale]
+          notes = chord(root, name, {num_octaves: !oct.text_value.empty? ? oct.text_value.to_i : 1}).notes
+        else
+          notes = chord_degree(roman, $topts[:key], $topts[:scale], 3)
+        end
+        v = {
+        :roman=>roman,
+        :notes=>notes
+        }
+        v.merge!($topts)
+        v[:sleep] = $tchordsleep if $tchordsleep
+        ZiffHash[v]
+      end
+    }
+  end
+
+  rule call
+    (':' [a-zA-Z]+)+
+    {
+      def value
+      {
+        :method => elements.collect {|v| v.text_value },
+      }.merge!($topts)
+
+      end
+    }
+  end
+
+  rule normal_degree
+    d:('-'? [0-9])
+    {
+      def value
+        d.text_value.to_i
+      end
+    }
+  end
+
+  rule escaped_degree
+    '=' e:('-'? [0-9]+)
+    {
+      def value
+        e.text_value.to_i
+      end
+    }
+  end
+
+  rule degrees
+    s:(sleep)? o:(octave)* a:(add)* some_degree:(normal_degree / escaped_degree)
+    {
+      def value
+        dgr = some_degree.value
+        oct = (!o.text_value.empty?) ? o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)} : 0
+        oct += $topts[:octave] if $topts[:octave]
+        addition = (!a.text_value.empty?) ? a.text_value.split('').inject(0){|sum,x| sum + (x=='#' ? 1 : -1)} : 0
+
+        v = {
+        :degree=>dgr,
+        :note=>get_note_from_dgr(dgr, $topts[:key], $topts[:scale], oct)+addition
+        }
+        v.merge!($topts)
+        v[:octave] = oct if oct
+        v[:sleep] = s.value if s.methods.include?(:value)
+        v.merge!($tcontrol)
+
+        v = apply_transformation v, $tshared
+        ZiffHash[v]
+     end
+    }
+  end
+
+  rule set
+    id:([A-Z])? '{' line '}'
+    {
+      def value
+        v = line.elements.collect { |v| v.value }.flatten.filter_map do |v|
+          if v.is_a?(Hash)
+            v[:set] = id.text_value.to_sym if !id.empty?
+            v
+          end
+        end
+        v
+      end
+    }
+  end
+
+  rule octave
+    ('^' / '_')
+    {
+      def value
+        {:octave=>text_value}
+     end
+    }
+  end
+
+  rule eval
+    '=' e:([0-9\-*/\+])+ ' '
+    {
+      def value
+        eval(e.text_value)
+      end
+    }
+  end
+
+  rule jumper
+  ('[DC]' / '[DCF]' / '[F]' / '[S]' / '[DS]' / '[DSF]')
+  {
+    def value
+      {
+        :jumper=>text_value
+      }
+    end
+  }
+  end
+
+  rule rest
+  s:(sleep)? 'r'
+  {
+    def value
+      v = {note: :r}
+      v[:sleep] = s.methods.include?(:value) ? s.value : $topts[:sleep]
+      v
+   end
+  }
+  end
+
+  rule parens
+    '(' subset ')'
+    {
+      def value
+        s = subset.elements.collect { |v| v.value }.filter_map {|v| v if v}
+        {:subset=>s, :sleep=>$topts[:sleep]}
+      end
+    }
+  end
+
+  rule subset
+    (s / bar / chords / degrees / rest / eval / octave / control / parens)*
+    {
+      def value
+        elements.collect {|v| v.value }
+      end
+    }
+  end
+
+  rule add
+    ('#' / 'b')
+    {
+      def value
+        {:add=>text_value}
+      end
+    }
+  end
+
+  rule use
+    u:[A-Z]
+    {
+    def value
+      use_list = $tshared[:use] if $tshared and $tshared.has_key?(:use)
+        if use_list
+          $topts[:run_each] = use_list.delete(:run) if use_list[:run]
+          v = use_list.has_key?(u.text_value.to_sym) ? use_list[u.text_value.to_sym] : nil
+
+          return nil if !v
+
+          if v.is_a?(Hash)
+            $topts[:run_each] = v.delete(:run) if v[:run] and !v[:sample] and !v[:note]
+          elsif v.is_a?(Symbol)
+            v = {sample: v}
+          end
+
+          v.merge!($tcontrol)
+          v[:sleep] = $topts[:sleep]
+          v.merge!($topts)
+          v[:char] = u.text_value
+
+          !(v[:sample] or v[:note] or v[:cue]) ? nil : v
+        else
+          nil
+        end
+    end
+    }
+  end
+
+  rule reset
+    '!'
+    {
+    def value
+      $topts = Marshal.load(Marshal.dump($topts_orig))
+      nil
+    end
+    }
+  end
+
+  rule control
+   d:([ABCDFGHIJKLMNOPQRSUWXYZ]) c:(integer / escaped_decimal / escaped_text)
+   {
+     def value
+     control_chars = {
+       'A': :amp,
+       'C': :attack,
+       'P': :pan,
+       'D': :decay,
+       'S': :sustain,
+       'R': :release,
+       'Z': :sleep,
+       'X': :chord_sleep,
+       'I': :pitch,
+       'K': :key,
+       'L': :scale,
+       'O': :channel
+     }
+      control_type = control_chars[d.text_value.to_sym]
+      $tcontrol[control_type] = c.value if c.methods.include?(:value)
+      nil
+     end
+    }
+end
+
+  rule decimal
+    [0-9]+ '.' [0-9]+
+    {
+      def value
+       text_value.to_f
+      end
+     }
+  end
+
+  rule slide
+  '~' e:(escaped_decimal)? c:(chords)
+    {
+      def value
+        zlog c.value
+        v = {
+          :slide=>c.value.merge!($topts)
+        }
+        v.merge!($topts)
+        v[:note_slide] = e.value if e.methods.include?(:value)
+        zlog "TEST"
+        zlog v
+        v
+      end
+    }
+  end
+
+  rule escaped_decimal
+  '<' decimal '>'
+  {
+    def value
+      decimal.value
+    end
+   }
+  end
+
+  rule escaped_text
+   '<' e:([\sa-zA-Z0-9]*) '>'
+   {
+     def value
+      e.text_value
+     end
+    }
+  end
+
+  rule repeat
+   '[:' l:(repetition) ':' p:([0-9])* ']'
+    {
+       def value
+         v = []
+         r = !p.text_value.empty? ? p.text_value.to_i : 2
+         r.times do |i|
+          rep = l.value.each_with_object([]) {|v,o|
+            if v.is_a?(Hash) and v[:cycle]
+              o.push(v[:cycle][i])
+            else
+              o.push(v)
+            end
+          }
+          v+=rep
+         end
+         v
+       end
+     }
+  end
+
+  rule cyclic
+  '<' first:(repetition) following:(';' i:repetition)* '>'
+    {
+    def value
+      if following.empty?
+        {:cycle=>first.value}
+      else
+        r = following.elements.map {|v| v.i.value }
+        r.prepend(first.value)
+        {:cycle=>r}
+      end
+    end
+    }
+  end
+
+  rule cycle
+    bar t:([0-9])+ ':' l:(repetition)* ':|'
+    {
+      def value
+      v =  {
+        :cycle => t.text_value.to_i,
+        :content => l.elements.collect { |v| v.value }.filter_map {|v| v if v}
+        }
+        v
+      end
+    }
+  end
+
+  rule repetition
+    (repeat / s / bar / control / arpeggio / chords / degrees / eval / rest / multisleep / slide / octave / parens / cyclic / control / use)*
+    {
+      def value
+        elements.collect { |v| v.value }.filter_map {|v| v if v}
+      end
+    }
+  end
+
+  rule integer
+     [0-9]+ {
+     def value
+      text_value.to_i
+     end }
+  end
+
+  rule s
+     " "+
+     {
+     def value
+      nil
+    end
+    }
+  end
+
+
+  rule bar
+     '|' {
+       def value
+          $current_bar+=1
+          nil
+        end
+      }
+  end
+end

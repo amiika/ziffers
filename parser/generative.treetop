@@ -1,0 +1,235 @@
+grammar GenerativeSyntax
+
+  rule base
+    (list / ranges / group / degrees / sleep / s / ignore)*
+    {
+    def value
+      elements.map {|v| v.value }.flatten.filter_map {|v| ziff_to_string(v) if v}.join("")
+    end
+    }
+  end
+
+  rule list
+    '{' content:(array) '}' p:(('~' / '=') [1-9]*)? o:(operation)*
+    {
+    def value
+      set = content.value.flatten.filter {|v| v != " "}
+
+      if p and p.text_value != ""
+        #result_array = set.filter {|v| v!=" "}
+        set = set.shuffle if p.text_value[0]=="~"
+        set = p.text_value[0]=="~" ? set.take(p.text_value[1..].to_i) : set.pick(p.text_value[1..].to_i) if p.text_value.length>1
+        #set = result_array.each_with_object([]){|v,o| o.push(v) ; o.push(" ") }
+      end
+      if !o.empty? then
+        o.elements.each do |op|
+          if op.methods.include?(:value) then
+            op_values = op.value.flatten.filter {|v| v and v != " "} if op.value.is_a?(Array)
+            case op.operator
+            when '**', '*', '/', '+', '-', '/', '^', '%', '|', '&', '<<', '>>'
+              if op.value.kind_of?(Array)
+                set = op_values.each_with_index.inject(set) do |a, (v,i)|
+
+                  if v.is_a?(Hash) and a[i] and a[i].is_a?(Hash)
+                    if v[:degree] and a[i][:degree]
+                      a[i][:degree] = v[:degree].to_i.method(op.operator).(a[i][:degree].to_i)
+                    elsif a[i][:degrees] and v[:degree]
+                      a[i][:degrees][0] = a[i][:degrees][0].to_i.method(op.operator).(v[:degree].to_i)
+                    elsif a[i][:degrees] and v[:degrees]
+                      v[:degrees].each_with_index do |d,di|
+                        a[i][:degrees][di] = a[i][:degrees][di].to_i.method(op.operator).(d.to_i)
+                      end
+                    elsif a[i][:degree] and v[:degrees]
+                      a[i][:degrees] = v[:degrees]
+                      a[i][:degrees][0] = a[i][:degrees][0].to_i.method(op.operator).(a[i][:degree].to_i)
+                      a[i].delete(:degree)
+                    end
+                  end
+
+                  a
+                end
+              else
+                  set = set.map do |v|
+                    v[:degree] = v[:degree].to_i.method(op.operator).(op.value.to_i) if v.is_a?(Hash)
+                    v
+                  end
+              end
+            when '!'
+              if op.value.kind_of?(Array)
+                set = op_values.each_with_index.inject(set) do |a, (v,i)|
+                a[i] = ~v[:degree].to_i+a[i][:degree].to_i if v.is_a?(Hash) and a[i]
+                a
+              end
+              else
+                set = set.map do |v|
+                  v = ~v[:degree].to_i+(op.value.to_i+1) if v.is_a?(Hash)
+                  v
+                end
+              end
+            when '@'
+              # TODO: Chords?
+              # TODO: Combine with operations?
+              set = set.inject(op_values) {|a,j| a.flat_map{|n|[n,{degree: n[:degree].to_i+j[:degree].to_i}]}}
+            end
+          end
+        end
+      end
+      set.zip(Array.new(set.length-1," "))
+    end
+    }
+  end
+
+  rule array
+    first:(items) rest:(',' i:items)*
+    {
+    def value
+      if rest.empty?
+        first.value
+      else
+        r = rest.elements.map {|v| v.i.value }
+        r.append(first.value).pick.flatten
+      end
+    end
+    }
+  end
+
+  rule items
+    (list / ranges / group / degrees / s / sleep)*
+    {
+    def value
+      elements.map {|v| v.value }.filter_map {|v| v if v}
+    end
+    }
+  end
+
+  rule operation
+    incremental:('=')? op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!' / '@') val:('-'? [0-9]+ / list)?
+    {
+    def is_incremental
+      (incremental and incremental.text_value == '=')
+    end
+    def operator
+      op.text_value
+    end
+    def value
+     if val.methods.include?(:value)
+        val.value
+      else
+        val.text_value
+      end
+    end
+    }
+  end
+
+  rule ranges
+   a:('-'? [0-9]+) '..' b:('-'? [0-9]+) c:(step?) sh:('?'?)
+   {
+   def value
+     s = a.text_value.to_i
+     e = b.text_value.to_i
+     ms = s>e ? e : s # 1..7
+     me = e>s ? e : s # 7..1
+     step = c.value if c.methods.include?(:value)
+     nArr = (step ? (ms..me).step(step).to_a : (ms..me).to_a)
+     nArr = nArr.reverse if s>e
+     nArr = nArr.shuffle if sh and sh.text_value == '?'
+     nArr.each_with_object([]){|v,o| o.push({degree: v}) ; o.push(" ") }
+   end
+
+   }
+  end
+
+  rule step
+  '+' [0-9]+
+  {
+    def value
+      text_value.to_i
+    end
+  }
+  end
+
+  rule ignore
+   ([!~&@|{}()<>:=#-^%] / [a-zA-Z1-9] / '.')
+    {
+      def value
+        text_value
+      end
+    }
+  end
+
+  rule anything
+    [\s\S]+
+    {
+      def value
+        text_value
+      end
+    }
+  end
+
+  rule s
+      [\s]+
+      {
+        def value
+          text_value
+        end
+      }
+  end
+
+  rule group
+   degrees 2..
+    {
+     def value
+      e = elements.collect {|v| v.value }
+      degree_list = []
+      e.each do |d|
+        degree_list.push(d[:degree])
+      end
+      v = {:degrees=>degree_list}
+      v
+     end
+    }
+  end
+
+  rule normal_degree
+    d:('-'? [0-9TE])
+    {
+      def value
+        parse_str_dgr(d.text_value)
+      end
+    }
+  end
+
+  rule escaped_degree
+    '=' e:('-'? [0-9]+)
+    {
+      def value
+        e.text_value.to_i
+      end
+    }
+  end
+
+  rule degrees
+   z:(sleep)* o:('^' / '_')* a:('#' / 'b')* d:(normal_degree / escaped_degree)
+    {
+     def value
+       dgr = d.value
+       v = {:degree=>dgr}
+       v[:add] = a.text_value if !a.text_value.empty?
+       v[:octave] = o.text_value if !o.text_value.empty?
+       v[:sleep] = z.text_value  if !z.text_value.empty?
+       v[:dot] = dot.text_value if !dot.text_value.empty?
+       v
+     end
+    }
+  end
+
+  rule sleep
+    [mklpdcwyhnqaefsxtgujz] ('.')*
+    {
+    def value
+      text_value
+    end
+    }
+  end
+
+end
