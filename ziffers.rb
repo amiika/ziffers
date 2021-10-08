@@ -20,11 +20,11 @@ module Ziffers
       :skip => false
     }
 
-    @@default_keys = [:use, :run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :inverse, :array_inverse, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm, :group, :on, :powerset, :operation, :set, :init,:auto_cue,:delay,:sync,:sync_bpm,:seed]
+    @@default_keys = [:use, :run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :invert, :array_invert, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm, :group, :on, :powerset, :operation, :set, :init,:auto_cue,:delay,:sync,:sync_bpm,:seed]
 
     $default_durs = {
-            'm': 8.0, # 15360
-            'k': 5.333333333333333, # 10240
+            'm': 8.0, # 15360 ticks
+            'k': 5.333333333333333, # 10240 ticks
             'l': 4.0, # 7680
             'p': 2.666666666666667, # 5120
             'd': 2.0, # 3840
@@ -306,7 +306,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:rate_based,:skip,:midi,:control,:degrees,:run,:run_each,:char,:rhythm,:slide,:use)
+      ziff.except(:phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:invert,:rate_based,:skip,:midi,:control,:degrees,:run,:run_each,:char,:rhythm,:slide,:use)
     end
 
     def play_midi_out(md, opts)
@@ -961,7 +961,7 @@ module Ziffers
       case key
       when :array_transpose then
         melody = array_transposition melody, val, scale(opts[:scale]).length-1
-      when :array_inverse then
+      when :array_invert then
         melody = array_inversion melody, val, scale(opts[:scale]).length-1
       when :retrograde then
         melody = zretrograde melody, val
@@ -1070,7 +1070,7 @@ module Ziffers
         end
       when :transpose then
         ziff = transposition ziff, val
-      when :inverse then
+      when :invert then
         ziff = inversion ziff, val
       when :augment
         ziff = augment ziff, val

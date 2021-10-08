@@ -16,11 +16,10 @@ grammar GenerativeSyntax
       set = content.value.flatten.filter {|v| v != " "}
 
       if p and p.text_value != ""
-        #result_array = set.filter {|v| v!=" "}
         set = set.shuffle if p.text_value[0]=="~"
         set = p.text_value[0]=="~" ? set.take(p.text_value[1..].to_i) : set.pick(p.text_value[1..].to_i) if p.text_value.length>1
-        #set = result_array.each_with_object([]){|v,o| o.push(v) ; o.push(" ") }
       end
+      
       if !o.empty? then
         o.elements.each do |op|
           if op.methods.include?(:value) then
