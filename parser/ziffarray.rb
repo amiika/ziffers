@@ -210,10 +210,6 @@ module Ziffers
       binaries.each_with_index do |num, i|
         if num == binaries.min then winners.push(pcset_array[i]) end
       end
-      zlog "binaries"
-      zlog zeroed_pitch_arrays
-      zlog "winners"
-      zlog winners
       ZiffArray.new(winners.sort[0])
     end
 
