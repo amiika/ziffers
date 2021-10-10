@@ -1,7 +1,9 @@
 require_relative "./enumerables.rb"
+load "~/ziffers/monkeypatches.rb" # TODO: Move and require
+load "~/ziffers/parser/zgrammar.rb"
+load "~/ziffers/parser/ziffarray.rb"
 load "~/ziffers/parser/ziffhash.rb"
-load "~/ziffers/monkeypatches.rb" # CHANGE BEFORE COMMIT!
-load "~/ziffers/parser/zgrammar.rb" # CHANGE BEFORE COMMIT!
+load "~/ziffers/parser/pc_sets.rb"
 
 print "Ziffers 2.0"
 
@@ -137,12 +139,6 @@ module Ziffers
       melody.map {|v| ziff_to_string(v) }.join(" ")
     end
 
-    def powerset(set)
-      (set.inject([[]]) do |ps,item|
-        ps + ps.map { |e| e + [item] }
-      end)[1..]
-    end
-
     def replace_random_syntax(n,opts)
       n = n.gsub('?',rrand_i(1, scale(opts[:key], opts[:scale]).length-1).to_s)
       n = n.gsub(/\((-?\d+)(,|;)(\d+)\)\*?(\d+)?/) do
@@ -206,7 +202,7 @@ module Ziffers
           opts = get_default_opts.merge(opts)
           n = normalize_melody n, opts, defaults
         end
-        n = Marshal.load(Marshal.dump(n))
+        n = n.deep_clone
         n = n.each_with_index.map {|z,i| apply_transformation(z, opts, 1, i, n.length, true)}
         n = apply_array_transformations n, nil, opts
         print "T: "+zstring(n) if @@debug
@@ -246,12 +242,6 @@ module Ziffers
       ziff[:release] = adsr[:release] * note_length if adsr[:release]!=nil
     end
 
-    # Scales degrees to scale, for example -1=7 and 8=1
-    def get_real_dgr(dgr,zkey,zscale)
-      scaleLength = scale(zkey,zscale).length-1
-      return dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
-    end
-
     def parse_str_dgr(dgr)
       case dgr
       when "E"
@@ -267,11 +257,6 @@ module Ziffers
       end
     end
 
-    def update_note(ziff)
-      ziff[:note] = get_note_from_dgr(ziff[:degree], ziff[:key], ziff[:scale], ziff[:octave])
-      ziff
-    end
-
     # Gets note from degree. Degree can also be negative or overflow to next octave
     def get_note_from_dgr(dgr, zkey, zscale, zoct=nil)
       scaleLength = scale(zkey,zscale).length-1
@@ -285,15 +270,22 @@ module Ziffers
       return degree(dgr,zkey,zscale)
     end
 
-    def get_ziff(dgr, zkey=:C, zscale=:major)
-      dgr+=1 if dgr>=0 # 0 -> 1, etc.
+    # Scales degrees to scale, for example -1=7 and 8=1
+    def get_real_dgr(dgr,zkey,zscale)
       scaleLength = scale(zkey,zscale).length-1
+      return dgr<0 ? (scaleLength)-(dgr.abs%scaleLength) : dgr%scaleLength
+    end
+
+    def get_ziff(dgr, zkey=:C, zscale=:major, oct=0, addition=0)
+      scaleLength = scale(zkey,zscale).length-1
+      #dgr = dgr + zoct*scaleLength if zoct!=0
+      dgr+=1 if dgr>=0 # 0 -> 1, etc.
       if dgr>=scaleLength || dgr<0 then
-        oct = (dgr-1)/scaleLength
+        oct += (dgr-1)/scaleLength
         dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
-        return {:note=>(degree(dgr==0 ? scaleLength : dgr,zkey,zscale)+(oct*12)), :degree=>dgr, :key=>zkey, :scale=>zscale, :octave=>oct}
       end
-      return {:note=>degree(dgr,zkey,zscale), :degree=>dgr, :key=>zkey, :scale=>zscale, :octave=>0}
+      dgr = scaleLength if dgr == 0
+      return {:note=>(degree(dgr,zkey,zscale)+(oct*12)+addition), :degree=>dgr-1, :key=>zkey, :scale=>zscale, :octave=>oct}
     end
 
     def search_list(arr,query)
@@ -916,42 +908,6 @@ module Ziffers
 
   # TRANSFORMATIONS
 
-  # Reverses degrees but keeps the chords in place
-  # Example: "i 1234 v 2341" -> "i 1432 v 4321"
-  def zreverse(arr, with_chords=false)
-    i=0
-    x=arr.length-1
-    until x<=i do
-      if !arr[i][:notes] or with_chords then
-        if !arr[x][:notes] or with_chords then
-          arr[i], arr[x] = arr[x], arr[i]
-          i+=1
-          x-=1
-        else
-          x-=1
-        end
-      else
-        i+=1
-      end
-    end
-    arr
-  end
-
-  def reflect_collection(part_a)
-    part_b = part_a.reverse
-    if part_b[0].is_a?(Array) then
-      part_b = part_b.map { |arr| arr.reverse }
-      part_b[0].shift
-      part_b.delete_at(0) if part_b[0].empty?
-      part_b[part_b.length-1].pop
-      part_b.delete_at(part_b.length-1) if part_b[part_b.length-1].empty?
-    else
-      part_b.shift
-      part_b.pop
-    end
-    return (part_a+part_b)
-  end
-
   def apply_array_transformations(melody, opts, defaults, loop_i=0)
     defaults.each do |key,val|
       if val.is_a? Proc then
@@ -960,25 +916,25 @@ module Ziffers
       end
       case key
       when :array_transpose then
-        melody = array_transposition melody, val, scale(opts[:scale]).length-1
+        melody = melody.transpose val
       when :array_invert then
-        melody = array_inversion melody, val, scale(opts[:scale]).length-1
+        melody = melody.invert val
       when :retrograde then
-        melody = zretrograde melody, val
+        melody = melody.retrograde val
       when :swap then
-        melody = swap melody, *val
+        melody = melody.swap *val
       when :rotate then
         melody = melody.rotate(val)
-      when :division then
-        melody = melody.group_by {|z| z[:degree].to_i % val}.values.flatten
+      #when :division then
+      #  melody = melody.group_by {|z| z[:degree].to_i % val}.values.flatten
       when :mirror then
-        melody = melody+melody.reverse
+        melody = melody.mirror
       when :reverse then
         melody = melody.reverse
       when :reflect then
-        melody = reflect_collection melody
+        melody = melody.reflect
       when :subset then
-        melody = (val.is_a? Numeric) ? [melody[val]] : melody[val]
+        melody = (val.is_a? Numeric) ? ZiffArray.new(melody[val]) : melody[val]
       when :inject then
         melody = melody.inject(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)){|a,j| a.flat_map{|n| [n,augment(j, n)]}}
       when :zip then
@@ -1008,45 +964,18 @@ module Ziffers
       when :pick
         melody = melody.pick(val)
       when :stretch
-        melody = (stretch melody, val).to_a
+        melody = melody.stretch
       when :operation
         if defaults[:set]
-          melody = operate_set(melody,val,defaults[:set])
+          melody = melody.set_operation, val, defaults[:set]
         end
       when :powerset
-         melody = (powerset melody)[val] if powerset[val]
+        melody = melody.powerset val
       when :order_transform
         melody = send(val, melody, loop_i)
       end
     end
     return melody
-  end
-
-  def operate_set(set, operator, values)
-    set = values.each_with_index.inject(set) do |a, (v,i)|
-      if v.is_a?(Hash) and a[i] and a[i].is_a?(Hash)
-        if v[:degree] and a[i][:degree]
-          a[i][:degree] = v[:degree].to_i.method(operator).(a[i][:degree].to_i)
-        elsif a[i][:degrees] and v[:degree]
-          a[i][:degrees][0] = a[i][:degrees][0].to_i.method(operator).(v[:degree].to_i)
-        elsif a[i][:degrees] and v[:degrees]
-          v[:degrees].each_with_index do |d,di|
-            a[i][:degrees][di] = a[i][:degrees][di].to_i.method(operator).(d.to_i)
-          end
-        elsif a[i][:degree] and v[:degrees]
-          a[i][:degrees] = v[:degrees]
-          a[i][:degrees][0] = a[i][:degrees][0].to_i.method(operator).(a[i][:degree].to_i)
-          a[i].delete(:degree)
-        end
-      end
-      a
-    end
-  end
-
-  def set_operation(set, operation, values)
-    set.each do |ziff|
-
-    end
   end
 
   def apply_transformation(ziff, defaults, loop_i=0, note_i=0, melody_size=1, post_parse=false)
@@ -1066,41 +995,29 @@ module Ziffers
       when :key, :scale, :octave
         if post_parse
           ziff[key] = val
-          ziff = update_note ziff
+          ziff = ziff.update_note
         end
       when :transpose then
-        ziff = transposition ziff, val
+        ziff = ziff.transpose val
       when :invert then
-        ziff = inversion ziff, val
+        ziff = ziff.invert val
       when :augment
-        ziff = augment ziff, val
+        ziff = ziff.augment val
       when :flex
-        ziff = flex ziff, val
+        ziff = zif.flex val
       when :silence
-        ziff = silence ziff, val
+        ziff = ziff.silence val
       when :harmonize
-        ziff = harmonize ziff, defaults
+        ziff = ziff.harmonize defaults, ziff[:compound] ? ziff[:compound] : 0
       when :rhythm
         ziff = zrhythm_motive ziff, val, (loop_i>0 ? (melody_size*loop_i+note_i) : note_i)
       when :detune
-        ziff = detune_notes ziff, val
+        ziff = ziff.detune val
       when :object_transform
         ziff = send(val,ziff,loop_i,note_i,melody_size)
       end
     end
     return ziff
-  end
-
-  def detune_notes(ziff, detune)
-    if ziff[:notes] then
-      notes = ziff[:notes].to_a
-      notes.each_with_index do |n,i|
-        notes[i] = hz_to_midi(midi_to_hz(n)+detune)
-      end
-      ziff[:notes] = notes.ring
-    elsif ziff[:note]
-      ziff[:note] = hz_to_midi(midi_to_hz(ziff[:note])+detune)
-    end
   end
 
   def zrhythm_motive(ziff, rmotive, mot_i)
@@ -1111,203 +1028,6 @@ module Ziffers
       ziff[:sleep] = rmotive.ring[mot_i]
     elsif rmotive.is_a? SonicPi::Core::RingVector then
       ziff[:sleep] = rmotive[mot_i]
-    end
-    return ziff
-  end
-
-  def zretrograde(notes,retrograde,chords=false)
-    if retrograde.is_a?(Array) then # Retrograding subarray
-      retrograde[1] = notes.length if retrograde[1]>notes.length or retrograde[1]<=retrograde[0]
-      retrograde[0] = 0 if retrograde[0]<0
-      rev_notes = []
-      rev_notes += notes[0,retrograde[0]] if retrograde[0]>0
-      rev_notes += zreverse notes[retrograde[0]..retrograde[1]], chords
-      rev_notes += (retrograde[1]<notes.length) ? notes[retrograde[1]+1..notes.length] : [notes[retrograde[1]]] if retrograde[1]+1<notes.length
-      return rev_notes
-    elsif retrograde.is_a?(Numeric) # Retrograding partial arrays splitted to equal parts
-      return notes.each_slice(retrograde).map{|part| zreverse part, chords }.flatten
-    elsif [true].include? retrograde
-      return zreverse notes, chords # Normal retrograde
-    else
-      return notes
-    end
-  end
-
-  def transpose_array(melody,i,scale_length=nil,inv=false)
-    melody = Marshal.load(Marshal.dump(melody))
-    melody.each do |ziff|
-      transpose_note ziff, i, scale_length, inv
-    end
-    melody
-  end
-
-  def transpose_chord(ziff,i,n=nil,inv=false)
-      degrees = []
-      notes = []
-      ziff[:degrees].each do |originalDegree|
-        n = scale(ziff[:key], ziff[:scale]).length-1 if n == nil
-        val = inv ? i-originalDegree : originalDegree+i
-        ziff[:pitch]=0 if !ziff[:pitch]
-        ziff[:pitch] += val/n*12 if val>=n or val<0
-        val = val % n
-        degrees.push(val)
-        notes.push(((ziff[:pitch] and ziff[:pitch] <= -72) ? :r : get_note_from_dgr(val, ziff[:key], ziff[:scale])))
-      end
-    ziff[:notes] = notes
-    ziff[:degrees] = degrees
-    ziff
-  end
-
-  def transpose_note(ziff,i,n=nil,inv=false)
-    if ziff[:degrees]
-      transpose_chord(ziff,i,n,inv)
-    elsif ziff[:degree]
-      n = scale(ziff[:key], ziff[:scale]).length-1 if n == nil
-      originalDegree = ziff[:degree]
-      val = inv ? i-originalDegree : originalDegree+i
-      ziff[:pitch]=0 if !ziff[:pitch]
-      ziff[:pitch] += val/n*12 if val>=n or val<0
-      val = val % n
-      ziff[:degree] = val
-      ziff[:note] = ((ziff[:pitch] and ziff[:pitch] <= -72) ? :r : get_note_from_dgr(val, ziff[:key], ziff[:scale]))
-    end
-    ziff
-  end
-
-  def transposition(ziff,start,n=nil)
-    transpose_note(ziff, start, n)
-  end
-
-  def inversion(ziff,start,n=nil)
-    transpose_note(transpose_note(ziff, -1, n, true), start, n)
-  end
-
-  def array_transposition(melody,start,n=nil)
-    transpose_array(melody, start, n)
-  end
-
-  def array_inversion(melody,start,n=nil)
-    array_transposition(transpose_array(melody, -1, n, true), start, n)
-  end
-
-  def swap(melody,n,x=1)
-    melody = melody.dup
-    n = n % melody.length if n>=melody.length
-    n2 = (n+x)>=melody.length ? ((n+x) % melody.length) : n+x
-    melody[n], melody[n2] = melody[n2], melody[n]
-    melody
-  end
-
-  def flex(ziff,ratio)
-    ziff = ziff.dup
-    if ziff[:sleep] then
-      ziff[:sleep] = ziff[:sleep] + ziff[:sleep]*ratio
-      set_ADSR(ziff,@@default_opts.slice(:attack,:decay,:sustain,:release))
-    end
-    return ziff
-  end
-
-  def compound(ziff,interval)
-    if interval>0 or interval<0 then
-      if ziff[:note] then
-        ziff[:notes] = []
-        ziff[:notes].push ziff[:note]
-        new_note = get_note_from_dgr ziff[:degree]+(interval-1), ziff[:key], ziff[:scale]
-        scale_length = scale(ziff[:key],ziff[:scale]).length-1
-        ziff[:notes].push new_note + scale_length
-        ziff.delete(:note)
-      end
-    end
-    return ziff
-  end
-
-  def silence(ziff,degrees)
-    if ziff[:note] and ziff[:degree] then
-      if ((degrees.is_a? Numeric) and degrees==ziff[:degree]) or ((degrees.is_a? Array) and (degrees.include? ziff[:degree]))  then
-        ziff[:note] = :r
-      end
-    end
-    return ziff
-  end
-
-  def get_interval_note(degree, interval, compound, key, scale)
-    add_to = 0
-    if (interval.is_a? String) then
-      if (interval.include? "#")
-        interval = interval.sub "#",""
-        add_to += 1
-      elsif (interval.include? "b")
-        interval = interval.sub "b",""
-        add_to -= 1
-      end
-    end
-    interval = interval.to_i
-    interval = interval==0 ? interval+compound : interval>0 ? interval-1+compound : interval+1-compound
-    return (get_note_from_dgr (degree+interval+compound), key, scale)+add_to
-  end
-
-  def harmonize(ziff,opts)
-    if opts[:harmonize] then
-      if ziff[:note] and ziff[:degree] then
-        degrees = opts[:harmonize]
-        ziff[:notes] = []
-        ziff[:notes].push ziff[:note]
-        compound = 0
-        if opts[:compound] then
-          scale_length = scale(ziff[:key],ziff[:scale]).length-1
-          compound = scale_length*opts[:compound]
-        end
-        if degrees.is_a? Hash then
-          degree_intervals = degrees[ziff[:degree]]
-          if degree_intervals then
-            if degree_intervals.is_a? Array then
-              degree_intervals.each do |interval|
-                ziff[:notes].push get_interval_note ziff[:degree], interval, compound, ziff[:key], ziff[:scale]
-              end
-            else
-              ziff[:notes].push get_interval_note ziff[:degree], degree_intervals, compound, ziff[:key], ziff[:scale]
-            end
-          end
-        elsif degrees.is_a? Array
-          degrees.each do |interval|
-            ziff[:notes].push get_interval_note ziff[:degree], interval, compound, ziff[:key], ziff[:scale]
-          end
-        else
-          ziff[:notes].push get_interval_note ziff[:degree], degrees, compound, ziff[:key], ziff[:scale]
-        end
-        ziff[:notes] = ziff[:notes].ring
-        ziff[:notes] = chord_invert ziff[:notes], ziff[:chord_invert] if ziff[:chord_invert]
-        ziff.delete(:note)
-      end
-    end
-    return ziff
-  end
-
-  def get_interval_note(degree, interval, compound, key, scale)
-    add_to = 0
-    if (interval.is_a? String) then
-      if (interval.include? "#")
-        interval = interval.sub "#",""
-        add_to += 1
-      elsif (interval.include? "b")
-        interval = interval.sub "b",""
-        add_to -= 1
-      end
-    end
-    interval = interval.to_i
-    interval = interval==0 ? interval+compound : interval>0 ? interval-1+compound : interval+1-compound
-    return (get_note_from_dgr (degree+interval), key, scale)+add_to
-  end
-
-  def augment(ziff,additions)
-    if ziff[:note] and ziff[:degree] then
-      if additions[:degree] then
-        interval = additions[:degree]
-      else
-        interval = additions[ziff[:degree]]
-      end
-      interval = interval.() if (interval.is_a? Proc)
-      ziff[:note] = get_interval_note ziff[:degree], interval, 0, ziff[:key], ziff[:scale]
     end
     return ziff
   end

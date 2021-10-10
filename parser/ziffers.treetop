@@ -92,8 +92,7 @@ grammar Ziffers
       c[:arpeggio] = $tarp if $tarp
       c[:key] = $topts[:key]
       c[:scale] = $topts[:scale]
-      c = apply_transformation c, $tshared
-      ZiffHash[c]
+      c = apply_transformation ZiffHash[c], $tshared
    end
    }
   end
@@ -179,17 +178,19 @@ grammar Ziffers
         oct += $topts[:octave] if $topts[:octave]
         addition = (!a.text_value.empty?) ? a.text_value.split('').inject(0){|sum,x| sum + (x=='#' ? 1 : -1)} : 0
 
-        v = {
-        :degree=>dgr,
-        :note=>get_note_from_dgr(dgr, $topts[:key], $topts[:scale], oct)+addition
-        }
-        v.merge!($topts)
-        v[:octave] = oct if oct
+        v = get_ziff dgr, $topts[:key], $topts[:scale], oct, addition
+
+      #  v = {
+      #  :note=>get_note_from_dgr(dgr, $topts[:key], $topts[:scale], oct)+addition,
+      #  :degree=>get_real_dgr(dgr,$topts[:key], $topts[:scale])
+      #  }
+
+        v.merge!($topts) { |key, important, default| important }
+        #v[:octave] = oct if oct
         v[:sleep] = s.value if s.methods.include?(:value)
         v.merge!($tcontrol)
+        v = apply_transformation ZiffHash[v], $tshared
 
-        v = apply_transformation v, $tshared
-        ZiffHash[v]
      end
     }
   end

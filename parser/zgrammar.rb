@@ -37,7 +37,8 @@ module Ziffers
         puts @@zparser.failure_line
         puts @@zparser.failure_column
       end
-      apply_array_transformations result.value, opts, shared
+      ziffers = ZiffArray.new(result.value)
+      apply_array_transformations ziffers, opts, shared
     end
 
     def parse_generative text
