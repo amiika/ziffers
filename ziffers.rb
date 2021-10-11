@@ -22,7 +22,7 @@ module Ziffers
       :skip => false
     }
 
-    @@default_keys = [:use, :run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :invert, :array_invert, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm, :group, :on, :powerset, :operation, :set, :init,:auto_cue,:delay,:sync,:sync_bpm,:seed]
+    @@default_keys = [:use, :run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :invert, :octave, :array_invert, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm, :group, :on, :powerset, :operation, :set, :init,:auto_cue,:delay,:sync,:sync_bpm,:seed]
 
     $default_durs = {
             'm': 8.0, # 15360 ticks
@@ -265,7 +265,7 @@ module Ziffers
       if dgr>=scaleLength || dgr<0 then
         oct = (dgr-1)/scaleLength*12
         dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
-        return degree(dgr==0 ? scaleLength : dgr,zkey,zscale)+oct
+        return degree((dgr==0 ? scaleLength : dgr),zkey,zscale)+oct
       end
       return degree(dgr,zkey,zscale)
     end
@@ -466,7 +466,7 @@ module Ziffers
           sleep ziff[:sleep]
           next
         end
-        ziff = apply_transformation(ziff, defaults, loop_i, index, melody.length)
+        ziff = apply_transformation(ziff, defaults, loop_i, index, melody.length, defaults[:preparsed] ? true : false)
       # TODO: Keep or not to keep?
       '''  if ziff[:lambda] then
           ziff[:lambda].() if ziff[:lambda].arity == 0
@@ -483,7 +483,8 @@ module Ziffers
             end
           end
         end
-        ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
+        # TODO: Merge rate not working. Merges too much?
+        #ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
         if defaults[:adjust] then
           t_index = tick(:adjust)
           # If adjust is lambda
@@ -995,7 +996,7 @@ module Ziffers
       when :key, :scale, :octave
         if post_parse
           ziff[key] = val
-          ziff = ziff.update_note
+          ziff.update_note
         end
       when :transpose then
         ziff = ziff.transpose val
@@ -1008,7 +1009,7 @@ module Ziffers
       when :silence
         ziff = ziff.silence val
       when :harmonize
-        ziff = ziff.harmonize defaults, ziff[:compound] ? ziff[:compound] : 0
+        ziff = ziff.harmonize val, ziff[:compound] ? ziff[:compound] : 0
       when :rhythm
         ziff = zrhythm_motive ziff, val, (loop_i>0 ? (melody_size*loop_i+note_i) : note_i)
       when :detune

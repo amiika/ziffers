@@ -5,20 +5,37 @@ module Ziffers
         @@set_keys.filter {|key| self[key] == other_hash[key]} == @@set_keys
       end
 
+      # TODO: Add other keys to hash?
       def hash
           self[:degree].hash
+      end
+
+      def pc
+        self[:degree]
+      end
+
+      def note
+        self[:note]
       end
 
       def deep_clone
         ZiffHash[Marshal.load(Marshal.dump(self))]
       end
 
-      def real_degree
-        self[:degree]+1
+      def pitch_class
+        self[:degree]
       end
 
-      def degree
-        self[:degree]
+      def minus val
+        self[:degree]-=val
+      end
+
+      def plus val
+        self[:degree]+=val
+      end
+
+      def multiply val
+        self[:degree]*=val
       end
 
       def transpose(i, inv=false)

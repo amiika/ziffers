@@ -1,8 +1,25 @@
 module Ziffers
   class ZiffArray < Array
+    include Comparable
 
     def <=>(zarr)
       self.degrees <=> zarr.degrees
+    end
+
+    def +(x)
+      ZiffArray.new(super)
+    end
+
+    def *(x)
+      ZiffArray.new(super)
+    end
+
+    def &(x)
+      ZiffArray.new(super)
+    end
+
+    def |(x)
+      ZiffArray.new(super)
     end
 
     def transpose(start)
@@ -75,7 +92,7 @@ module Ziffers
         part_b.shift
         part_b.pop
       end
-      return (self+part_b)
+      return ZiffArray.new((self+part_b))
     end
 
     def swap(n,x=1)
@@ -166,6 +183,24 @@ module Ziffers
 
     def flex(opts)
       ZiffArray.new(self.map{|x| x.flex opts})
+    end
+
+    def multiply(opts)
+      cl = self.deep_clone
+      cl.each{|x| x.multiply opts; x.update_note}
+      cl
+    end
+
+    def minus(opts)
+      cl = self.deep_clone
+      cl.each{|x| x.minus opts; x.update_note}
+      cl
+    end
+
+    def plus(opts)
+      cl = self.deep_clone
+      cl.each{|x| x.plus opts; x.update_note}
+      cl
     end
 
     def to_pc_set
