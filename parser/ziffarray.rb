@@ -116,7 +116,7 @@ module Ziffers
         ps + ps.map { |e| e + [item] }
       end)[1..]
       if val and val.is_a?(Integer)
-        result = result.filter {|a| a.length == val }
+        result = result.collect {|a| ZiffArray.new(a) if a.length == val }.compact
       end
       result
     end
@@ -126,20 +126,20 @@ module Ziffers
       self.each_with_index do |s,i|
         v = values[i]
         if v
-          if s[:degree] and v[:degree]
-            s[:degree] = s[:degree].to_i.method(operator).(v[:degree].to_i)
-          elsif s[:degrees] and v[:degree]
-            s[:degrees][0] = s[:degrees][0].to_i.method(operator).(v[:degree].to_i)
-          elsif s[:degree] and v[:degrees]
-            s[:degrees] = v[:degrees]
-            s[:degrees][0] = s[:degrees][0].to_i.method(operator).(s[:degree].to_i)
-            s.delete(:degree)
-          elsif s[:degrees] and v[:degrees]
-            v[:degrees].each_with_index do |d,di|
-              if s[:degrees][di]
-                s[:degrees][di] = s[:degrees][di].to_i.method(operator).(d.to_i)
+          if s[:pc] and v[:pc]
+            s[:pc] = s[:pc].to_i.method(operator).(v[:pc].to_i)
+          elsif s[:pcs] and v[:pc]
+            s[:pcs][0] = s[:pcs][0].to_i.method(operator).(v[:pc].to_i)
+          elsif s[:pc] and v[:pcs]
+            s[:pcs] = v[:pcs]
+            s[:pcs][0] = s[:pcs][0].to_i.method(operator).(s[:pc].to_i)
+            s.delete(:pc)
+          elsif s[:pcs] and v[:pcs]
+            v[:pcs].each_with_index do |d,di|
+              if s[:pcs][di]
+                s[:pcs][di] = s[:pcs][di].to_i.method(operator).(d.to_i)
               else
-                s[:degrees].push(d)
+                s[:pcs].push(d)
               end
             end
           end
@@ -153,9 +153,11 @@ module Ziffers
       self.map{|x| x[key] or x[key]}
     end
 
-    def degrees
-      self.map{|x| x[:degree] or x[:degrees]}
+    def pitch_classes
+      self.map{|x| x[:pc] or x[:pcs]}
     end
+
+    alias pcs pitch_classes
 
     def octaves
       self.map{|x| x[:octave] or x[:octave]}
@@ -204,11 +206,11 @@ module Ziffers
     end
 
     def to_pc_set
-      ZiffArray.new(self.uniq.sort_by { |hash| hash[:degree] })
+      ZiffArray.new(self.uniq.sort_by { |hash| hash[:pc] })
     end
 
     #def sort
-    # ZiffArray.new(self.sort_by { |hash| hash[:degree] })
+    # ZiffArray.new(self.sort_by { |hash| hash[:pc] })
     #end
 
     def content
@@ -227,7 +229,7 @@ module Ziffers
     end
 
     def zero
-      transpose(-1 * self[0][:degree])
+      transpose(-1 * self[0][:pc])
     end
 
     def prime
