@@ -3,7 +3,7 @@ module Ziffers
     include Comparable
 
     def <=>(zarr)
-      self.degrees <=> zarr.degrees
+      self.pcs <=> zarr.pcs
     end
 
     def +(x)
@@ -241,7 +241,7 @@ module Ziffers
       if !pcset_array.all? {|pcs| pcs.length == pcset_array[0].length}
         raise ArgumentError, "PCSet.most_left_compact: All PCSets must be of same cardinality", caller
       end
-      zeroed_pitch_arrays = pcset_array.map {|pcs| pcs.zero.degrees}
+      zeroed_pitch_arrays = pcset_array.map {|pcs| pcs.zero.pcs}
       binaries = zeroed_pitch_arrays.map {|array| array.inject(0) {|sum, n| sum + 2**n}}
       winners = []
       binaries.each_with_index do |num, i|
