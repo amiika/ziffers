@@ -51,7 +51,7 @@ module Ziffers
     @@debug = false
     @@degree_based = false
     @@rmotive_lengths = nil
-    @@set_keys = [:degree]
+    @@set_keys = [:pc]
 
     $easing = {
       linear: -> (t, b, c, d) { c * t / d + b },
@@ -129,7 +129,7 @@ module Ziffers
 
     def ziff_to_string(value)
       if value.is_a?(Hash)
-        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? $default_durs.key(value[:sleep]).to_s : value[:sleep].to_s) + value[:dot].to_s + (value[:octave].is_a?(String) ? value[:octave] : "") + value[:add].to_s + ((value.key?(:degree) and (value[:degree].to_i>9 or value[:degree].to_i<-9))  ? "=" : "") + value[:degree].to_s + (value[:degrees] ? value[:degrees].map{|v| (v.to_i>9 or v.to_i<-9) ? "="+v.to_s : ""+v.to_s }.join("") : "") + value[:separator].to_s
+        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? $default_durs.key(value[:sleep]).to_s : value[:sleep].to_s) + value[:dot].to_s + (value[:octave].is_a?(String) ? value[:octave] : "") + value[:add].to_s + ((value.key?(:pc) and (value[:pc].to_i>9 or value[:pc].to_i<-9))  ? "=" : "") + value[:pc].to_s + (value[:pcs] ? value[:pcs].map{|v| (v.to_i>9 or v.to_i<-9) ? "="+v.to_s : ""+v.to_s }.join("") : "") + value[:separator].to_s
       else
         value
       end
@@ -285,7 +285,7 @@ module Ziffers
         dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
       end
       dgr = scaleLength if dgr == 0
-      return {:note=>(degree(dgr,zkey,zscale)+(oct*12)+addition), :degree=>dgr-1, :key=>zkey, :scale=>zscale, :octave=>oct}
+      return {:note=>(degree(dgr,zkey,zscale)+(oct*12)+addition), :pc=>dgr-1, :degree=>dgr, :key=>zkey, :scale=>zscale, :octave=>oct}
     end
 
     def search_list(arr,query)
@@ -298,7 +298,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:invert,:rate_based,:skip,:midi,:control,:degrees,:run,:run_each,:char,:rhythm,:slide,:use)
+      ziff.except(:phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:invert,:rate_based,:skip,:midi,:control,:pcs,:run,:run_each,:char,:rhythm,:slide,:use)
     end
 
     def play_midi_out(md, opts)
@@ -315,13 +315,13 @@ module Ziffers
         if ziff[:arpeggio] then
           ziff[:arpeggio].each do |cn|
             cn[:amp] = ziff[:amp] if !cn[:amp] and ziff[:amp]
-            if cn[:degrees] then
-              arp_chord = cn[:degrees].map{|d| ziff[:notes][d]}
+            if cn[:pcs] then
+              arp_chord = cn[:pcs].map{|d| ziff[:notes][d]}
               arp_notes = {notes: arp_chord}
             else
-              arp_notes = {note: ziff[:notes][cn[:degree]]}
+              arp_notes = {note: ziff[:notes][cn[:pc]]}
             end
-            arp_opts = cn.merge(arp_notes).except(:degrees)
+            arp_opts = cn.merge(arp_notes).except(:pcs)
 
             if ziff[:port] then
               sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
@@ -355,8 +355,8 @@ module Ziffers
         if ziff[:sample]!=nil then
           if defaults[:rate_based] && ziff[:note]!=nil then
             ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
-          elsif ziff[:degree]!=nil then
-            ziff[:pitch] = (scale 0, ziff[:scale], num_octaves: 2)[ziff[:degree]]+(ziff[:octave])*12
+          elsif ziff[:pc]!=nil then
+            ziff[:pitch] = (scale 0, ziff[:scale], num_octaves: 2)[ziff[:pc]]+(ziff[:octave])*12
           end
           if ziff[:cut] then
             ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample])))*ziff[:cut],1.0].sort[1]
@@ -390,10 +390,10 @@ module Ziffers
           rest.each_with_index do |cnote,i|
              slide_ziff = ziff[:slide].clone
              slide_ziff[:note] = slide_ziff[:notes][i]
-             slide_ziff[:degree] = slide_ziff[:degrees][i]
-             slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:degree]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:degree]!=nil
+             slide_ziff[:pc] = slide_ziff[:pcs][i]
+             slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
 
-              cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:degrees)
+              cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:pcs)
               control c, cc
               sleep slide_sleep
           end
@@ -525,7 +525,7 @@ module Ziffers
         $zloop_states[defaults[:loop_name]][:parsed_melody] = melody
         if @@debug then
           print "Stored:"
-          print zparams melody, :degree
+          print zparams melody, :pc
         end
       end
     end
@@ -927,7 +927,7 @@ module Ziffers
       when :rotate then
         melody = melody.rotate(val)
       #when :division then
-      #  melody = melody.group_by {|z| z[:degree].to_i % val}.values.flatten
+      #  melody = melody.group_by {|z| z[:pc].to_i % val}.values.flatten
       when :mirror then
         melody = melody.mirror
       when :reverse then

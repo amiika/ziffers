@@ -85,14 +85,14 @@ def test6
 
   # Regexp with '' eval syntax
   t6z_1 = zparse "q0 e0 1 2 3", rules: {/(?<=q)[0-9]/=>"'$+1'"}, gen: 3
-  t6_2 = zparams(t6z_1, :degree)
+  t6_2 = zparams(t6z_1, :pc)
   assert_equal(t6_2,[3, 0, 1, 2, 3])
 
   # Regexp with lambda
   t6z_2 = zparse "q1 e3 q4", gen: 3, groups: false, rules: {
     /([a-z])([1-9]*)/=> ->(i,m){ print m; m[1]+(m[2].to_i*2).to_s }
   }
-  t6_3 = zparams(t6z_2,:degree)
+  t6_3 = zparams(t6z_2,:pc)
   assert_equal(t6_3, [8, 2, 4, 3, 2])
 
 end

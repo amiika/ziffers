@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / bar / repeat / multisleep / arpeggio / chords / degrees / call / roman / eval / rest / control / use / slide / jumper / parens / reset)*
+    (s / bar / repeat / multisleep / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / use / slide / jumper / parens / reset)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.filter_map do |v|
@@ -58,7 +58,7 @@ grammar Ziffers
   end
 
   rule arpeggio
-    '@(' a:(sleep / s / group / degrees)* ')'
+    '@(' a:(sleep / s / group / pitch_classes)* ')'
     {
      def value
     #  chord_list = n.elements.collect {|v| v.value }.filter_map {|v| v if v}
@@ -98,17 +98,17 @@ grammar Ziffers
   end
 
   rule group
-     degrees 2..
+     pitch_classes 2..
     {
      def value
       e = elements.collect {|v| v.value }
-      degree_list = []
+      pitch_class_list = []
       note_list = []
       e.each do |d|
-        degree_list.push(d[:degree])
+        pitch_class_list.push(d[:pc])
         note_list.push(d[:note])
       end
-      v = {:notes=>note_list, :degrees=>degree_list}
+      v = {:notes=>note_list, :pcs=>pitch_class_list}
       v.merge!($topts)
       v[:sleep] = $tchordsleep if $tchordsleep
       v
@@ -151,7 +151,7 @@ grammar Ziffers
     }
   end
 
-  rule normal_degree
+  rule normal_pitch_class
     d:('-'? [0-9])
     {
       def value
@@ -160,7 +160,7 @@ grammar Ziffers
     }
   end
 
-  rule escaped_degree
+  rule escaped_pitch_class
     '=' e:('-'? [0-9]+)
     {
       def value
@@ -169,11 +169,11 @@ grammar Ziffers
     }
   end
 
-  rule degrees
-    s:(sleep)? o:(octave)* a:(add)* some_degree:(normal_degree / escaped_degree)
+  rule pitch_classes
+    s:(sleep)? o:(octave)* a:(add)* some_pitch_class:(normal_pitch_class / escaped_pitch_class)
     {
       def value
-        dgr = some_degree.value
+        dgr = some_pitch_class.value
         oct = (!o.text_value.empty?) ? o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)} : 0
         oct += $topts[:octave] if $topts[:octave]
         addition = (!a.text_value.empty?) ? a.text_value.split('').inject(0){|sum,x| sum + (x=='#' ? 1 : -1)} : 0
@@ -182,7 +182,7 @@ grammar Ziffers
 
       #  v = {
       #  :note=>get_note_from_dgr(dgr, $topts[:key], $topts[:scale], oct)+addition,
-      #  :degree=>get_real_dgr(dgr,$topts[:key], $topts[:scale])
+      #  :pc=>get_real_dgr(dgr,$topts[:key], $topts[:scale])
       #  }
 
         v.merge!($topts) { |key, important, default| important }
@@ -261,7 +261,7 @@ grammar Ziffers
   end
 
   rule subset
-    (s / bar / chords / degrees / rest / eval / control / parens)*
+    (s / bar / chords / pitch_classes / rest / eval / control / parens)*
     {
       def value
         elements.collect {|v| v.value }
@@ -434,7 +434,7 @@ end
   end
 
   rule repetition
-    (repeat / s / bar / control / arpeggio / chords / degrees / eval / rest / multisleep / slide / parens / cyclic / control / use)*
+    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / slide / parens / cyclic / control / use)*
     {
       def value
         elements.collect { |v| v.value }.filter_map {|v| v if v}

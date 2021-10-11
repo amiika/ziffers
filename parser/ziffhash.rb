@@ -7,11 +7,11 @@ module Ziffers
 
       # TODO: Add other keys to hash?
       def hash
-          self[:degree].hash
+          self[:pc].hash
       end
 
       def pc
-        self[:degree]
+        self[:pc]
       end
 
       def note
@@ -23,50 +23,50 @@ module Ziffers
       end
 
       def pitch_class
-        self[:degree]
+        self[:pc]
       end
 
       def minus val
-        self[:degree]-=val
+        self[:pc]-=val
       end
 
       def plus val
-        self[:degree]+=val
+        self[:pc]+=val
       end
 
       def multiply val
-        self[:degree]*=val
+        self[:pc]*=val
       end
 
       def transpose(i, inv=false)
         ziff = self.deep_clone
         n = scale(ziff[:key], ziff[:scale]).length-1
-        if ziff[:degrees]
-          ziff[:degrees].each_with_index do |originalDegree, index|
+        if ziff[:pcs]
+          ziff[:pcs].each_with_index do |originalDegree, index|
             val = inv ? i-originalDegree : originalDegree+i
             ziff[:octave] += val/n if val>=n or val<0
             val = val % n
-            ziff[:degrees][index] = val
+            ziff[:pcs][index] = val
             ziff.update_note
           end
-        elsif ziff[:degree]
-          originalDegree = ziff[:degree]
+        elsif ziff[:pc]
+          originalDegree = ziff[:pc]
           val = inv ? i-originalDegree : originalDegree+i
           ziff[:octave] += val/n if val>=n or val<0
           val = val % n
-          ziff[:degree] = val
+          ziff[:pc] = val
           ziff.update_note
         end
         ziff
       end
 
       def update_note
-        if self[:degree]
-          self[:note] = get_note_from_dgr(self[:degree], self[:key], self[:scale], self[:octave])
-        elsif self[:degrees]
+        if self[:pc]
+          self[:note] = get_note_from_dgr(self[:pc], self[:key], self[:scale], self[:octave])
+        elsif self[:pcs]
           notes = []
-          self[:degrees].each do |d|
-            notes.push(get_note_from_dgr(self[:degree], self[:key], self[:scale], self[:octave]))
+          self[:pcs].each do |d|
+            notes.push(get_note_from_dgr(self[:pc], self[:key], self[:scale], self[:octave]))
           end
           self[:notes] = notes
         end
@@ -78,21 +78,21 @@ module Ziffers
 
       def augment(additions)
         ziff = self.deep_clone
-        if ziff[:note] and ziff[:degree] then
-          if additions[:degree] then
-            interval = additions[:degree]
+        if ziff[:note] and ziff[:pc] then
+          if additions[:pc] then
+            interval = additions[:pc]
           else
-            interval = additions[ziff[:degree]]
+            interval = additions[ziff[:pc]]
           end
           interval = interval.() if (interval.is_a? Proc)
-          ziff[:note] = get_interval_note ziff[:degree], interval, 0, ziff[:key], ziff[:scale]
+          ziff[:note] = get_interval_note ziff[:pc], interval, 0, ziff[:key], ziff[:scale]
         end
         ziff
       end
 
       def harmonize(degrees, compound = 0)
         ziff = self.deep_clone
-          if ziff[:note] and ziff[:degree] then
+          if ziff[:note] and ziff[:pc] then
             ziff[:notes] = []
             ziff[:notes].push ziff[:note]
             if compound>0 then
@@ -100,22 +100,22 @@ module Ziffers
               compound = scale_length * compound
             end
             if degrees.is_a? Hash then
-              degree_intervals = degrees[ziff[:degree]]
+              degree_intervals = degrees[ziff[:pc]]
               if degree_intervals then
                 if degree_intervals.is_a? Array then
                   degree_intervals.each do |interval|
-                    ziff[:notes].push get_interval_note ziff[:degree], interval, compound, ziff[:key], ziff[:scale]
+                    ziff[:notes].push get_interval_note ziff[:pc], interval, compound, ziff[:key], ziff[:scale]
                   end
                 else
-                  ziff[:notes].push get_interval_note ziff[:degree], degree_intervals, compound, ziff[:key], ziff[:scale]
+                  ziff[:notes].push get_interval_note ziff[:pc], degree_intervals, compound, ziff[:key], ziff[:scale]
                 end
               end
             elsif degrees.is_a? Array
               degrees.each do |interval|
-                ziff[:notes].push get_interval_note ziff[:degree], interval, compound, ziff[:key], ziff[:scale]
+                ziff[:notes].push get_interval_note ziff[:pc], interval, compound, ziff[:key], ziff[:scale]
               end
             else
-              ziff[:notes].push get_interval_note ziff[:degree], degrees, compound, ziff[:key], ziff[:scale]
+              ziff[:notes].push get_interval_note ziff[:pc], degrees, compound, ziff[:key], ziff[:scale]
             end
             ziff[:notes] = ziff[:notes].ring
             ziff[:notes] = chord_invert ziff[:notes], ziff[:chord_invert] if ziff[:chord_invert]
@@ -146,7 +146,7 @@ module Ziffers
           if ziff[:note] then
             ziff[:notes] = []
             ziff[:notes].push ziff[:note]
-            new_note = get_note_from_dgr ziff[:degree]+(interval-1), ziff[:key], ziff[:scale]
+            new_note = get_note_from_dgr ziff[:pc]+(interval-1), ziff[:key], ziff[:scale]
             scale_length = scale(ziff[:key],ziff[:scale]).length-1
             ziff[:notes].push new_note + scale_length
             ziff.delete(:note)
@@ -181,8 +181,8 @@ module Ziffers
       # TODO: Chord degree silencing?
       def silence(degrees)
         ziff = self.deep_clone
-        if ziff[:note] and ziff[:degree] then
-          if ((degrees.is_a? Numeric) and degrees==ziff[:degree]) or ((degrees.is_a? Array) and (degrees.include? ziff[:degree]))  then
+        if ziff[:note] and ziff[:pc] then
+          if ((degrees.is_a? Numeric) and degrees==ziff[:pc]) or ((degrees.is_a? Array) and (degrees.include? ziff[:pc]))  then
             ziff[:note] = :r
           end
         end

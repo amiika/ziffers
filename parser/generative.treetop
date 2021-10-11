@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (list / ranges / group / degrees / sleep / s / ignore)*
+    (list / ranges / group / pitch_classes / sleep / s / ignore)*
     {
     def value
       elements.map {|v| v.value }.flatten.filter_map {|v| ziff_to_string(v) if v}.join("")
@@ -19,7 +19,7 @@ grammar GenerativeSyntax
         set = set.shuffle if p.text_value[0]=="~"
         set = p.text_value[0]=="~" ? set.take(p.text_value[1..].to_i) : set.pick(p.text_value[1..].to_i) if p.text_value.length>1
       end
-      
+
       if !o.empty? then
         o.elements.each do |op|
           if op.methods.include?(:value) then
@@ -30,18 +30,18 @@ grammar GenerativeSyntax
                 set = op_values.each_with_index.inject(set) do |a, (v,i)|
 
                   if v.is_a?(Hash) and a[i] and a[i].is_a?(Hash)
-                    if v[:degree] and a[i][:degree]
-                      a[i][:degree] = v[:degree].to_i.method(op.operator).(a[i][:degree].to_i)
-                    elsif a[i][:degrees] and v[:degree]
-                      a[i][:degrees][0] = a[i][:degrees][0].to_i.method(op.operator).(v[:degree].to_i)
-                    elsif a[i][:degrees] and v[:degrees]
-                      v[:degrees].each_with_index do |d,di|
-                        a[i][:degrees][di] = a[i][:degrees][di].to_i.method(op.operator).(d.to_i)
+                    if v[:pc] and a[i][:pc]
+                      a[i][:pc] = v[:pc].to_i.method(op.operator).(a[i][:pc].to_i)
+                    elsif a[i][:pcs] and v[:pc]
+                      a[i][:pcs][0] = a[i][:pcs][0].to_i.method(op.operator).(v[:pc].to_i)
+                    elsif a[i][:pcs] and v[:pcs]
+                      v[:pcs].each_with_index do |d,di|
+                        a[i][:pcs][di] = a[i][:pcs][di].to_i.method(op.operator).(d.to_i)
                       end
-                    elsif a[i][:degree] and v[:degrees]
-                      a[i][:degrees] = v[:degrees]
-                      a[i][:degrees][0] = a[i][:degrees][0].to_i.method(op.operator).(a[i][:degree].to_i)
-                      a[i].delete(:degree)
+                    elsif a[i][:pc] and v[:pcs]
+                      a[i][:pcs] = v[:pcs]
+                      a[i][:pcs][0] = a[i][:pcs][0].to_i.method(op.operator).(a[i][:pc].to_i)
+                      a[i].delete(:pc)
                     end
                   end
 
@@ -49,26 +49,26 @@ grammar GenerativeSyntax
                 end
               else
                   set = set.map do |v|
-                    v[:degree] = v[:degree].to_i.method(op.operator).(op.value.to_i) if v.is_a?(Hash)
+                    v[:pc] = v[:pc].to_i.method(op.operator).(op.value.to_i) if v.is_a?(Hash)
                     v
                   end
               end
             when '!'
               if op.value.kind_of?(Array)
                 set = op_values.each_with_index.inject(set) do |a, (v,i)|
-                a[i] = ~v[:degree].to_i+a[i][:degree].to_i if v.is_a?(Hash) and a[i]
+                a[i] = ~v[:pc].to_i+a[i][:pc].to_i if v.is_a?(Hash) and a[i]
                 a
               end
               else
                 set = set.map do |v|
-                  v = ~v[:degree].to_i+(op.value.to_i+1) if v.is_a?(Hash)
+                  v = ~v[:pc].to_i+(op.value.to_i+1) if v.is_a?(Hash)
                   v
                 end
               end
             when '@'
               # TODO: Chords?
               # TODO: Combine with operations?
-              set = set.inject(op_values) {|a,j| a.flat_map{|n|[n,{degree: n[:degree].to_i+j[:degree].to_i}]}}
+              set = set.inject(op_values) {|a,j| a.flat_map{|n|[n,{pitch_class: n[:pc].to_i+j[:pc].to_i}]}}
             end
           end
         end
@@ -93,7 +93,7 @@ grammar GenerativeSyntax
   end
 
   rule items
-    (list / ranges / group / degrees / s / sleep)*
+    (list / ranges / group / pitch_classes / s / sleep)*
     {
     def value
       elements.map {|v| v.value }.filter_map {|v| v if v}
@@ -132,7 +132,7 @@ grammar GenerativeSyntax
      nArr = (step ? (ms..me).step(step).to_a : (ms..me).to_a)
      nArr = nArr.reverse if s>e
      nArr = nArr.shuffle if sh and sh.text_value == '?'
-     nArr.each_with_object([]){|v,o| o.push({degree: v}) ; o.push(" ") }
+     nArr.each_with_object([]){|v,o| o.push({pitch_class: v}) ; o.push(" ") }
    end
 
    }
@@ -175,21 +175,21 @@ grammar GenerativeSyntax
   end
 
   rule group
-   degrees 2..
+   pitch_classes 2..
     {
      def value
       e = elements.collect {|v| v.value }
-      degree_list = []
+      pitch_class_list = []
       e.each do |d|
-        degree_list.push(d[:degree])
+        pitch_class_list.push(d[:pc])
       end
-      v = {:degrees=>degree_list}
+      v = {:pcs=>pitch_class_list}
       v
      end
     }
   end
 
-  rule normal_degree
+  rule normal_pitch_class
     d:('-'? [0-9TE])
     {
       def value
@@ -198,7 +198,7 @@ grammar GenerativeSyntax
     }
   end
 
-  rule escaped_degree
+  rule escaped_pitch_class
     '=' e:('-'? [0-9]+)
     {
       def value
@@ -207,12 +207,12 @@ grammar GenerativeSyntax
     }
   end
 
-  rule degrees
-   z:(sleep)* o:('^' / '_')* a:('#' / 'b')* d:(normal_degree / escaped_degree)
+  rule pitch_classes
+   z:(sleep)* o:('^' / '_')* a:('#' / 'b')* d:(normal_pitch_class / escaped_pitch_class)
     {
      def value
        dgr = d.value
-       v = {:degree=>dgr}
+       v = {:pc=>dgr}
        v[:add] = a.text_value if !a.text_value.empty?
        v[:octave] = o.text_value if !o.text_value.empty?
        v[:sleep] = z.text_value  if !z.text_value.empty?
