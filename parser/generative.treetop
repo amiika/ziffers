@@ -68,7 +68,7 @@ grammar GenerativeSyntax
             when '@'
               # TODO: Chords?
               # TODO: Combine with operations?
-              set = set.inject(op_values) {|a,j| a.flat_map{|n|[n,{pitch_class: n[:pc].to_i+j[:pc].to_i}]}}
+              set = set.inject(op_values) {|a,j| a.flat_map{|n|[n,{pc: n[:pc].to_i+j[:pc].to_i}]}}
             end
           end
         end
@@ -132,7 +132,7 @@ grammar GenerativeSyntax
      nArr = (step ? (ms..me).step(step).to_a : (ms..me).to_a)
      nArr = nArr.reverse if s>e
      nArr = nArr.shuffle if sh and sh.text_value == '?'
-     nArr.each_with_object([]){|v,o| o.push({pitch_class: v}) ; o.push(" ") }
+     nArr.each_with_object([]){|v,o| o.push({pc: v}) ; o.push(" ") }
    end
 
    }

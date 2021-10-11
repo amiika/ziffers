@@ -17,8 +17,6 @@ module Ziffers
       :scale => :major,
       :release => 1.0,
       :sleep => 1.0,
-      :pitch => 0.0,
-      :pan => 0,
       :skip => false
     }
 
@@ -285,7 +283,7 @@ module Ziffers
         dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
       end
       dgr = scaleLength if dgr == 0
-      return {:note=>(degree(dgr,zkey,zscale)+(oct*12)+addition), :pc=>dgr-1, :degree=>dgr, :key=>zkey, :scale=>zscale, :octave=>oct}
+      return {:note=>(degree(dgr,zkey,zscale)+(oct*12)+addition), :pc=>dgr-1, :key=>zkey, :scale=>zscale, :octave=>oct}
     end
 
     def search_list(arr,query)
@@ -298,107 +296,11 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:invert,:rate_based,:skip,:midi,:control,:pcs,:run,:run_each,:char,:rhythm,:slide,:use)
+      ziff.except(:pc, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:invert,:rate_based,:skip,:midi,:control,:pcs,:run,:run_each,:char,:rhythm,:slide,:use)
     end
 
     def play_midi_out(md, opts)
       midi md, opts
-    end
-
-    def play_ziff(ziff,defaults={},index,loop_i)
-      cue ziff[:cue] if ziff[:cue]
-      if ziff[:send] then
-        send(ziff[:send],ziff)
-      elsif ziff[:skip] then
-        print "Skipping note"
-      elsif ziff[:notes] then
-        if ziff[:arpeggio] then
-          ziff[:arpeggio].each do |cn|
-            cn[:amp] = ziff[:amp] if !cn[:amp] and ziff[:amp]
-            if cn[:pcs] then
-              arp_chord = cn[:pcs].map{|d| ziff[:notes][d]}
-              arp_notes = {notes: arp_chord}
-            else
-              arp_notes = {note: ziff[:notes][cn[:pc]]}
-            end
-            arp_opts = cn.merge(arp_notes).except(:pcs)
-
-            if ziff[:port] then
-              sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
-              if arp_notes[:notes] then
-                arp_notes[:notes].each do |arp_note|
-                  play_midi_out arp_note+cn[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
-                end
-              else
-                play_midi_out arp_notes[:note]+cn[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
-              end
-            else
-              synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), arp_opts
-            end
-            sleep cn[:sleep]
-          end
-        else
-          if ziff[:port]
-            sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
-            ziff[:notes].each do |cnote|
-              play_midi_out(cnote, ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
-            end
-          else
-            synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), clean(ziff)
-          end
-        end
-      elsif ziff[:port] then
-        sustain = ziff[:sustain]!=nil ? ziff[:sustain] : ziff[:release]
-        play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
-      else
-        #slide = ziff.delete(:control)
-        if ziff[:sample]!=nil then
-          if defaults[:rate_based] && ziff[:note]!=nil then
-            ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
-          elsif ziff[:pc]!=nil then
-            ziff[:pitch] = (scale 0, ziff[:scale], num_octaves: 2)[ziff[:pc]]+(ziff[:octave])*12
-          end
-          if ziff[:cut] then
-            ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample])))*ziff[:cut],1.0].sort[1]
-            ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
-          end
-          normalize_sample_arrays(ziff,index,loop_i)
-          c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
-        elsif ziff[:note] or ziff[:notes]
-          if ziff[:synth] then
-            c = synth ziff[:synth], clean(ziff)
-          else
-            c = play clean(ziff)
-          end
-        end
-        if ziff[:slide] != nil then
-          first = ziff[:slide].clone
-          first[:note] = first.delete(:notes)[0]
-          first[:release] = ziff[:sleep]*ziff[:slide][:notes].length
-          first[:note_slide] = ziff[:note_slide] ? ziff[:note_slide] : 0.9
-
-          if !first[:sample]
-            c = play clean(first)
-          else
-            c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
-          end
-
-          slide_sleep = ziff[:sleep]/ziff[:slide][:notes].length
-          sleep slide_sleep
-
-          rest = ziff[:slide][:notes].drop(1)
-          rest.each_with_index do |cnote,i|
-             slide_ziff = ziff[:slide].clone
-             slide_ziff[:note] = slide_ziff[:notes][i]
-             slide_ziff[:pc] = slide_ziff[:pcs][i]
-             slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
-
-              cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:pcs)
-              control c, cc
-              sleep slide_sleep
-          end
-        end
-      end
     end
 
     def normalize_sample_arrays(ziff,index,loop_i)
@@ -418,9 +320,15 @@ module Ziffers
       end
     end
 
+    def zthread(melody, opts={}, defaults={})
+      in_thread do
+        zplay(melody,opts,defaults)
+      end
+    end
+
     def zplay(melody,opts={},defaults={})
       defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
-      defaults = defaults.merge(opts.extract!(:scale, :key, :synth, :amp, :release, :sustain, :decay, :attack, :sleep)) if defaults[:preparsed]
+      defaults = defaults.merge(opts.extract!(:scale, :key, :synth, :amp, :release, :sustain, :decay, :attack, :sleep, :clickiness)) if defaults[:preparsed]
       # Extract common options to defaults
       parseCommonOpts(opts)
       defaults = defaults.merge(opts.extract!(*@@default_keys))
@@ -528,6 +436,103 @@ module Ziffers
         if @@debug then
           print "Stored:"
           print zparams melody, :pc
+        end
+      end
+    end
+
+    def play_ziff(ziff,defaults={},index,loop_i)
+      ziff.merge!(defaults.extract!(:clickiness)) { |key, important, default| important }
+      cue ziff[:cue] if ziff[:cue]
+      if ziff[:send] then
+        send(ziff[:send],ziff)
+      elsif ziff[:skip] then
+        print "Skipping note"
+      elsif ziff[:notes] then
+        if ziff[:arpeggio] then
+          ziff[:arpeggio].each do |cn|
+            cn[:amp] = ziff[:amp] if !cn[:amp] and ziff[:amp]
+            if cn[:pcs] then
+              arp_chord = cn[:pcs].map{|d| ziff[:notes][d]}
+              arp_notes = {notes: arp_chord}
+            else
+              arp_notes = {note: ziff[:notes][cn[:pc]]}
+            end
+            arp_opts = cn.merge(arp_notes).except(:pcs)
+
+            if ziff[:port] then
+              sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
+              if arp_notes[:notes] then
+                arp_notes[:notes].each do |arp_note|
+                  play_midi_out arp_note+cn[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
+                end
+              else
+                play_midi_out arp_notes[:note]+cn[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
+              end
+            else
+              synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), arp_opts
+            end
+            sleep cn[:sleep]
+          end
+        else
+          if ziff[:port]
+            sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
+            ziff[:notes].each do |cnote|
+              play_midi_out(cnote, ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
+            end
+          else
+            synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), clean(ziff)
+          end
+        end
+      elsif ziff[:port] then
+        sustain = ziff[:sustain]!=nil ? ziff[:sustain] : ziff[:release]
+        play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
+      else
+        #slide = ziff.delete(:control)
+        if ziff[:sample]!=nil then
+          if defaults[:rate_based] && ziff[:note]!=nil then
+            ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
+          elsif ziff[:pc]!=nil then
+            ziff[:pitch] = (scale 0, ziff[:scale], num_octaves: 2)[ziff[:pc]]+(ziff[:octave])*12
+          end
+          if ziff[:cut] then
+            ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample])))*ziff[:cut],1.0].sort[1]
+            ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
+          end
+          normalize_sample_arrays(ziff,index,loop_i)
+          c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
+        elsif ziff[:note] or ziff[:notes]
+          if ziff[:synth] then
+            c = synth ziff[:synth], clean(ziff)
+          else
+            c = play clean(ziff)
+          end
+        end
+        if ziff[:slide] != nil then
+          first = ziff[:slide].clone
+          first[:note] = first.delete(:notes)[0]
+          first[:release] = ziff[:sleep]*ziff[:slide][:notes].length
+          first[:note_slide] = ziff[:note_slide] ? ziff[:note_slide] : 0.9
+
+          if !first[:sample]
+            c = play clean(first)
+          else
+            c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
+          end
+
+          slide_sleep = ziff[:sleep]/ziff[:slide][:notes].length
+          sleep slide_sleep
+
+          rest = ziff[:slide][:notes].drop(1)
+          rest.each_with_index do |cnote,i|
+             slide_ziff = ziff[:slide].clone
+             slide_ziff[:note] = slide_ziff[:notes][i]
+             slide_ziff[:pc] = slide_ziff[:pcs][i]
+             slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
+
+              cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:pcs)
+              control c, cc
+              sleep slide_sleep
+          end
         end
       end
     end
@@ -996,9 +1001,9 @@ module Ziffers
     defaults.each do |key,val|
       if val.is_a? Proc then
         if val.arity == 1
-          val = val.(loop_i)
+          val = val.(note_i)
         elsif val.arity == 2
-          val = val.(loop_i, note_i)
+          val = val.(note_i, loop_i)
         else
           val = val.()
         end

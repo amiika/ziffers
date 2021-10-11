@@ -14,6 +14,10 @@ module Ziffers
         self[:pc]
       end
 
+      def dgr
+        self[:pc]+1
+      end
+
       def note
         self[:note]
       end
