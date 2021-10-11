@@ -111,14 +111,12 @@ module Ziffers
       Marshal.load(Marshal.dump(self))
     end
 
-    def powerset(val=nil)
-      result = (self.inject([[]]) do |ps,item|
-        ps + ps.map { |e| e + [item] }
-      end)[1..]
-      if val and val.is_a?(Integer)
-        result = result.collect {|a| ZiffArray.new(a) if a.length == val }.compact
-      end
-      result
+    def powerset(val)
+      self.combination(val).to_a.map {|x| ZiffArray.new(x)}
+    end
+
+    def repeated_powerset(val)
+      self.repeated_combination(val).to_a.map {|x| ZiffArray.new(x)}
     end
 
     def set_operation(operator, values)
