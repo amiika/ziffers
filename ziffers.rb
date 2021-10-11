@@ -419,11 +419,12 @@ module Ziffers
     end
 
     def zplay(melody,opts={},defaults={})
+      defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
+      defaults = defaults.merge(opts.extract!(:scale, :key, :synth, :amp, :release, :sustain, :decay, :attack, :sleep)) if defaults[:preparsed]
       # Extract common options to defaults
       parseCommonOpts(opts)
       defaults = defaults.merge(opts.extract!(*@@default_keys))
       opts = get_default_opts.merge(opts)
-      defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
       if defaults[:store] and defaults[:loop_name] and $zloop_states[defaults[:loop_name]][:parsed_melody]
         melody = $zloop_states[defaults[:loop_name]][:parsed_melody]
       elsif melody.is_a? Enumerator then
@@ -438,6 +439,7 @@ module Ziffers
         end
       end
       loop_i = defaults[:loop_name] ? $zloop_states[defaults[:loop_name]][:loop_i] : 0
+
       loop do
         melody = apply_array_transformations(melody, opts, defaults, loop_i) if !defaults[:transform_single]
         if !opts[:port] and defaults[:run] then
@@ -912,8 +914,14 @@ module Ziffers
   def apply_array_transformations(melody, opts, defaults, loop_i=0)
     defaults.each do |key,val|
       if val.is_a? Proc then
-        val = val.() if val.arity == 0
-        val = val.(loop_i) if val.arity == 1
+        if val.arity == 1
+          val = val.(loop_i)
+        elsif val.arity == 2
+          # TODO: Ugly hack. Better logic is needed when note_i not available
+          val = val.(loop_i, 0)
+        else
+          val = val.()
+        end
       end
       case key
       when :array_transpose then
@@ -987,8 +995,13 @@ module Ziffers
     end
     defaults.each do |key,val|
       if val.is_a? Proc then
-        val = val.() if val.arity == 0
-        val = val.(loop_i) if val.arity == 1
+        if val.arity == 1
+          val = val.(loop_i)
+        elsif val.arity == 2
+          val = val.(loop_i, note_i)
+        else
+          val = val.()
+        end
       end
       case key
       when :synth, :amp, :release, :sustain, :decay, :attack, :sleep
@@ -1021,6 +1034,7 @@ module Ziffers
     return ziff
   end
 
+  ## TODO: This is propably broken
   def zrhythm_motive(ziff, rmotive, mot_i)
     if @@rmotive_lengths then
       ziff[:sleep] = @@rmotive_lengths[mot_i]
