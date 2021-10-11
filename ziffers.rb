@@ -202,7 +202,7 @@ module Ziffers
           opts = get_default_opts.merge(opts)
           n = normalize_melody n, opts, defaults
         end
-        n = n.deep_clone
+        n = ZiffArray.new(n).deep_clone
         n = n.each_with_index.map {|z,i| apply_transformation(z, opts, 1, i, n.length, true)}
         n = apply_array_transformations n, nil, opts
         print "T: "+zstring(n) if @@debug
@@ -1018,7 +1018,7 @@ module Ziffers
       when :augment
         ziff = ziff.augment val
       when :flex
-        ziff = zif.flex val
+        ziff = ziff.flex val
       when :silence
         ziff = ziff.silence val
       when :harmonize
