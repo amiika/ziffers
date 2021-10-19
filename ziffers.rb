@@ -318,9 +318,6 @@ module Ziffers
     end
 
     def zplayer(melody,opts={},defaults={},loop_i=0)
-      print melody
-      print opts
-      print defaults
       melody = [melody] if !melody.kind_of?(Array)
       if melody.length==0 then
         $zloop_states.delete(defaults[:loop_name]) if defaults[:loop_name]
@@ -397,7 +394,6 @@ module Ziffers
     end
 
     def play_ziff(ziff,defaults={},index,loop_i)
-      print ziff
       ziff.merge!(defaults.extract!(:clickiness)) { |key, important, default| important }
       cue ziff[:cue] if ziff[:cue]
       if ziff[:send] then
@@ -847,6 +843,7 @@ module Ziffers
         zmel.push note_array_to_hash(item,opts)
       elsif item.is_a? Numeric then
           ziff = get_ziff(item, opts[:key], opts[:scale])
+          ziff[:sleep] = 1.0
           zmel.push(ZiffHash[ziff])
       end
     end
