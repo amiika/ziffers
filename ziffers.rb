@@ -275,7 +275,7 @@ module Ziffers
 
     def zplay(melody,opts={},defaults={})
 
-      defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash) or melody.is_a? Enumerator
+      defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) or melody[0].is_a?(Hash) or melody.is_a? Enumerator
       defaults = defaults.merge(opts.extract!(:scale, :key, :synth, :amp, :release, :sustain, :decay, :attack, :sleep, :clickiness)) if defaults[:preparsed]
 
       # Extract common options to defaults
@@ -843,7 +843,7 @@ module Ziffers
         zmel.push note_array_to_hash(item,opts)
       elsif item.is_a? Numeric then
           ziff = get_ziff(item, opts[:key], opts[:scale])
-          ziff[:sleep] = 1.0
+          ziff.merge!(opts) { |key, important, default| important }
           zmel.push(ZiffHash[ziff])
       end
     end
