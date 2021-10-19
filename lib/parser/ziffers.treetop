@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / bar / repeat / multisleep / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / use / slide / jumper / parens / reset)*
+    (s / bar / repeat / multisleep / multioctave / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / use / slide / jumper / parens / reset)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.filter_map do |v|
@@ -12,6 +12,17 @@ grammar Ziffers
         end
         e.flatten
       end
+    }
+  end
+
+  rule multioctave
+    o:(octave*) s
+    {
+    def value
+      $topts[:octave] = 0 if !$topts[:octave]
+      $topts[:octave] += o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)}
+      nil
+    end
     }
   end
 
@@ -88,10 +99,11 @@ grammar Ziffers
         c[:chord_invert] = inv.text_value.to_i
         c[:notes] = chord_invert c[:notes], c[:chord_invert]
       end
-      c.merge!($tcontrol) if c
       c[:arpeggio] = $tarp if $tarp
-      c[:key] = $topts[:key]
-      c[:scale] = $topts[:scale]
+      c[:sleep] = c[:chord_sleep] if c[:chord_sleep]
+
+      c.merge!($topts) { |key, important, default| important }
+
       c = apply_transformation ZiffHash[c], $tshared
    end
    }
@@ -180,15 +192,10 @@ grammar Ziffers
 
         v = get_ziff dgr, $topts[:key], $topts[:scale], oct, addition
 
-      #  v = {
-      #  :note=>get_note_from_dgr(dgr, $topts[:key], $topts[:scale], oct)+addition,
-      #  :pc=>get_real_dgr(dgr,$topts[:key], $topts[:scale])
-      #  }
-
         v.merge!($topts) { |key, important, default| important }
-        #v[:octave] = oct if oct
+
         v[:sleep] = s.value if s.methods.include?(:value)
-        v.merge!($tcontrol)
+
         v = apply_transformation ZiffHash[v], $tshared
 
      end
@@ -261,7 +268,7 @@ grammar Ziffers
   end
 
   rule subset
-    (s / bar / chords / pitch_classes / rest / eval / control / parens)*
+    (s / bar / chords / pitch_classes / rest / eval / control / use / parens)*
     {
       def value
         elements.collect {|v| v.value }
@@ -279,7 +286,7 @@ grammar Ziffers
   end
 
   rule use
-    u:[A-Z]
+    s:(sleep)? u:[A-Z]
     {
     def value
       use_list = $tshared[:use] if $tshared and $tshared.has_key?(:use)
@@ -295,9 +302,9 @@ grammar Ziffers
             v = {sample: v}
           end
 
-          v.merge!($tcontrol)
-          v[:sleep] = $topts[:sleep]
-          v.merge!($topts)
+          v[:sleep] = s.methods.include?(:value) ? s.value : $topts[:sleep]
+
+          v.merge!($topts) { |key, important, default| important }
           v[:char] = u.text_value
 
           !(v[:sample] or v[:note] or v[:cue]) ? nil : v
@@ -337,7 +344,7 @@ grammar Ziffers
        'O': :channel
      }
       control_type = control_chars[d.text_value.to_sym]
-      $tcontrol[control_type] = c.value if c.methods.include?(:value)
+      $topts[control_type] = c.value if c.methods.include?(:value)
       nil
      end
     }
@@ -376,7 +383,7 @@ end
   end
 
   rule escaped_text
-   '<' e:([\sa-zA-Z0-9]*) '>'
+   '<' e:([\sa-zA-Z0-9:-]*) '>'
    {
      def value
       e.text_value
@@ -390,16 +397,17 @@ end
        def value
          v = []
          r = !p.text_value.empty? ? p.text_value.to_i : 2
+         rep_value = l.value
          r.times do |i|
-          rep = l.value.each_with_object([]) {|v,o|
+          rep = rep_value.each_with_object([]) do |v,o|
             if v.is_a?(Hash) and v[:cycle]
               o.push(v[:cycle][i])
             else
               o.push(v)
             end
-          }
-          v+=rep
-         end
+          end
+          v += rep
+          end
          v
        end
      }
@@ -434,7 +442,7 @@ end
   end
 
   rule repetition
-    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / slide / parens / cyclic / control / use)*
+    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / multioctave / slide / parens / cyclic / control / use)*
     {
       def value
         elements.collect { |v| v.value }.filter_map {|v| v if v}
@@ -443,7 +451,7 @@ end
   end
 
   rule integer
-     [0-9]+ {
+     '-'? [0-9]+ {
      def value
       text_value.to_i
      end }

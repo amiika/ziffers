@@ -1,16 +1,20 @@
-require_relative "./enumerables.rb"
-load "~/ziffers/monkeypatches.rb" # TODO: Move and require
-load "~/ziffers/parser/zgrammar.rb"
-load "~/ziffers/parser/ziffarray.rb"
-load "~/ziffers/parser/ziffhash.rb"
-load "~/ziffers/parser/pc_sets.rb"
+load "~/ziffers/lib/enumerables.rb" # TODO: require_relative ./lib/ ALL
+load "~/ziffers/lib/monkeypatches.rb"
+load "~/ziffers/lib/parser/zgrammar.rb"
+load "~/ziffers/lib/ziffarray.rb"
+load "~/ziffers/lib/ziffhash.rb"
+load "~/ziffers/lib/common.rb"
+load "~/ziffers/lib/schillinger.rb"
+load "~/ziffers/lib/defaults.rb"
 
 print "Ziffers 2.0"
 
 module Ziffers
-  module Core
+
     include Ziffers::Enumerables
     include Ziffers::Grammar
+    include Ziffers::Defaults
+    include Ziffers::Common
 
     @@default_opts = {
       :key => :c,
@@ -22,33 +26,7 @@ module Ziffers
 
     @@default_keys = [:use, :run, :store, :rate_based, :adjust, :transform_enum, :transform_single, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :invert, :octave, :array_invert, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm, :group, :on, :powerset, :operation, :set, :init,:auto_cue,:delay,:sync,:sync_bpm,:seed]
 
-    $default_durs = {
-            'm': 8.0, # 15360 ticks
-            'k': 5.333333333333333, # 10240 ticks
-            'l': 4.0, # 7680
-            'p': 2.666666666666667, # 5120
-            'd': 2.0, # 3840
-            'c': 1.333333333333333, # 2560
-            'w': 1.0, # 1920
-            'y': 0.6666666666666667, # 1280
-            'h': 0.5, # 960 - 1/2
-            'n': 0.3333333333333333, # 640
-            'q': 0.25, # 480 - 1/4
-            'a': 0.1666666666666667, # 320
-            'e': 0.125, # 240 - 1/8
-            'f': 0.0833333333333333, # 160
-            's': 0.0625, # 120 - 1/16
-            'x': 0.0416666666666667, # 80
-            't': 0.03125, # 60 - 1/32
-            'g': 0.0208333333333333, # 40
-            'u': 0.015625, # 30 - 1/64
-            'j': 0.0104166666666667, # 20
-            'z': 0.0 # 0
-          }
-
     @@debug = false
-    @@degree_based = false
-    @@rmotive_lengths = nil
     @@set_keys = [:pc]
 
     $easing = {
@@ -101,10 +79,6 @@ module Ziffers
       @@set_keys
     end
 
-    def set_degree_based(degrees=!@@degree_based)
-      @@degree_based = degrees
-    end
-
     def set_default_opts(opts)
       @@default_opts.merge!(opts)
     end
@@ -114,7 +88,7 @@ module Ziffers
     end
 
     def self.durations
-      $default_durs
+      @@default_durs
     end
 
     def merge_synth_defaults
@@ -127,7 +101,7 @@ module Ziffers
 
     def ziff_to_string(value)
       if value.is_a?(Hash)
-        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? $default_durs.key(value[:sleep]).to_s : value[:sleep].to_s) + value[:dot].to_s + (value[:octave].is_a?(String) ? value[:octave] : "") + value[:add].to_s + ((value.key?(:pc) and (value[:pc].to_i>9 or value[:pc].to_i<-9))  ? "=" : "") + value[:pc].to_s + (value[:pcs] ? value[:pcs].map{|v| (v.to_i>9 or v.to_i<-9) ? "="+v.to_s : ""+v.to_s }.join("") : "") + value[:separator].to_s
+        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? @@default_durs.key(value[:sleep]).to_s : value[:sleep].to_s) + value[:dot].to_s + (value[:octave].is_a?(String) ? value[:octave] : "") + value[:add].to_s + ((value.key?(:pc) and (value[:pc].to_i>9 or value[:pc].to_i<-9))  ? "=" : "") + value[:pc].to_s + (value[:pcs] ? value[:pcs].map{|v| (v.to_i>9 or v.to_i<-9) ? "="+v.to_s : ""+v.to_s }.join("") : "") + value[:separator].to_s
       else
         value
       end
@@ -137,8 +111,8 @@ module Ziffers
       melody.map {|v| ziff_to_string(v) }.join(" ")
     end
 
-    def replace_random_syntax(n,opts)
-      n = n.gsub('?',rrand_i(1, scale(opts[:key], opts[:scale]).length-1).to_s)
+    def replace_random_syntax(n)
+      n = n.gsub('?',rrand_i(0, 9).to_s)
       n = n.gsub(/\((-?\d+)(,|;)(\d+)\)\*?(\d+)?/) do
         m = Regexp.last_match.captures
         results = []
@@ -160,7 +134,7 @@ module Ziffers
       n = n.gsub(/\<([0-9]*\.?[0-9]+)?%?(.)=(.*?)(?:(?:!=)(.*?))?\>/) do
         alt_val = $4 ? $4 : ""
         rep_val = (rand < $1.to_f ? $3 : alt_val) if $1
-        rep[$2] = replace_random_syntax(rep_val ? rep_val : $3)
+        rep[$2] = parse_generative(replace_random_syntax(rep_val ? rep_val : $3))
         ""
       end
       rep.each do |k,v|
@@ -212,22 +186,41 @@ module Ziffers
 
     def zparse(n, opts={}, shared={})
       raise "Melody is nil?" if !n
-      defaults = shared.merge(opts.extract!(*@@default_keys))
 
+
+      defaults = shared.merge(opts.extract!(*@@default_keys))
       opts = get_default_opts.merge(opts)
 
-      n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
-      n = replace_random_syntax n, opts
-
-      if opts[:rules] and !shared[:lsystemloop] then
-        gen = opts[:gen] ? opts[:gen] : 1
-        n = lsystem(n,opts,gen,nil)[gen-1]
+      parsed_use = opts.select{|k,v| k.length<2 and /[[:upper:]]/.match(k)} # Parse capital letters from the opts
+      if !parsed_use.empty? then
+        parsed_use.each do |key,val|
+          if (val.is_a? String) then
+            n = n.gsub key.to_s, val
+            parsed_use.delete(:key)
+          end
+        end
+        opts.except!(*parsed_use.keys)
+        defaults[:use] = defaults[:use] ? shared[:use].merge(parsed_use) : parsed_use
       end
-      n = parse_generative n
-      print "G: "+n if @@debug
-      parsed = parse_ziffers(n, opts, defaults)
-      print "P: "+zstring(parsed) if @@debug
-      parsed
+
+
+      if n.is_a?(String)
+        n = zpreparse(n,opts.delete(:parsekey)) if opts[:parsekey]!=nil
+        n = replace_random_syntax n
+
+        if opts[:rules] and !shared[:lsystemloop] then
+          gen = opts[:gen] ? opts[:gen] : 1
+          n = lsystem(n,opts,gen,nil)[gen-1]
+        end
+
+        n = parse_generative n
+        print "G: "+n if @@debug
+        parsed = parse_ziffers(n, opts.except!(:rules), defaults, @@default_durs)
+        print "P: "+zstring(parsed) if @@debug
+        parsed
+      else
+        normalize_melody n, opts, shared
+      end
     end
 
     # DEPRECATED
@@ -240,52 +233,6 @@ module Ziffers
       ziff[:release] = adsr[:release] * note_length if adsr[:release]!=nil
     end
 
-    def parse_str_dgr(dgr)
-      case dgr
-      when "E"
-        return 11
-      when "T"
-        return 10
-      when "-E"
-        return -11
-      when "-T"
-        return -10
-      else
-        return dgr.to_i
-      end
-    end
-
-    # Gets note from degree. Degree can also be negative or overflow to next octave
-    def get_note_from_dgr(dgr, zkey, zscale, zoct=nil)
-      scaleLength = scale(zkey,zscale).length-1
-      dgr = dgr + zoct*scaleLength if zoct
-      dgr+=1 if dgr>=0 # 0 -> 1, etc.
-      if dgr>=scaleLength || dgr<0 then
-        oct = (dgr-1)/scaleLength*12
-        dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
-        return degree((dgr==0 ? scaleLength : dgr),zkey,zscale)+oct
-      end
-      return degree(dgr,zkey,zscale)
-    end
-
-    # Scales degrees to scale, for example -1=7 and 8=1
-    def get_real_dgr(dgr,zkey,zscale)
-      scaleLength = scale(zkey,zscale).length-1
-      return dgr<0 ? (scaleLength)-(dgr.abs%scaleLength) : dgr%scaleLength
-    end
-
-    def get_ziff(dgr, zkey=:C, zscale=:major, oct=0, addition=0)
-      scaleLength = scale(zkey,zscale).length-1
-      #dgr = dgr + zoct*scaleLength if zoct!=0
-      dgr+=1 if dgr>=0 # 0 -> 1, etc.
-      if dgr>=scaleLength || dgr<0 then
-        oct += (dgr-1)/scaleLength
-        dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
-      end
-      dgr = scaleLength if dgr == 0
-      return {:note=>(degree(dgr,zkey,zscale)+(oct*12)+addition), :pc=>dgr-1, :key=>zkey, :scale=>zscale, :octave=>oct}
-    end
-
     def search_list(arr,query)
       result = (Float(query) != nil rescue false) ? arr[query.to_i] : arr.find { |e| e.match( /\A#{Regexp.quote(query)}/)}
       (result == nil ? query : result)
@@ -296,7 +243,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:pc, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_sleep,:chord_release,:chord_invert,:invert,:rate_based,:skip,:midi,:control,:pcs,:run,:run_each,:char,:rhythm,:slide,:use)
+      ziff.except(:pc, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:invert,:rate_based,:skip,:midi,:control,:pcs,:run,:run_each,:char,:rhythm,:slide,:use)
     end
 
     def play_midi_out(md, opts)
@@ -327,17 +274,23 @@ module Ziffers
     end
 
     def zplay(melody,opts={},defaults={})
-      defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash)
+
+      defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) and melody[0].is_a?(Hash) or melody.is_a? Enumerator
       defaults = defaults.merge(opts.extract!(:scale, :key, :synth, :amp, :release, :sustain, :decay, :attack, :sleep, :clickiness)) if defaults[:preparsed]
+
       # Extract common options to defaults
-      parseCommonOpts(opts)
       defaults = defaults.merge(opts.extract!(*@@default_keys))
       opts = get_default_opts.merge(opts)
+
       if defaults[:store] and defaults[:loop_name] and $zloop_states[defaults[:loop_name]][:parsed_melody]
         melody = $zloop_states[defaults[:loop_name]][:parsed_melody]
       elsif melody.is_a? Enumerator then
         enum = melody
-        melody = enum.next
+        begin
+          melody = enum.next
+          rescue StopIteration
+          stop
+        end
         melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
       else
         melody = normalize_melody(melody, opts, defaults) if !defaults[:parsed] and !defaults[:preparsed]
@@ -365,6 +318,9 @@ module Ziffers
     end
 
     def zplayer(melody,opts={},defaults={},loop_i=0)
+      print melody
+      print opts
+      print defaults
       melody = [melody] if !melody.kind_of?(Array)
       if melody.length==0 then
         $zloop_states.delete(defaults[:loop_name]) if defaults[:loop_name]
@@ -441,6 +397,7 @@ module Ziffers
     end
 
     def play_ziff(ziff,defaults={},index,loop_i)
+      print ziff
       ziff.merge!(defaults.extract!(:clickiness)) { |key, important, default| important }
       cue ziff[:cue] if ziff[:cue]
       if ziff[:send] then
@@ -521,8 +478,7 @@ module Ziffers
 
           slide_sleep = ziff[:sleep]/ziff[:slide][:notes].length
           sleep slide_sleep
-
-          rest = ziff[:slide][:notes].drop(1)
+          rest = ziff[:slide][:notes]
           rest.each_with_index do |cnote,i|
              slide_ziff = ziff[:slide].clone
              slide_ziff[:note] = slide_ziff[:notes][i]
@@ -565,6 +521,8 @@ module Ziffers
     def normalize_melody(melody, opts, defaults)
       if melody.is_a?(String)
         return zparse(melody,opts,defaults)
+      elsif melody == :r
+        return zparse("r",opts,defaults)
       elsif melody.is_a?(Numeric) # zplay 1 OR zmidi 85
         if defaults[:midi] then
           opts[:note] = melody
@@ -573,6 +531,8 @@ module Ziffers
         end
       elsif melody.is_a?(Array)
         return zarray(melody,opts)
+      elsif melody.is_a?(Hash)
+        return [melody]
       else
         raise "Could not parse given melody!"
       end
@@ -596,13 +556,7 @@ module Ziffers
       end
     end
 
-    # Sets common attributes for zloop and zplay
-    def parseCommonOpts(opts)
-      @@rmotive_lengths = (expand_repeat_syntax(opts[:rhythm]).split("").reduce([]) {|acc,c| ($default_durs.keys.include? c.to_sym) ? acc << $default_durs[c.to_sym] : acc}).ring if opts[:rhythm] and (opts[:rhythm].is_a? String)
-    end
-
     def zloop(name, melody, opts={}, defaults={})
-      parseCommonOpts(opts)
       defaults[:loop_name] = name
       defaults = defaults.merge(opts.extract!(*@@default_keys))
       clean_loop_states # Clean unused loop states
@@ -628,6 +582,7 @@ module Ziffers
       #if melody.is_a?(Array) && melody[0].is_a?(Hash) then
       #  defaults[:preparsed] = true
       if melody.is_a?(Enumerator) or ((opts[:parse] or (has_combinatorics(defaults)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !opts[:seed])
+
         if melody.is_a? Enumerator then
           enumeration = melody
         else
@@ -673,7 +628,6 @@ module Ziffers
             end
           end
         end
-
 
         if $zloop_states[name][:enumeration] then
           enum = $zloop_states[name][:enumeration]
@@ -844,7 +798,6 @@ module Ziffers
       r+n.join
     end
 
-    # TODO: Update lsystem to new version
     def lsystem(ax,opts,gen,loopGen)
       rules = opts[:rules]
       gen.times.collect.with_index do |i|
@@ -855,7 +808,7 @@ module Ziffers
             s.gsub!(/{{.*?}}|(#{k.is_a?(String) ? Regexp.escape(k) : k})/) do |m|
             g = Regexp.last_match.captures
             if g[0] and !g[0].empty? then # If there is at least one match
-              if v.is_a? Proc then
+              if v.is_a?(Proc) or v.respond_to?(:call)
                 if v.arity == 1 then
                   rep = v.(i).to_s
                 elsif v.arity == 2
@@ -864,7 +817,7 @@ module Ziffers
                   rep = v.().to_s
                 end
               else # If not using lambda
-                rep = parse_generative(replace_random_syntax(replace_variable_syntax(v),opts))
+                rep = parse_generative(replace_random_syntax(replace_variable_syntax(v)))
                 rep = g.length>1 ? rep.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : rep.gsub("$",m)
                 rep = rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep
               end
@@ -891,27 +844,21 @@ module Ziffers
     zmel=[]
     arr.each do |item|
       if item.is_a? Array then
-        zmel.push array_to_hash(item,opts)
+        zmel.push note_array_to_hash(item,opts)
       elsif item.is_a? Numeric then
-        if item!=0 then
-          opts[:note] = get_note_from_dgr(item, opts[:key], opts[:scale])
-          zmel.push(opts.clone)
-        end
+          ziff = get_ziff(item, opts[:key], opts[:scale])
+          zmel.push(ZiffHash[ziff])
       end
     end
-    zmel
+    ZiffArray.new(zmel)
   end
 
-  def array_to_hash(obj,opts=get_default_opts)
+  def note_array_to_hash(obj,opts=get_default_opts)
     defObj = [0,opts[:sleep],opts[:key],opts[:scale],opts[:release]]
     arrayOpts = [:note,:sleep,:key,:scale,:release]
     obj.each_with_index { |item,index| defObj[index] = item }
     defObj[0] = get_note_from_dgr(defObj[0], defObj[2], defObj[3])
     opts.merge(Hash[arrayOpts.zip(defObj)])
-  end
-
-  def zbeats(arr)
-    zparams(arr,:sleep).inject(0){|sum,x| sum+x }
   end
 
   # TRANSFORMATIONS
@@ -987,6 +934,8 @@ module Ziffers
         melody = melody.powerset val
       when :order_transform
         melody = send(val, melody, loop_i)
+      when :rhythm
+        melody = melody.modify_rhythm val
       end
     end
     return melody
@@ -1016,6 +965,8 @@ module Ziffers
           ziff[key] = val
           ziff.update_note
         end
+      when :chord_sleep
+        ziff[:sleep] = val
       when :transpose then
         ziff = ziff.transpose val
       when :invert then
@@ -1028,26 +979,11 @@ module Ziffers
         ziff = ziff.silence val
       when :harmonize
         ziff = ziff.harmonize val, ziff[:compound] ? ziff[:compound] : 0
-      when :rhythm
-        ziff = zrhythm_motive ziff, val, (loop_i>0 ? (melody_size*loop_i+note_i) : note_i)
       when :detune
         ziff = ziff.detune val
       when :object_transform
         ziff = send(val,ziff,loop_i,note_i,melody_size)
       end
-    end
-    return ziff
-  end
-
-  ## TODO: This is propably broken
-  def zrhythm_motive(ziff, rmotive, mot_i)
-    if @@rmotive_lengths then
-      ziff[:sleep] = @@rmotive_lengths[mot_i]
-        print @@rmotive_lengths[mot_i]
-    elsif rmotive.is_a? Array then
-      ziff[:sleep] = rmotive.ring[mot_i]
-    elsif rmotive.is_a? SonicPi::Core::RingVector then
-      ziff[:sleep] = rmotive[mot_i]
     end
     return ziff
   end
@@ -1075,6 +1011,5 @@ module Ziffers
                       def z20(ziff="//", opts={})  zloop(:z20,ziff,opts) end
 
   end
-end
 
-include Ziffers::Core
+include Ziffers

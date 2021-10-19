@@ -1,6 +1,11 @@
+load "~/ziffers/lib/schillinger.rb"
+load "~/ziffers/lib/defaults.rb"
+
 module Ziffers
   class ZiffArray < Array
     include Comparable
+    include Ziffers::Schillinger
+    include Ziffers::Defaults
 
     def <=>(zarr)
       self.pcs <=> zarr.pcs
@@ -30,42 +35,49 @@ module Ziffers
       ZiffArray.new(self.map {|n| n.invert start })
     end
 
-    def retrograde(retrograde=true,chords=false)
-      if retrograde == true
-        return zreverse self, chords # Normal retrograde
-      elsif retrograde.is_a?(Array) then # Retrograding subarray
-        retrograde[1] = self.length if retrograde[1]>self.length or retrograde[1]<=retrograde[0]
-        retrograde[0] = 0 if retrograde[0]<0
-        rev_notes = []
-        rev_notes += self[0,retrograde[0]] if retrograde[0]>0
-        rev_notes += zreverse self[retrograde[0]..retrograde[1]], chords
-        rev_notes += (retrograde[1]<self.length) ? self[retrograde[1]+1..self.length] : [self[retrograde[1]]] if retrograde[1]+1<self.length
-        return rev_notes
-      elsif retrograde.is_a?(Numeric) # Retrograding partial arrays splitted to equal parts
-        zreverse self, chords if retrograde<2
-        return self.each_slice(retrograde).map{|part| zreverse part, chords }.flatten
-      end
+    def duration
+      self.durations.inject(0){|sum,x| sum+x }
     end
 
-    # TODO: Need for custom reverse?
+    def retrograde(retrograde=true, chords=false)
+      copy = self.deep_clone
+      if retrograde == true
+        copy = zreverse copy, chords # Normal retrograde
+      elsif retrograde.is_a?(Range) then # Retrograding subarray
+        end_retro = retrograde.last
+        start_retro = retrograde.first
+        rev_notes = []
+        rev_notes += copy[0,start_retro] if start_retro>0
+        rev_notes += zreverse copy[start_retro..end_retro], chords
+        rev_notes += (end_retro<copy.length) ? copy[end_retro+1..copy.length] : [copy[end_retro]] if end_retro+1<copy.length
+        copy = rev_notes
+      elsif retrograde.is_a?(Numeric) # Retrograding partial arrays splitted to equal parts
+        copy = retrograde<2 ? zreverse(copy, chords) : copy.each_slice(retrograde).map{|part| zreverse part, chords }.flatten
+      end
+      return ZiffArray.new(copy)
+    end
+
     # Reverses degrees but keeps the chords in place
     # Example: "i 1234 v 2341" -> "i 1432 v 4321"
-    def zreverse(arr=nil, with_chords=false)
-      arr = self if !arr
-      i=0
-      x=arr.length-1
-      until x<=i do
-        if !arr[i][:notes] or with_chords then
-          if !arr[x][:notes] or with_chords then
-            arr[i], arr[x] = arr[x], arr[i]
-            i+=1
-            x-=1
+    def zreverse(arr, with_chords=false)
+      if arr[0] and arr[0].is_a?(Hash)
+        i=0
+        x=arr.length-1
+        until x<=i do
+          if !arr[i][:notes] or with_chords then
+            if !arr[x][:notes] or with_chords then
+              arr[i], arr[x] = arr[x], arr[i]
+              i+=1
+              x-=1
+            else
+              x-=1
+            end
           else
-            x-=1
+            i+=1
           end
-        else
-          i+=1
         end
+      else
+        arr = arr.reverse
       end
       arr
     end
@@ -75,12 +87,14 @@ module Ziffers
     end
 
     def mirror(val=1)
-      return self+self.reverse[1..] if val<2
-      self.each_slice(val).map{|part| part+part.reverse[1..]}.flatten
+      mirrored = self.deep_clone
+      return ZiffArray.new(mirrored+mirrored.reverse[1..]) if val<2
+      ZiffArray.new(mirrored.each_slice(val).map{|part| part+part.reverse[1..]}.flatten)
     end
 
     def reflect
-      part_b = self.reverse
+      reflected = self.deep_clone
+      part_b = reflected.reverse
       if part_b[0].is_a?(Array) then
         # TODO: What is this for?
         part_b = part_b.map { |arr| arr.reverse }
@@ -92,11 +106,11 @@ module Ziffers
         part_b.shift
         part_b.pop
       end
-      return ZiffArray.new((self+part_b))
+      return ZiffArray.new((reflected+part_b))
     end
 
     def swap(n,x=1)
-      melody = self.dup
+      melody = self.deep_clone
       n = n % melody.length if n>=melody.length
       n2 = (n+x)>=melody.length ? ((n+x) % melody.length) : n+x
       melody[n], melody[n2] = melody[n2], melody[n]
@@ -104,7 +118,7 @@ module Ziffers
     end
 
     def stretch(val=1)
-      (self.map{|z| [z]*val }).flatten
+      (self.deep_clone.map{|z| [z]*val }).flatten
     end
 
     def deep_clone
@@ -215,6 +229,11 @@ module Ziffers
       self
     end
 
+    def intervals
+      pcs = self.pcs
+      pcs.map.with_index {|v,i| pc_int(v, pcs[(i+1)%pcs.length]) }
+    end
+
     def cycles
       tempar = self.to_pc_set
       arar = []
@@ -246,6 +265,76 @@ module Ziffers
         if num == binaries.min then winners.push(pcset_array[i]) end
       end
       ZiffArray.new(winners.sort[0])
+    end
+
+    def durations
+        ZiffArray.new(self.map{|x,i| x.duration })
+    end
+
+    def merge_lengths arr
+      ZiffArray.new(self.map.with_index{|x,i| x.change_duration arr[i%arr.length]})
+    end
+
+    def schillinger(opts)
+      schill = self.deep_clone
+      if opts[:third] and opts[:major] and opts[:minor]
+        if opts[:complementary]
+         resultant = complementary(opts[:major], opts[:minor], opts[:third])
+        else
+          resultant = generator(opts[:major], opts[:minor], opts[:third])
+        end
+      elsif opts[:major] and opts[:minor]
+        if opts[:secondary]
+          resultant = secondary(opts[:major], opts[:minor])
+        else
+          resultant = generator(opts[:major],opts[:minor])
+        end
+      end
+      lengths = ints_to_lengths resultant
+      schill = schill.merge_lengths lengths
+      schill
+    end
+
+    def modify_rhythm(val)
+
+      new_arr = self.deep_clone
+      if val.is_a?(Array)
+        pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
+      elsif val.is_a?(SonicPi::Core::RingVector)
+        pattern = ints_to_lengths(spread_to_seq(val))
+      elsif val.is_a?(Integer)
+        pattern = ints_to_lengths(spread_to_seq(val.to_s(2).split("").map{|b| b=="1" ? true : false }.flatten))
+      elsif val.is_a?(Hash)
+        pattern = self.schillinger(val) if val[:minor] and val[:major]
+        pattern = val[:pattern] if val[:pattern]
+        pattern = transform_rhythm val, pattern
+      elsif val.is_a?(String)
+        #.bytes.map {|v| v.to_s(2).split("").map{|b| b=="1" ? true : false } }.flatten
+        pattern = val.delete(" \t\r\n").split("").reduce([]) { |acc,c| (@@default_durs.keys.include? c.to_sym) ? acc << @@default_durs[c.to_sym] : acc}
+      end
+      new_arr = new_arr.merge_lengths pattern
+      new_arr
+    end
+
+    def transform_rhythm(opts,pattern=nil)
+      pattern = self.durations if !pattern
+      opts.each do |key,val|
+        case key
+        when :retrograde then
+           pattern = pattern.retrograde val
+        when :swap then
+          pattern = pattern.swap *val
+        when :rotate then
+          pattern = pattern.rotate(val)
+        when :mirror then
+          pattern = pattern.mirror
+        when :reverse then
+          pattern = pattern.reverse
+        when :reflect then
+          pattern = pattern.reflect
+        end
+      end
+      pattern
     end
 
   end

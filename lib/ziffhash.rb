@@ -173,6 +173,16 @@ module Ziffers
         ziff
       end
 
+      def duration
+        self[:sleep]
+      end
+
+      def change_duration(val)
+        ziff = self.deep_clone
+        ziff[:sleep] = val
+        ziff
+      end
+
       def flex(ratio)
         ziff = self.deep_clone
         if ziff[:sleep] then

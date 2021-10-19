@@ -148,7 +148,7 @@ grammar GenerativeSyntax
   end
 
   rule ignore
-   ([!~&@|{}()<>:=#-^_%.] / [a-zA-Z1-9])
+   ([!~&@|{}<>:#-^_%.] / [a-zA-Z1-9])
     {
       def value
         text_value
@@ -198,6 +198,15 @@ grammar GenerativeSyntax
     }
   end
 
+  rule escaped_method
+    '=(' e:(([a-zA-Z0-9] / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!')*) ')'
+    {
+      def value
+        eval(e.text_value)
+      end
+    }
+  end
+
   rule escaped_pitch_class
     '=' e:('-'? [0-9]+)
     {
@@ -208,7 +217,7 @@ grammar GenerativeSyntax
   end
 
   rule pitch_classes
-   z:(sleep)* o:('^' / '_')* a:('#' / 'b')* d:(normal_pitch_class / escaped_pitch_class)
+   z:(sleep)* o:('^' / '_')* a:('#' / 'b')* d:(normal_pitch_class / escaped_pitch_class / escaped_method)
     {
      def value
        dgr = d.value

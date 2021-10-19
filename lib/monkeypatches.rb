@@ -111,7 +111,8 @@ SonicPi::Scale.patch(scales)
 SonicPi::Chord.patch(chords)
 
 def zlog text
-	File.open(ENV['HOME']+'/.sonic-pi/log/ziffers.log', 'w+') {|log|
-		log.write text
+	File.open(ENV['HOME']+'/.sonic-pi/log/ziffers.log', 'a') {|log|
+		log.print text
+    log.print "\n"
 	}
 end

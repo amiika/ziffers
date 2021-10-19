@@ -1,7 +1,10 @@
+load "~/ziffers/lib/defaults.rb"
+
 module Ziffers
   module Grammar
     include SonicPi
     include SonicPi::Lang::WesternTheory
+    include Ziffers::Defaults
 
     Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'ziffers.treetop')))
     Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'generative.treetop')))
@@ -22,13 +25,14 @@ module Ziffers
     end
 
     # Parse shit using treeparse
-    def parse_ziffers(text, opts, shared)
+    def parse_ziffers(text, opts, shared, durs)
+      # TODO: Find a better way to inject parameters for the parser
       $tchordsleep = opts[:chord_sleep]
       $tshared = shared
       $topts = opts
       $topts_orig = Marshal.load(Marshal.dump(opts))
-      $tcontrol = {}
       $tarp = nil
+      $default_durs = durs
 
       result = @@zparser.parse(text)
 
@@ -37,6 +41,7 @@ module Ziffers
         puts @@zparser.failure_line
         puts @@zparser.failure_column
       end
+      # Note to self: Do not call result.value more than once to avoid endless debugging.
       ziffers = ZiffArray.new(result.value)
       apply_array_transformations ziffers, opts, shared
     end
