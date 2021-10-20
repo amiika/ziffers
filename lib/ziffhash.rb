@@ -42,6 +42,14 @@ module Ziffers
         self[:pc]*=val
       end
 
+      def note_name
+        note_info(self[:note]).pitch_class
+      end
+
+      def midi_name
+        note_info(self[:note]).midi_string
+      end
+
       def transpose(i, inv=false)
         ziff = self.deep_clone
         n = scale(ziff[:key], ziff[:scale]).length-1

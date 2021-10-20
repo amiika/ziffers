@@ -7,6 +7,12 @@ module Ziffers
     include Ziffers::Schillinger
     include Ziffers::Defaults
 
+    @@forte_name = nil
+
+    def subset(range)
+      ZiffArray.new(self[range])
+    end
+
     def <=>(zarr)
       self.pcs <=> zarr.pcs
     end
@@ -27,7 +33,12 @@ module Ziffers
       ZiffArray.new(super)
     end
 
+    def forte_name
+
+    end
+
     def transpose(start)
+      return self if start==0
       ZiffArray.new(self.map {|n| n.transpose start })
     end
 
@@ -177,6 +188,14 @@ module Ziffers
 
     def notes
       self.map{|x| x[:note] or x[:notes]}
+    end
+
+    def note_names
+      self.map{|x| x.note_name }
+    end
+
+    def midi_names
+      self.map{|x| x.midi_name }
     end
 
     def augment(opts)

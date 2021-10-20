@@ -102,5 +102,11 @@ module Ziffers
     spreader(val.to_s(2).split("").map{|b| b=="1" ? true : false }.flatten)
   end
 
+  # Slonimsky scales: https://slonimsky.netlify.app/
+  def slonimsky(divisions, nodes, interpolations)
+    return [] if (divisions <= 0 or nodes <= 0)
+    nodes.times.collect { |i| [i * divisions] + interpolations.map { |x| (i * divisions) + x }}.flatten
+  end
+
 end
 end
