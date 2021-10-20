@@ -4,7 +4,7 @@ load "~/ziffers/lib/parser/zgrammar.rb"
 load "~/ziffers/lib/ziffarray.rb"
 load "~/ziffers/lib/ziffhash.rb"
 load "~/ziffers/lib/common.rb"
-load "~/ziffers/lib/schillinger.rb"
+load "~/ziffers/lib/generators.rb"
 load "~/ziffers/lib/defaults.rb"
 
 print "Ziffers 2.0"
@@ -15,6 +15,7 @@ module Ziffers
     include Ziffers::Grammar
     include Ziffers::Defaults
     include Ziffers::Common
+    include Ziffers::Generators
 
     @@default_opts = {
       :key => :c,
@@ -275,7 +276,7 @@ module Ziffers
 
     def zplay(melody,opts={},defaults={})
 
-      defaults[:preparsed] = true if !defaults[:parsed] and melody.is_a?(Array) or melody[0].is_a?(Hash) or melody.is_a? Enumerator
+      defaults[:preparsed] = true if !defaults[:parsed] and (melody.is_a?(Array) and melody[0].is_a?(Hash)) or melody.is_a? Enumerator
       defaults = defaults.merge(opts.extract!(:scale, :key, :synth, :amp, :release, :sustain, :decay, :attack, :sleep, :clickiness)) if defaults[:preparsed]
 
       # Extract common options to defaults

@@ -1,10 +1,10 @@
-load "~/ziffers/lib/schillinger.rb"
+load "~/ziffers/lib/generators.rb"
 load "~/ziffers/lib/defaults.rb"
 
 module Ziffers
   class ZiffArray < Array
     include Comparable
-    include Ziffers::Schillinger
+    include Ziffers::Generators
     include Ziffers::Defaults
 
     @@forte_name = nil

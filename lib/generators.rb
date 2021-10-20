@@ -1,13 +1,14 @@
 load "~/ziffers/lib/defaults.rb"
 
 module Ziffers
-  module Schillinger
+  module Generators
     include Ziffers::Defaults
 
   def ints_to_lengths(val)
     val.map {|n| int_to_length(n) }
   end
 
+  # Schillinger resultants
 
   def resultants(major,minor,secondary=false)
     result = secondary ? secondary(major, minor) : generator(major,minor)
@@ -69,6 +70,8 @@ module Ziffers
     end
     resultant.compact
   end
+
+ # Euclidean generators (Spread to integers)
 
   def spread_to_seq(arr)
     last = 0
