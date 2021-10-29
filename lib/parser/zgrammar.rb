@@ -46,8 +46,10 @@ module Ziffers
       apply_array_transformations ziffers, opts, shared
     end
 
-    def parse_generative text
+    def parse_generative(text, parse_chords=true)
       result = @@rparser.parse(text)
+      # TODO: Find a better way to inject parameters for the parser
+      $parse_chords = parse_chords
 
       if !result
         puts @@rparser.failure_reason

@@ -24,13 +24,14 @@ module Ziffers
     def get_ziff(dgr, zkey=:C, zscale=:major, oct=0, addition=0)
       scaleLength = scale(zkey,zscale).length-1
       #dgr = dgr + zoct*scaleLength if zoct!=0
+      pc_orig = dgr
       dgr+=1 if dgr>=0 if !@@degree_based
       if dgr>=scaleLength || dgr<0 then
         oct += (dgr-1)/scaleLength
         dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
       end
       dgr = scaleLength if dgr == 0
-      return {:note=>(degree(dgr,zkey,zscale)+(oct*12)+addition), :pc=>dgr-1, :key=>zkey, :scale=>zscale, :octave=>oct}
+      return {:note=>(degree(dgr,zkey,zscale)+(oct*12)+addition), :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength}
     end
 
     # Scales degrees to scale, for example -1=7 and 8=1

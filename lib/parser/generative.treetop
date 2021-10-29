@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (list / ranges / group / pitch_classes / sleep / s / ignore)*
+    (set / ranges / group / array / pitch_classes / sleep / s / ignore)*
     {
     def value
       elements.map {|v| v.value }.flatten.filter_map {|v| ziff_to_string(v) if v}.join("")
@@ -9,77 +9,120 @@ grammar GenerativeSyntax
     }
   end
 
-  rule list
-    '{' content:(array) '}' p:(('~' / '=') [1-9]*)? o:(operation)*
+  rule set
+    '{' ':'? content:(items) repeat_two:(':')? repeat:(integer)? '}' p:(('~' / '?') [1-9]*)? o:(operation)* inv:('_')? durs:(duration_set)?
     {
     def value
-      set = content.value.flatten.filter {|v| v != " "}
 
-      if p and p.text_value != ""
-        set = set.shuffle if p.text_value[0]=="~"
-        set = p.text_value[0]=="~" ? set.take(p.text_value[1..].to_i) : set.pick(p.text_value[1..].to_i) if p.text_value.length>1
-      end
+      reps = repeat.value if repeat.methods.include?(:value)
+      reps = (reps and reps>1) ? reps : (repeat_two.text_value==":" ? 2 : 1)
 
-      if !o.empty? then
-        o.elements.each do |op|
-          if op.methods.include?(:value) then
-            op_values = op.value.flatten.filter {|v| v and v != " "} if op.value.is_a?(Array)
-            case op.operator
-            when '**', '*', '/', '+', '-', '/', '^', '%', '|', '&', '<<', '>>'
-              if op.value.kind_of?(Array)
-                set = op_values.each_with_index.inject(set) do |a, (v,i)|
+      set = reps.times.collect do
+        original_set = content.value.flatten.filter {|v| v != " "}
+        set = Marshal.load(Marshal.dump(original_set))
+        if p and p.text_value != ""
+          set = set.shuffle if p.text_value[0]=="~"
+          set = p.text_value[0]=="~" ? set.take(p.text_value[1..].to_i) : set.pick(p.text_value[1..].to_i) if p.text_value.length>1
+        end
 
-                  if v.is_a?(Hash) and a[i] and a[i].is_a?(Hash)
-                    if v[:pc] and a[i][:pc]
-                      a[i][:pc] = v[:pc].to_i.method(op.operator).(a[i][:pc].to_i)
-                    elsif a[i][:pcs] and v[:pc]
-                      a[i][:pcs][0] = a[i][:pcs][0].to_i.method(op.operator).(v[:pc].to_i)
-                    elsif a[i][:pcs] and v[:pcs]
-                      v[:pcs].each_with_index do |d,di|
-                        a[i][:pcs][di] = a[i][:pcs][di].to_i.method(op.operator).(d.to_i)
+        if !o.empty? then
+          o.elements.each do |op|
+            if op.methods.include?(:value) then
+              op_values = op.value.flatten.filter {|v| v and v != " "} if op.value.is_a?(Array)
+              case op.operator
+              when '**', '*', '/', '+', '-', '/', '^', '%', '|', '&', '<<', '>>'
+                if op.value.kind_of?(Array)
+
+                  if op.is_cartesian
+
+                    set = op_values.map do |z|
+                        set.map  do |c|
+                            copy = Marshal.load(Marshal.dump(c))
+                            copy[:pc] = z[:pc].method(op.operator).(c[:pc]) if z and c and z[:pc] and c[:pc]
+                            copy
+                        end
                       end
-                    elsif a[i][:pc] and v[:pcs]
-                      a[i][:pcs] = v[:pcs]
-                      a[i][:pcs][0] = a[i][:pcs][0].to_i.method(op.operator).(a[i][:pc].to_i)
-                      a[i].delete(:pc)
+                    set = set.flatten
+
+                  else
+
+                  set = op_values.each_with_index.inject(set) do |a, (v,i)|
+                    if v.is_a?(Hash) and a[i] and a[i].is_a?(Hash)
+                      if v[:pc] and a[i][:pc]
+                        a[i][:pc] = v[:pc].to_i.method(op.operator).(a[i][:pc].to_i)
+                      elsif a[i][:pcs] and v[:pc]
+                        a[i][:pcs][0] = a[i][:pcs][0].to_i.method(op.operator).(v[:pc].to_i)
+                      elsif a[i][:pcs] and v[:pcs]
+                        v[:pcs].each_with_index do |d,di|
+                          a[i][:pcs][di] = a[i][:pcs][di].to_i.method(op.operator).(d.to_i)
+                        end
+                      elsif a[i][:pc] and v[:pcs]
+                        a[i][:pcs] = v[:pcs]
+                        a[i][:pcs][0] = a[i][:pcs][0].to_i.method(op.operator).(a[i][:pc].to_i)
+                        a[i].delete(:pc)
+                      end
                     end
+                    a
                   end
 
-                  a
                 end
-              else
-                  set = set.map do |v|
-                    v[:pc] = v[:pc].to_i.method(op.operator).(op.value.to_i) if v.is_a?(Hash)
-                    v
-                  end
-              end
-            when '!'
-              if op.value.kind_of?(Array)
-                set = op_values.each_with_index.inject(set) do |a, (v,i)|
-                a[i] = ~v[:pc].to_i+a[i][:pc].to_i if v.is_a?(Hash) and a[i]
-                a
-              end
-              else
-                set = set.map do |v|
-                  v = ~v[:pc].to_i+(op.value.to_i+1) if v.is_a?(Hash)
-                  v
+
+                else
+                    operation_value = op.value.to_i
+                    set = set.map do |v|
+                      v[:pc] = v[:pc].to_i.method(op.operator).(operation_value) if v.is_a?(Hash)
+                      v
+                    end
                 end
               end
-            when '@'
-              # TODO: Chords?
-              # TODO: Combine with operations?
-              set = set.inject(op_values) {|a,j| a.flat_map{|n|[n,{pc: n[:pc].to_i+j[:pc].to_i}]}}
             end
           end
         end
+        set = set.map{|v| v[:pc] = ~(v[:pc].to_i-1) if v.is_a?(Hash) } if inv.text_value == '_'
+        set.zip(Array.new(set.length-1," "))
       end
-      set.zip(Array.new(set.length-1," "))
+    set = set.zip(Array.new(reps," "))
+    durations = durs.value if durs.methods.include?(:value)
+    if durations and durations.is_a?(Array)
+      set.flatten.map.with_index{|v,i| zlog v ; v[:sleep] = durations[i%durations.length] if v.is_a?(Hash) ; v  }
+    else
+      set
+    end
+    end
+    }
+  end
+
+  rule duration_set
+    '<' durs:(sleep / s)* '>'
+    {
+    def value
+      durs.elements.map {|v| v.value }.filter_map {|v| v if v!=" "}
+    end
+    }
+  end
+
+  rule operation
+    incremental:('@')? op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '_') val:('-'? [0-9]+ / set / array / random_pitch_class_between)?
+    {
+    def is_cartesian
+      (incremental and incremental.text_value == '@')
+    end
+    def operator
+      op.text_value
+    end
+    def value
+     if val.methods.include?(:value)
+        v = val.value
+        v
+      else
+        val.text_value
+      end
     end
     }
   end
 
   rule array
-    first:(items) rest:(',' i:items)*
+    '[' first:(items) rest:(',' i:items)* ']'
     {
     def value
       if rest.empty?
@@ -93,7 +136,7 @@ grammar GenerativeSyntax
   end
 
   rule items
-    (list / ranges / group / pitch_classes / s / sleep)*
+    (set / ranges / group / pitch_classes / s / sleep / array / random_pitch_classes_between)*
     {
     def value
       elements.map {|v| v.value }.filter_map {|v| v if v}
@@ -101,37 +144,17 @@ grammar GenerativeSyntax
     }
   end
 
-  rule operation
-    incremental:('=')? op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!' / '@') val:('-'? [0-9]+ / list)?
-    {
-    def is_incremental
-      (incremental and incremental.text_value == '=')
-    end
-    def operator
-      op.text_value
-    end
-    def value
-     if val.methods.include?(:value)
-        val.value
-      else
-        val.text_value
-      end
-    end
-    }
-  end
-
   rule ranges
-   a:('-'? [0-9]+) '..' b:('-'? [0-9]+) c:(step?) sh:('?'?)
+   a:(integer / random_pitch_class_between / integer_array) '..' b:(integer / random_pitch_class_between / integer_array) c:(step?)
    {
    def value
-     s = a.text_value.to_i
-     e = b.text_value.to_i
+     s = a.value.to_i
+     e = b.value.to_i
      ms = s>e ? e : s # 1..7
      me = e>s ? e : s # 7..1
      step = c.value if c.methods.include?(:value)
      nArr = (step ? (ms..me).step(step).to_a : (ms..me).to_a)
      nArr = nArr.reverse if s>e
-     nArr = nArr.shuffle if sh and sh.text_value == '?'
      nArr.each_with_object([]){|v,o| o.push({pc: v}) ; o.push(" ") }
    end
 
@@ -148,7 +171,7 @@ grammar GenerativeSyntax
   end
 
   rule ignore
-   ([!~&@|{}<>:#-^_%.] / [a-zA-Z1-9])
+   ([!~&@|{}<>:#-^_%\n] / [a-zA-Z1-9])
     {
       def value
         text_value
@@ -178,13 +201,17 @@ grammar GenerativeSyntax
    pitch_classes 2..
     {
      def value
-      e = elements.collect {|v| v.value }
-      pitch_class_list = []
-      e.each do |d|
-        pitch_class_list.push(d[:pc])
+     e = elements.collect {|v| v.value }
+      if $parse_chords
+        pitch_class_list = []
+        e.each do |d|
+          pitch_class_list.push(d[:pc])
+        end
+        v = {:pcs=>pitch_class_list}
+        v
+      else
+        e.zip(Array.new(e.length-1," "))
       end
-      v = {:pcs=>pitch_class_list}
-      v
      end
     }
   end
@@ -216,8 +243,74 @@ grammar GenerativeSyntax
     }
   end
 
+  rule random_pitch_class
+    '?'
+    {
+      def value
+        SonicPi::Core::SPRand.rand_i!(11)
+      end
+    }
+  end
+
+  rule integer
+    '-'? [0-9]+
+    {
+      def value
+        text_value.to_i
+      end
+    }
+  end
+
+  rule random_pitch_classes_between
+    '(' between ' ' ')'
+    {
+      def value
+        between.value.to_s.split("")
+        #.map.with_index {|n,i| s[i%s.length]+n.to_s}
+      end
+    }
+  end
+
+  rule random_pitch_class_between
+    '(' between ')'
+    {
+      def value
+        between.value
+      end
+    }
+  end
+
+  rule between
+    m:(integer / integer_array / random_pitch_class_between) ',' x:(integer / integer_array / random_pitch_class_between)
+    {
+      def value
+        minv = m.value
+        maxv = x.value
+        return minv if minv == maxv
+        range = (minv - maxv).abs
+        r = SonicPi::Core::SPRand.rand_i!(range.to_i + 1)
+        smallest = [minv, maxv].min
+        (r + smallest)
+      end
+    }
+  end
+
+  rule integer_array
+    '[' first:(integer / integer_array / random_pitch_class_between) rest:(',' i:(integer / integer_array / random_pitch_class_between))* ']'
+    {
+    def value
+      if rest.empty?
+        first.value
+      else
+        r = rest.elements.map {|v| v.i.value }
+        [r].append([first.value].flatten).flatten.pick(1)[0]
+      end
+    end
+    }
+  end
+
   rule pitch_classes
-   z:(sleep)* o:('^' / '_')* a:('#' / 'b')* d:(normal_pitch_class / escaped_pitch_class / escaped_method)
+   z:(sleep)* o:('^' / '_')* a:('#' / 'b')* d:(normal_pitch_class / escaped_pitch_class / escaped_method / random_pitch_class / random_pitch_class_between)
     {
      def value
        dgr = d.value

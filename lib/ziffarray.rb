@@ -7,8 +7,6 @@ module Ziffers
     include Ziffers::Generators
     include Ziffers::Defaults
 
-    @@forte_name = nil
-
     def subset(range)
       ZiffArray.new(self[range])
     end
@@ -33,16 +31,13 @@ module Ziffers
       ZiffArray.new(super)
     end
 
-    def forte_name
-
-    end
-
     def transpose(start)
       return self if start==0
       ZiffArray.new(self.map {|n| n.transpose start })
     end
 
-    def invert(start=1)
+    def invert(start=0)
+      start = 0 if [true, false].include?(start) and start
       ZiffArray.new(self.map {|n| n.invert start })
     end
 
@@ -218,22 +213,49 @@ module Ziffers
       ZiffArray.new(self.map{|x| x.flex opts})
     end
 
-    def multiply(opts)
+    def multiply(val)
       cl = self.deep_clone
-      cl.each{|x| x.multiply opts; x.update_note}
+      cl.each{|x| x.multiply val; x.update_note}
       cl
     end
 
-    def minus(opts)
+    def minus(val)
       cl = self.deep_clone
-      cl.each{|x| x.minus opts; x.update_note}
+      cl.each{|x| x.minus val; x.update_note}
       cl
     end
 
-    def plus(opts)
+    def plus(val)
       cl = self.deep_clone
-      cl.each{|x| x.plus opts; x.update_note}
+      cl.each{|x| x.plus val; x.update_note}
       cl
+    end
+
+    def production(set,p=:pc)
+      cartesian_product(set,"*",p)
+    end
+
+    def summation(set,p=:pc)
+      cartesian_product(set,"+",p)
+    end
+
+    def substraction(set,p=:pc)
+      cartesian_product(set,"-",p)
+    end
+
+    def cartesian_product(set, operator="+", p=:pc)
+      cl = self.deep_clone
+      cl = set.map do |z|
+          cl.map  do |c|
+            copy = c.deep_clone
+            if z and c and z[p] and c[p]
+              copy[p] = z[p].method(operator).(c[p])
+              copy.update_note
+            end
+            copy
+          end
+        end
+      ZiffArray.new(cl.flatten)
     end
 
     def to_pc_set
@@ -290,12 +312,11 @@ module Ziffers
         ZiffArray.new(self.map{|x,i| x.duration })
     end
 
-    def merge_lengths arr
-      ZiffArray.new(self.map.with_index{|x,i| x.change_duration arr[i%arr.length]})
+    def merge_lengths(arr, loop_n=0)
+      ZiffArray.new(self.map.with_index{|x,i| x.change_duration arr[(i+loop_n)%arr.length]})
     end
 
     def schillinger(opts)
-      schill = self.deep_clone
       if opts[:third] and opts[:major] and opts[:minor]
         if opts[:complementary]
          resultant = complementary(opts[:major], opts[:minor], opts[:third])
@@ -309,13 +330,10 @@ module Ziffers
           resultant = generator(opts[:major],opts[:minor])
         end
       end
-      lengths = ints_to_lengths resultant
-      schill = schill.merge_lengths lengths
-      schill
+      ints_to_lengths resultant
     end
 
-    def modify_rhythm(val)
-
+    def modify_rhythm(val, loop_n=0)
       new_arr = self.deep_clone
       if val.is_a?(Array)
         pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
@@ -324,15 +342,26 @@ module Ziffers
       elsif val.is_a?(Integer)
         pattern = ints_to_lengths(spread_to_seq(val.to_s(2).split("").map{|b| b=="1" ? true : false }.flatten))
       elsif val.is_a?(Hash)
-        pattern = self.schillinger(val) if val[:minor] and val[:major]
+        numbers = val.slice(0,1,2,3,4,5,6,7,8,9,10,11)
+        pattern = map_pcs_to_durations(numbers) if numbers and numbers.size>0
+        pattern = schillinger(val) if val[:minor] and val[:major]
         pattern = val[:pattern] if val[:pattern]
         pattern = transform_rhythm val, pattern
       elsif val.is_a?(String)
         #.bytes.map {|v| v.to_s(2).split("").map{|b| b=="1" ? true : false } }.flatten
-        pattern = val.delete(" \t\r\n").split("").reduce([]) { |acc,c| (@@default_durs.keys.include? c.to_sym) ? acc << @@default_durs[c.to_sym] : acc}
+        pattern = val.delete(" \t\r\n").split("").reduce([]) { |acc,c| (@@default_durs.keys.include? c.to_sym) ? acc << @@default_durs[c.to_sym] : acc }
       end
-      new_arr = new_arr.merge_lengths pattern
+      new_arr = new_arr.merge_lengths(pattern, loop_n)
       new_arr
+    end
+
+    def map_pcs_to_durations(numbers)
+      new_durations = self.pcs.map {|v|
+        n = numbers[v]
+        n = @@default_durs[n.to_sym] if n.is_a?(String) and @@default_durs.keys.include?(n.to_sym)
+        n
+      }
+      new_durations
     end
 
     def transform_rhythm(opts,pattern=nil)

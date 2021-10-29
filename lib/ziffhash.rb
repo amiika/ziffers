@@ -52,29 +52,33 @@ module Ziffers
 
       def transpose(i, inv=false)
         ziff = self.deep_clone
-        n = scale(ziff[:key], ziff[:scale]).length-1
-        if ziff[:pcs]
-          ziff[:pcs].each_with_index do |originalDegree, index|
+        if ziff[:note]!=:r
+          n = scale(ziff[:key], ziff[:scale]).length-1
+          if ziff[:pcs]
+            ziff[:pcs].each_with_index do |originalDegree, index|
+              val = inv ? i-originalDegree : originalDegree+i
+              ziff[:octave] += val/n if val>=n or val<0
+              val = val % n
+              ziff[:pcs][index] = val
+              ziff.update_note
+            end
+          elsif ziff[:pc]
+            originalDegree = ziff[:pc]
             val = inv ? i-originalDegree : originalDegree+i
             ziff[:octave] += val/n if val>=n or val<0
             val = val % n
-            ziff[:pcs][index] = val
+            ziff[:pc] = val
             ziff.update_note
           end
-        elsif ziff[:pc]
-          originalDegree = ziff[:pc]
-          val = inv ? i-originalDegree : originalDegree+i
-          ziff[:octave] += val/n if val>=n or val<0
-          val = val % n
-          ziff[:pc] = val
-          ziff.update_note
         end
         ziff
       end
 
+      # TODO: Add ignore_octave parameter?
       def update_note
         if self[:pc]
-          self[:note] = get_note_from_dgr(self[:pc], self[:key], self[:scale], self[:octave])
+          #self[:note] = get_note_from_dgr(self[:pc], self[:key], self[:scale], self[:octave])
+          self.merge!(get_ziff(self[:pc], self[:key], self[:scale], self[:octave]))
         elsif self[:pcs]
           notes = []
           self[:pcs].each do |d|
@@ -84,8 +88,11 @@ module Ziffers
         end
       end
 
-      def invert(start = 1, n=nil)
-        self.transpose(-1, true).transpose(start)
+      # 0 inverts around 0, 1 inverts between 0 and 1, -1 inverts between 0 and -1.
+      # To invert around n = n*n
+      def invert(start=0, n=nil)
+        start = 0 if [true, false].include?(start) and start
+        self.transpose(-1, true).transpose(start+1)
       end
 
       def augment(additions)
@@ -187,7 +194,7 @@ module Ziffers
 
       def change_duration(val)
         ziff = self.deep_clone
-        ziff[:sleep] = val
+        ziff[:sleep] = val if val
         ziff
       end
 

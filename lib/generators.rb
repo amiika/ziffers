@@ -8,6 +8,29 @@ module Ziffers
     val.map {|n| int_to_length(n) }
   end
 
+  # Creates tone matrix from the given row. Given row should be in a prime form and contain only unique integers
+  def prime_rows(row)
+    size = row.length
+    size.times.collect {|i|
+      interval = row[i]<row[0] ? (row[i]-row[0]) : (row[i]-row[0]-size)
+      size.times.collect {|j|
+        (row[j]-interval) % size
+      }
+    }
+  end
+
+  def prime_retrogrades(prime_rows)
+    prime_rows.map{|r| r.reverse}
+  end
+
+  def prime_inversions(prime_rows)
+    prime_rows.transpose
+  end
+
+  def prime_retrograde_inversions(prime_rows)
+    prime_rows.reverse.transpose
+  end
+
   # Schillinger resultants
 
   def resultants(major,minor,secondary=false)
@@ -106,8 +129,8 @@ module Ziffers
   end
 
   # Slonimsky scales: https://slonimsky.netlify.app/
-  def slonimsky(divisions, nodes, interpolations)
-    return [] if (divisions <= 0 or nodes <= 0)
+  def slonimsky(nodes, interpolations, divisions=1)
+    return [] if (nodes <= 0)
     nodes.times.collect { |i| [i * divisions] + interpolations.map { |x| (i * divisions) + x }}.flatten
   end
 

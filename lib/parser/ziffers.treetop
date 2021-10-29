@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / bar / repeat / multisleep / multioctave / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / use / slide / jumper / parens / reset)*
+    (s / bar / repeat / multisleep / multioctave / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / multiuse / use / slide / jumper / parens / reset)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.filter_map do |v|
@@ -186,11 +186,16 @@ grammar Ziffers
     {
       def value
         dgr = some_pitch_class.value
-        oct = (!o.text_value.empty?) ? o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)} : 0
-        oct += $topts[:octave] if $topts[:octave]
-        addition = (!a.text_value.empty?) ? a.text_value.split('').inject(0){|sum,x| sum + (x=='#' ? 1 : -1)} : 0
 
-        v = get_ziff dgr, $topts[:key], $topts[:scale], oct, addition
+        if !$topts[:midi]
+          oct = (!o.text_value.empty?) ? o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)} : 0
+          oct += $topts[:octave] if $topts[:octave]
+          addition = (!a.text_value.empty?) ? a.text_value.split('').inject(0){|sum,x| sum + (x=='#' ? 1 : -1)} : 0
+
+          v = get_ziff dgr, $topts[:key], $topts[:scale], oct, addition
+        else
+          v = {note: dgr, pc: note_pc(dgr), octave: note_oct(dgr), scale: :chromatic }
+        end
 
         v.merge!($topts) { |key, important, default| important }
 
@@ -199,21 +204,6 @@ grammar Ziffers
         v = apply_transformation ZiffHash[v], $tshared
 
      end
-    }
-  end
-
-  rule set
-    id:([A-Z])? '{' line '}'
-    {
-      def value
-        v = line.elements.collect { |v| v.value }.flatten.filter_map do |v|
-          if v.is_a?(Hash)
-            v[:set] = id.text_value.to_sym if !id.empty?
-            v
-          end
-        end
-        v
-      end
     }
   end
 
@@ -252,7 +242,7 @@ grammar Ziffers
     def value
       v = {note: :r}
       v[:sleep] = s.methods.include?(:value) ? s.value : $topts[:sleep]
-      v
+      ZiffHash[v]
    end
   }
   end
@@ -268,7 +258,7 @@ grammar Ziffers
   end
 
   rule subset
-    (s / bar / chords / pitch_classes / rest / eval / control / use / parens)*
+    (s / bar / chords / pitch_classes / rest / eval / control / multiuse / use / parens)*
     {
       def value
         elements.collect {|v| v.value }
@@ -284,6 +274,22 @@ grammar Ziffers
       end
     }
   end
+
+
+  rule multiuse
+    use 2..
+      {
+      def value
+        samples = elements.collect {|v| v.value }.compact
+        sample_names = samples.map {|s| s[:sample]}
+        chars = samples.map {|s| s[:char]}
+        samples_hash = {samples: sample_names, chars: chars}
+        samples_hash.merge!(samples[0].except(:sample,:char))
+        samples_hash
+      end
+    }
+  end
+
 
   rule use
     s:(sleep)? u:[A-Z]
@@ -302,7 +308,7 @@ grammar Ziffers
             v = {sample: v}
           end
 
-          v[:sleep] = s.methods.include?(:value) ? s.value : $topts[:sleep]
+          v[:sleep] =  (s.methods.include?(:value) ? s.value : (v.has_key?(:cue) ? 0.0 : $topts[:sleep]))
 
           v.merge!($topts) { |key, important, default| important }
           v[:char] = u.text_value
@@ -442,7 +448,7 @@ end
   end
 
   rule repetition
-    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / multioctave / slide / parens / cyclic / control / use)*
+    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / multioctave / slide / parens / cyclic / control / multiuse / use)*
     {
       def value
         elements.collect { |v| v.value }.filter_map {|v| v if v}
@@ -458,7 +464,7 @@ end
   end
 
   rule s
-     " "+
+     (" " / "\n")+
      {
      def value
       nil
