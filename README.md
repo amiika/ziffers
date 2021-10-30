@@ -1,15 +1,15 @@
-![Ziffers](https://raw.githubusercontent.com/amiika/ziffers/master/logo.svg?sanitize=true)
+![Ziffers](https://raw.githubusercontent.com/amiika/ziffers/master/ziffers.png)
 
 # Ziffers: Numbered musical notation for composing algorithmic and generative music using Sonic Pi
 Ziffers is a numbered musical notation (aka. Ziffersystem) that makes composing melodies and rhythms easier and faster in [Sonic Pi](https://sonic-pi.net/).
 
 Writing and playing melodies in any key or scale will be as simple as:
 ```
-zplay "q 4 e 1 1 q 2 1 0 3 4", key: "f", scale: "major"
+zplay "q 4 e 1 1 q 2 1 r #3 4 ", key: "f", scale: "major", synth: :piano
 ```
 or playing loops:
 ```
-zloop :ride, "q2 e4 3 3 3 2 3 4 3 3 3 3 3 2 3", key: :c, scale: :chromatic
+zloop :ride, "e 3 3 2 2 1 1 2 2", key: :c, scale: :chromatic, synth: :piano
 ```
 or loops with generative live rules:
 ```
@@ -37,7 +37,7 @@ z1 breakbeat, use: samples
 ```
 or play infinite sequences. Easy as:
 ```
-zplay pi, rhythm: "|:q q h:|: h q ee :|"
+zplay pi, rhythm: "[:q q h:][: h q ee :]"
 ```
 and much more ...
 
