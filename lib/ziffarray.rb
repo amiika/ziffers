@@ -131,7 +131,7 @@ module Ziffers
       Marshal.load(Marshal.dump(self))
     end
 
-    def powerset(val)
+    def superset(val)
       self.combination(val).to_a.map {|x| ZiffArray.new(x)}
     end
 

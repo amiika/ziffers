@@ -257,7 +257,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:invert,:rate_based,:skip,:midi,:control,:pcs,:run,:run_each,:char,:rhythm,:slide,:use)
+      ziff.except(:sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:invert,:rate_based,:skip,:midi,:control,:pcs,:run,:run_each,:char,:rhythm,:slide,:use)
     end
 
     def play_midi_out(md, opts)
@@ -567,7 +567,7 @@ module Ziffers
           return zparse(melody.to_s,opts,defaults)
         end
       elsif melody.is_a?(Array)
-        return zarray(melody,opts)
+        return zarray(melody,opts,defaults)
       elsif melody.is_a?(Hash)
         return [melody]
       else
@@ -888,13 +888,14 @@ module Ziffers
     n.gsub(/[cdefgab]\b/) {|c| noteList.index(c).to_s }
   end
 
-  def zarray(arr, opts=get_default_opts)
+  def zarray(arr, opts={}, defaults=get_default_opts)
     zmel=[]
     arr.each do |item|
       if item.is_a? Array then
         zmel.push note_array_to_hash(item,opts)
       elsif item.is_a? Numeric then
-          ziff = get_ziff(item, opts[:key], opts[:scale])
+          opts = defaults.merge!(opts)
+          ziff = get_ziff(item, opts[:key], opts[:scale], opts[:octave] ? opts[:octave] : 0)
           ziff.merge!(opts) { |key, important, default| important }
           zmel.push(ZiffHash[ziff])
       end
