@@ -37,7 +37,7 @@ z1 breakbeat, use: samples
 ```
 or play infinite sequences. Easy as:
 ```
-zplay pi, rhythm: "[:q q h:][: h q ee :]"
+zplay pi, rhythm: "q q h q q h h q ee h q ee"
 ```
 and much more ...
 
