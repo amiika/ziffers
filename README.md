@@ -1,4 +1,4 @@
-<img src="https://github.com/amiika/ziffers/raw/ziffers2/ziffers.png"  width="200">
+<img src="https://github.com/amiika/ziffers/raw/ziffers2/ziffers.png"  width="300">
 
 # Ziffers: Numbered musical notation for composing algorithmic and generative music using Sonic Pi
 Ziffers is a numbered musical notation (aka. Ziffersystem) that makes composing melodies and rhythms easier and faster in [Sonic Pi](https://sonic-pi.net/).
