@@ -96,7 +96,7 @@ module Ziffers
 
  # Euclidean generators (Spread to integers)
 
-  def spread_to_seq(arr)
+  def bools_to_seq(arr)
     last = 0
     l = arr.each_with_index.inject([]) do |a,(j,i)|
       if j

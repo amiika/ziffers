@@ -77,20 +77,19 @@ module Ziffers
       # TODO: Add ignore_octave parameter?
       def update_note
         if self[:pc]
-          #self[:note] = get_note_from_dgr(self[:pc], self[:key], self[:scale], self[:octave])
           self.merge!(get_ziff(self[:pc], self[:key], self[:scale], self[:octave]))
         elsif self[:pcs]
           notes = []
           self[:pcs].each do |d|
-            notes.push(get_note_from_dgr(self[:pc], self[:key], self[:scale], self[:octave]))
+            notes.push(get_note_from_dgr(d, self[:key], self[:scale], self[:octave]))
           end
           self[:notes] = notes
         end
       end
 
       # 0 inverts around 0, 1 inverts between 0 and 1, -1 inverts between 0 and -1.
-      # To invert around n = n*n
-      def invert(start=0, n=nil)
+      # To invert around n = n+n
+      def inverse(start=0)
         start = 0 if [true, false].include?(start) and start
         self.transpose(-1, true).transpose(start+1)
       end

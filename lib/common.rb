@@ -31,7 +31,8 @@ module Ziffers
         dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
       end
       dgr = scaleLength if dgr == 0
-      return {:note=>(degree(dgr,zkey,zscale)+(oct*12)+addition), :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength}
+      note_value = (degree(dgr,zkey,zscale)+(oct*12)+addition)
+      return {:note=>note_value>0 ? note_value>231 ? 230 : note_value : 1, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength}
     end
 
     # Scales degrees to scale, for example -1=7 and 8=1

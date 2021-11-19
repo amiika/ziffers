@@ -36,7 +36,7 @@ module Ziffers
       ZiffArray.new(self.map {|n| n.transpose start })
     end
 
-    def invert(start=0)
+    def inverse(start=0)
       start = 0 if [true, false].include?(start) and start
       ZiffArray.new(self.map {|n| n.invert start })
     end
@@ -271,8 +271,10 @@ module Ziffers
     end
 
     def intervals
-      pcs = self.pcs
-      pcs.map.with_index {|v,i| pc_int(v, pcs[(i+1)%pcs.length]) }
+      pcs = self.pcs.filter {|v| v.is_a? Integer }
+      pcs.map.with_index {|v,i|
+        pc_int(v, pcs[(i+1)%pcs.length])
+      }
     end
 
     def cycles
@@ -334,15 +336,19 @@ module Ziffers
     end
 
     def modify_rhythm(val, loop_n=0)
+      zlog "MODIFY?"
+      zlog val
       new_arr = self.deep_clone
       if val.is_a?(Array)
         pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
       elsif val.is_a?(SonicPi::Core::RingVector)
-        pattern = ints_to_lengths(spread_to_seq(val))
+        pattern = ints_to_lengths(bools_to_seq(val))
       elsif val.is_a?(Integer)
-        pattern = ints_to_lengths(spread_to_seq(val.to_s(2).split("").map{|b| b=="1" ? true : false }.flatten))
+        pattern = ints_to_lengths(val.to_s.split("").map{|v| v.to_i})
       elsif val.is_a?(Hash)
+        # TODO: Create more elegant functions for hex etc.
         numbers = val.slice(0,1,2,3,4,5,6,7,8,9,10,11)
+        pattern = ints_to_lengths(bools_to_seq(val[:hex].to_s(2).split("").map{|b| b=="1" ? true : false }.flatten)) if val[:hex]
         pattern = map_pcs_to_durations(numbers) if numbers and numbers.size>0
         pattern = schillinger(val) if val[:minor] and val[:major]
         pattern = val[:pattern] if val[:pattern]

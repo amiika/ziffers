@@ -103,8 +103,8 @@ grammar Ziffers
       c[:sleep] = c[:chord_sleep] if c[:chord_sleep]
 
       c.merge!($topts) { |key, important, default| important }
-
-      c = apply_transformation ZiffHash[c], $tshared
+      $tshared[:counter] = $tshared[:counter]+1
+      c = apply_transformation ZiffHash[c], $topts, 0, $tshared[:counter]
    end
    }
   end
@@ -129,24 +129,42 @@ grammar Ziffers
   end
 
   rule roman
-    roman_number:([iv]+) '^'? chord_name:([a-z-0-9+-]*)? '*'? oct:([0-9])?
+    roman_number:([iv]+) rd:(roman_pick)? cd:(chord_name)? '*'? oct:([0-9])?
     {
       def value
-       name = chord_name.text_value.to_sym if !chord_name.text_value.empty?
+       name = cd.value.to_sym if cd.methods.include?(:value)
        roman = roman_number.text_value.to_sym
         if name
           root = degree roman, $topts[:key], $topts[:scale]
           notes = chord(root, name, {num_octaves: !oct.text_value.empty? ? oct.text_value.to_i : 1}).notes
         else
-          notes = chord_degree(roman, $topts[:key], $topts[:scale], 3)
+          notes = chord_degree(roman, $topts[:key], $topts[:scale], rd.methods.include?(:value) ? rd.value : 3)
         end
         v = {
-        :roman=>roman,
-        :notes=>notes
+          :roman=>roman,
+          :notes=>notes.to_a
         }
         v.merge!($topts)
         v[:sleep] = $tchordsleep if $tchordsleep
         ZiffHash[v]
+      end
+    }
+  end
+
+  rule roman_pick
+    '/' i:([0-9])
+    {
+      def value
+        i.text_value.to_i
+      end
+    }
+  end
+
+  rule chord_name
+    '^' chord_name:([a-z-0-9+-]*)
+    {
+      def value
+        chord_name.text_value
       end
     }
   end
@@ -198,11 +216,10 @@ grammar Ziffers
         end
 
         v.merge!($topts) { |key, important, default| important }
-
         v[:sleep] = s.value if s.methods.include?(:value)
 
-        v = apply_transformation ZiffHash[v], $tshared
-
+        $tshared[:counter] = $tshared[:counter]+1
+        apply_transformation ZiffHash[v], $tshared, 0, $tshared[:counter]
      end
     }
   end
@@ -258,7 +275,7 @@ grammar Ziffers
   end
 
   rule subset
-    (s / bar / chords / pitch_classes / rest / eval / control / multiuse / use / parens)*
+    (s / bar / chords / pitch_classes / rest / eval / control / multiuse / use / parens / cyclic)*
     {
       def value
         elements.collect {|v| v.value }
@@ -298,7 +315,7 @@ grammar Ziffers
       use_list = $tshared[:use] if $tshared and $tshared.has_key?(:use)
         if use_list
           $topts[:run_each] = use_list.delete(:run) if use_list[:run]
-          v = use_list.has_key?(u.text_value.to_sym) ? use_list[u.text_value.to_sym] : nil
+          v = use_list.has_key?(u.text_value.to_sym) ? use_list[u.text_value.to_sym].dup : nil
 
           return nil if !v
 
@@ -401,9 +418,10 @@ end
    '[:' l:(repetition) ':' p:([0-9])* ']'
     {
        def value
-         v = []
+         rep_result = []
          r = !p.text_value.empty? ? p.text_value.to_i : 2
          rep_value = l.value
+         rep_value = rep_value.map {|v| (v.is_a?(Hash) and v[:subset]) ? resolve_subsets(v[:subset], v[:sleep]/v[:subset].length) : v }.flatten
          r.times do |i|
           rep = rep_value.each_with_object([]) do |v,o|
             if v.is_a?(Hash) and v[:cycle]
@@ -412,9 +430,9 @@ end
               o.push(v)
             end
           end
-          v += rep
+          rep_result += rep
           end
-         v
+         rep_result
        end
      }
   end

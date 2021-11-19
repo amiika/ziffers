@@ -25,10 +25,27 @@ module Ziffers
       return next_gen
     end
 
-    def automata(gen, rules)
+    def boolean_automata(gen, rules=nil)
+      automata(gen, rules, true)
+    end
+
+    def automata(gen, rules=nil, booleans=nil)
       Enumerator.new do |y|
-        rules = create_ruleset(rules) if rules.is_a?(Integer)
-        gen = gen.split("").map{|n| n.to_i } if gen.is_a?(String)
+
+        rules = create_ruleset(rules ? rules : rrand_i(1,255))
+
+        if gen.is_a?(String)
+          if gen == "#{gen.to_i}"
+            gen = gen.split("").map{|n| n.to_i }
+          else
+            gen = gen.unpack("B*")[0].split("").map{|n| n.to_i }
+          end
+        elsif gen.is_a?(Integer)
+          gen = gen.to_s(2).split("").map{|n| n.to_i }
+        elsif gen.is_a?(SonicPi::Core::RingVector)
+          gen = gen.map{|v| v ? 1 : 0}
+        end
+
         old_gen = []
         next_gen = []
         while gen != old_gen
@@ -38,7 +55,11 @@ module Ziffers
               right = i < gen.length - 1 ? i + 1 : 0
               pattern = "#{gen[left]}#{gen[i]}#{gen[right]}"
               next_gen[i] = rules[pattern]
-              y << i if next_gen[i] == 1
+            if !booleans and next_gen[i] == 1
+              y << i
+            else
+              y << (next_gen[i]==1)
+            end
           end
           gen = next_gen
         end
@@ -69,8 +90,8 @@ module Ziffers
       l
     end
 
-    def markov_numbers(chain,nums=8,i=0)
-      mm = to_pc_mm parse_generative(chain), nums
+    def markov_integer(chain,nums=8,i=0)
+      mm = to_pc_mm chain, nums
       Enumerator.new do |y|
         while true
           i = next_idx mm, i
@@ -230,7 +251,7 @@ module Ziffers
     end
 
     # https://en.wikipedia.org/wiki/Geometric_progression
-    def gproq(a=1,r=2,e=Float::INFINITY)
+    def gprog(a=1,r=2,e=Float::INFINITY)
       (a..e).lazy.collect {|n| a * r ** (n-1) }
     end
 
