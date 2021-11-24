@@ -260,6 +260,23 @@ module Ziffers
       (s..e).lazy.collect {|n| a*(n**2)+(b*n)+c }
     end
 
+    # https://en.wikipedia.org/wiki/Polynomial
+    def polynomial(coef,s=0,e=Float::INFINITY)
+      s_coef = coef.sort.reverse
+      (s..e).lazy.collect {|x| polyval(x,coef.reverse).to_i }
+    end
+
+    def polyval(x, coef)
+      sum = 0
+      coef = coef.clone
+      while true
+          sum += coef.shift
+          break if coef.empty?
+          sum *= x
+      end
+      return sum
+    end
+
     def primes(e=Float::INFINITY)
       (2..e).lazy.reject {|n| (2..Math.sqrt(n)).any?{ |j| n % j == 0 }}
     end

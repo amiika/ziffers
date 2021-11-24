@@ -9,15 +9,17 @@ require_relative "./lib/defaults.rb"
 require_relative "./lib/pc_sets.rb"
 
 # For testing and debugging
-#load "~/ziffers/lib/enumerables.rb"
-#load "~/ziffers/lib/monkeypatches.rb"
-#load "~/ziffers/lib/parser/zgrammar.rb"
-#load "~/ziffers/lib/ziffarray.rb"
-#load "~/ziffers/lib/ziffhash.rb"
-#load "~/ziffers/lib/common.rb"
-#load "~/ziffers/lib/generators.rb"
-#load "~/ziffers/lib/defaults.rb"
-#load "~/ziffers/lib/pc_sets.rb"
+'''
+load "~/ziffers/lib/enumerables.rb"
+load "~/ziffers/lib/monkeypatches.rb"
+load "~/ziffers/lib/parser/zgrammar.rb"
+load "~/ziffers/lib/ziffarray.rb"
+load "~/ziffers/lib/ziffhash.rb"
+load "~/ziffers/lib/common.rb"
+load "~/ziffers/lib/generators.rb"
+load "~/ziffers/lib/defaults.rb"
+load "~/ziffers/lib/pc_sets.rb"
+'''
 
 print "Ziffers 2.0 alpha"
 
@@ -993,7 +995,7 @@ module Ziffers
         else
           val = val.()
         end
-      elsif val.is_a? Array
+      elsif val.is_a?(Array) and key!=:scale
         val = val.ring[loop_i*melody_size+note_i]
       elsif val.is_a? SonicPi::Core::RingVector
         val = val[loop_i*melody_size+note_i]

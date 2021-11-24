@@ -1,6 +1,6 @@
 <img src="https://github.com/amiika/ziffers/raw/ziffers2/ziffers.png" width=300 border=0, padding=0>
 
-# Ziffers: Numbered musical notation for live code golfing and composing algorithmic and generative music using Sonic Pi
+# Ziffers: Numbered musical notation for composing algorithmic and generative music using Sonic Pi
 Ziffers is a numbered musical notation (aka. Ziffersystem) and live code golfing language that makes composing melodies and rhythms easier and faster in [Sonic Pi](https://sonic-pi.net/).
 
 Writing and playing melodies in any key or scale will be as simple as:
@@ -67,7 +67,7 @@ Stay up to date as the Ziffers is an ongoing project. Post Issues to report bugs
 
 ## Examples
 
-Try out [one line](https://github.com/amiika/ziffers/blob/master/play_tests.rb) examples and more [complex examples](https://github.com/amiika/ziffers/tree/master/examples).
+Try out [one line](https://github.com/amiika/ziffers/blob/master/test/play_tests.rb) examples. More tests coming soon (ish), as old examples are not yet updated for Ziffers 2.
 
 # Documentation
 
