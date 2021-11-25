@@ -1,3 +1,4 @@
+
 require_relative "./lib/enumerables.rb"
 require_relative "./lib/monkeypatches.rb"
 require_relative "./lib/parser/zgrammar.rb"
@@ -118,7 +119,7 @@ module Ziffers
 
     def ziff_to_string(value)
       if value.is_a?(Hash)
-        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? @@default_durs.key(value[:sleep]).to_s : value[:sleep].to_s) + value[:dot].to_s + (value[:octave].is_a?(String) ? value[:octave] : "") + value[:add].to_s + ((value.key?(:pc) and (value[:pc].to_i>9 or value[:pc].to_i<-9))  ? "=" : "") + value[:pc].to_s + (value[:pcs] ? value[:pcs].map{|v| (v.to_i>9 or v.to_i<-9) ? "="+v.to_s : ""+v.to_s }.join("") : "") + value[:separator].to_s
+        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? @@default_durs.key(value[:sleep]).to_s : value[:sleep].to_s) + value[:dot].to_s + (value[:octave].is_a?(String) ? value[:octave] : "") + value[:add].to_s + ((value.key?(:pc) and (value[:pc].to_i>9 or value[:pc].to_i<-9))  ? "=" : "") + (value[:note]==:r ? "r" : value[:pc].to_s) + (value[:pcs] ? value[:pcs].map{|v| (v.to_i>9 or v.to_i<-9) ? "="+v.to_s : ""+v.to_s }.join("") : "") + value[:separator].to_s
       else
         value
       end
@@ -305,6 +306,7 @@ module Ziffers
 
       if defaults[:store] and loop_name and $zloop_states[loop_name][:parsed_melody]
         melody = $zloop_states[defaults[:loop_name]][:parsed_melody]
+        melody = normalize_melody(melody, opts, defaults)
       elsif melody.is_a? Enumerator then
         enum = melody
         begin
@@ -925,8 +927,8 @@ module Ziffers
         melody = melody.swap *val
       when :rotate then
         melody = melody.rotate(val)
-      #when :division then
-      #  melody = melody.group_by {|z| z[:pc].to_i % val}.values.flatten
+      when :deal then
+        melody = melody.deal.flatten
       when :mirror then
         melody = melody.mirror
       when :reverse then

@@ -127,6 +127,10 @@ module Ziffers
       (self.deep_clone.map{|z| [z]*val }).flatten
     end
 
+    def deal(val=2)
+      self.group_by.with_index {|z,i| i % val }.values.map {|arr| ZiffArray.new(arr) }
+    end
+
     def deep_clone
       Marshal.load(Marshal.dump(self))
     end

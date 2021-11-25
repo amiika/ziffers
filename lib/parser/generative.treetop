@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (set / chord_between / set_between / ranges / group / array / pitch_classes / sleep / s / ignore)*
+    (set / chord_between / set_between / ranges / group / array / pitch_classes / rest / sleep / s / ignore)*
     {
     def value
       elements.map {|v| v.value }.flatten.filter_map {|v| ziff_to_string(v) if v}.join("")
@@ -110,6 +110,17 @@ grammar GenerativeSyntax
     }
   end
 
+  rule rest
+    s:(sleep)? 'r'
+    {
+      def value
+        v = {note: :r}
+        v[:sleep] = s.value if s.methods.include?(:value)
+        v
+     end
+    }
+  end
+
   rule operation
     op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '<>' / '<&>' / '<->' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)?
     {
@@ -142,7 +153,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (set / ranges / group / pitch_classes / s / sleep / array / set_between)*
+    (set / ranges / group / pitch_classes / rest / s / sleep / array / set_between)*
     {
     def value
       elements.map {|v| v.value }.filter_map {|v| v if v}
@@ -151,7 +162,7 @@ grammar GenerativeSyntax
   end
 
   rule array_items
-    (set / ranges / group / pitch_classes / s / sleep / array / random_between)*
+    (set / ranges / group / pitch_classes / rest / s / sleep / array / random_between)*
     {
     def value
       elements.map {|v| v.value }.filter_map {|v| v if v}
