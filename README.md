@@ -67,7 +67,7 @@ Stay up to date as the Ziffers is an ongoing project. Post Issues to report bugs
 
 ## Examples
 
-Try out [one line](https://github.com/amiika/ziffers/blob/master/test/play_tests.rb) examples. More tests coming soon (ish), as old examples are not yet updated for Ziffers 2.
+Try out [one line](https://github.com/amiika/ziffers/blob/master/test/play_tests.rb) examples or browse trough [wiki]([Ziffers wiki](https://github.com/amiika/ziffers/wiki)). More examples coming soon (ish), as old examples are not yet updated for Ziffers 2.
 
 ## Documentation
 
