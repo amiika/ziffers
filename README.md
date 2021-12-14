@@ -73,6 +73,6 @@ Try out [one line](https://github.com/amiika/ziffers/blob/master/test/play_tests
 
 Syntax and methods are documented in [Ziffers wiki](https://github.com/amiika/ziffers/wiki).
 
-# Help
+# Help & Contributions
 
-Post [issue](https://github.com/amiika/ziffers/issues) or ask help from [chat](https://chat.toplap.org/channel/ziffers).
+Post [issue](https://github.com/amiika/ziffers/issues) or fixes using merge request.
