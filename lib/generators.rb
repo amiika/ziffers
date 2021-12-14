@@ -1,4 +1,4 @@
-load "~/ziffers/lib/defaults.rb"
+require_relative "./defaults.rb"
 
 module Ziffers
   module Generators

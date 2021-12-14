@@ -1,5 +1,5 @@
-load "~/ziffers/lib/generators.rb"
-load "~/ziffers/lib/defaults.rb"
+require_relative "./generators.rb"
+require_relative "./defaults.rb"
 
 module Ziffers
   class ZiffArray < Array
