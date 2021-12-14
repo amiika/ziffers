@@ -89,7 +89,7 @@ def test6
   #assert_equal(t6_1,["1", "2", "0", "1"])
   
   # Regexp with '' eval syntax
-  t6z_1 = zparse "q0 e0 1 2 3", rules: {/(?<=q)[0-9]/=>"'$+1'"}, gen: 3
+  t6z_1 = zparse "q0 e0 1 2 3", rules: {/(?<=q)[0-9]/=>"=($+1)"}, gen: 3
   t6_2 = zparams(t6z_1, :pc)
   assert_equal(t6_2,[3, 0, 1, 2, 3])
   
@@ -133,7 +133,11 @@ def lazy_tests
     "w 5 q 5 3 e 3 2 1 0 w 7 2",
     "h 1 (0 2 1 3) 2 ((4 2)1 3 1) 5 (6 4(5 3)2) 3 (2 3 1 4)",
     "w (0(1 2(2 3(5))))",
-    "h 1 (5 3) w 1 (3 1(2 1 0)) -2 (-1 2 (3 4(7 8))) ^3 _8"
+    "h 1 (5 3) w 1 (3 1(2 1 0)) -2 (-1 2 (3 4(7 8))) ^3 _8",
+    "q [: ~80 ~50 :]",
+    "q ~<0.5>0123",
+    "h ~<10.0>0123 ",
+    "h2 q 2 1 2 q ~<0.1>2555 h. 4 2 q.. ~<0.14>25 4 h ~<0.1>21221"
   ]
   
   tests.each do |m|
@@ -146,6 +150,7 @@ def lazy_tests
 end
 
 print "Testing"
+lazy_tests
 test1
 test2
 test3
@@ -153,6 +158,6 @@ test4
 test5
 test6
 test_chords
-lazy_tests
+
 
 print "All tests passed!"

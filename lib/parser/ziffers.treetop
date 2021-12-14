@@ -391,7 +391,7 @@ end
         }
         v.merge!($topts)
         v[:note_slide] = e.value if e.methods.include?(:value)
-        v
+        ZiffHash[v]
       end
     }
   end

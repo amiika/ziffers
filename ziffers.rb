@@ -9,8 +9,8 @@ require_relative "./lib/generators.rb"
 require_relative "./lib/defaults.rb"
 require_relative "./lib/pc_sets.rb"
 
-# For testing and debugging
 '''
+# For testing and debugging
 load "~/ziffers/lib/enumerables.rb"
 load "~/ziffers/lib/monkeypatches.rb"
 load "~/ziffers/lib/parser/zgrammar.rb"
@@ -846,9 +846,9 @@ module Ziffers
                   rep = v.().to_s
                 end
               else # If not using lambda
-                rep = parse_generative(replace_variable_syntax(v))
+                rep = replace_variable_syntax(v)
                 rep = g.length>1 ? rep.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : rep.gsub("$",m)
-                rep = rep.include?("'") ? rep.gsub(/'(.*?)'/) {eval($1)} : rep
+                rep = parse_generative(rep)
               end
               "{{#{rep}}}" # Escape
             else
@@ -858,6 +858,7 @@ module Ziffers
         end
       end
       ax = ax.gsub(/{{(.*?)}}/) {$1}
+      ax
     end
   end
 

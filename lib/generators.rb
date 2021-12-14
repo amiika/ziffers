@@ -1,5 +1,10 @@
 require_relative "./defaults.rb"
 
+'''
+# For testing and debugging
+load "~/ziffers/lib/defaults.rb"
+'''
+
 module Ziffers
   module Generators
     include Ziffers::Defaults

@@ -1,5 +1,10 @@
 require_relative "../defaults.rb"
 
+'''
+# For testing and debugging
+load "~/ziffers/lib/defaults.rb"
+'''
+
 module Ziffers
   module Grammar
     include SonicPi
@@ -32,6 +37,13 @@ module Ziffers
       (r + smallest)
     end
 
+    def sonic_random_float(min,max)
+      range = (min - max).abs
+      r = SonicPi::Core::SPRand.rand!(range)
+      smallest = [min, max].min
+      r+smallest
+    end
+
     def sonic_range(s,e,step=nil,mult=nil)
       ms = s>e ? e : s # 1..7
       me = e>s ? e : s # 7..1
@@ -46,7 +58,6 @@ module Ziffers
 
     # Parse shit using treeparse
     def parse_ziffers(text, opts, shared, durs)
-      zlog "Parsing?"
       # TODO: Find a better way to inject parameters for the parser
       $tchordsleep = opts[:chord_sleep]
       $tshared = shared

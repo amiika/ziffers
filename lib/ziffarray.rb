@@ -1,6 +1,12 @@
 require_relative "./generators.rb"
 require_relative "./defaults.rb"
 
+'''
+# For testing and debugging
+load "~/ziffers/lib/generators.rb"
+load "~/ziffers/lib/defaults.rb"
+'''
+
 module Ziffers
   class ZiffArray < Array
     include Comparable
@@ -340,8 +346,6 @@ module Ziffers
     end
 
     def modify_rhythm(val, loop_n=0)
-      zlog "MODIFY?"
-      zlog val
       new_arr = self.deep_clone
       if val.is_a?(Array)
         pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}

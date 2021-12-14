@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (set / chord_between / set_between / ranges / group / array / pitch_classes / rest / sleep / s / ignore)*
+    (set / chord_between / set_between / ranges / group / array / random_decimal / pitch_classes / rest / sleep / s / ignore)*
     {
     def value
       elements.map {|v| v.value }.flatten.filter_map {|v| ziff_to_string(v) if v}.join("")
@@ -182,8 +182,9 @@ grammar GenerativeSyntax
   }
   end
 
+  # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
-   ([!~&@|{}<>:#-^_%\n] / [a-zA-Z1-9])
+   ([!\~&@|{}<>\[\]():;#^_%\n\-\/\*\.] / [a-zA-Z1-9])
     {
       def value
         text_value
@@ -262,6 +263,24 @@ grammar GenerativeSyntax
         SonicPi::Core::SPRand.rand_i!(11)
       end
     }
+  end
+
+  rule random_decimal
+    '(' m:(decimal) ',' x:(decimal) ')'
+      {
+        def value
+          sonic_random_float(m.value,x.value)
+        end
+      }
+  end
+
+  rule decimal
+    [0-9]* '.' [0-9]+
+    {
+      def value
+       text_value.to_f
+      end
+     }
   end
 
   rule integer
