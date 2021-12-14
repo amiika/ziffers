@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "Please cite Ziffers as below:"
+authors:
+- family-names: "Alonen"
+  given-names: "Miika"
+  orcid: "https://orcid.org/0000-0002-0065-0017"
+title: "Ziffers: Numbered musical notation for algorithmic composition"
+version: 2
+date-released: 2021-12-12
+url: "https://github.com/amiika/ziffers"
