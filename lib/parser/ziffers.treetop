@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / bar / repeat / multisleep / multioctave / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / multiuse / use / slide / jumper / parens / reset)*
+    (s / bar / repeat / multisleep / summed_octave / fixed_octave / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / multiuse / use / slide / jumper / parens / reset)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.filter_map do |v|
@@ -15,7 +15,7 @@ grammar Ziffers
     }
   end
 
-  rule multioctave
+  rule summed_octave
     o:(octave*) s
     {
     def value
@@ -23,6 +23,17 @@ grammar Ziffers
       $topts[:octave] += o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)}
       nil
     end
+    }
+  end
+
+  rule fixed_octave
+    '<' o:(integer) '>'
+    {
+      def value
+        $topts[:octave] = 0 if !$topts[:octave]
+        $topts[:octave] = o.value
+        nil
+      end
     }
   end
 
@@ -120,7 +131,7 @@ grammar Ziffers
         pitch_class_list.push(d[:pc])
         note_list.push(d[:note])
       end
-      v = {:notes=>note_list, :pcs=>pitch_class_list}
+      v = {:notes=>note_list, :pcs=>pitch_class_list, :hpcs=>e}
       v.merge!($topts)
       v[:sleep] = $tchordsleep if $tchordsleep
       v
@@ -200,7 +211,7 @@ grammar Ziffers
   end
 
   rule pitch_classes
-    s:(sleep)? o:(octave)* a:(add)* some_pitch_class:(normal_pitch_class / escaped_pitch_class)
+    s:(sleep)? o:('^' / '_')* a:('#' / 'b')* some_pitch_class:(normal_pitch_class / escaped_pitch_class)
     {
       def value
         dgr = some_pitch_class.value
@@ -466,7 +477,7 @@ end
   end
 
   rule repetition
-    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / multioctave / slide / parens / cyclic / control / multiuse / use)*
+    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / summed_octave / fixed_octave / slide / parens / cyclic / control / multiuse / use)*
     {
       def value
         elements.collect { |v| v.value }.filter_map {|v| v if v}

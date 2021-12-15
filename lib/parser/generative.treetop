@@ -220,7 +220,7 @@ grammar GenerativeSyntax
         e.each do |d|
           pitch_class_list.push(d[:pc])
         end
-        v = {:pcs=>pitch_class_list}
+        v = {:pcs=>pitch_class_list, :hpcs=>e}
         v
       else
         e.zip(Array.new(e.length-1," "))

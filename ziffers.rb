@@ -119,7 +119,18 @@ module Ziffers
 
     def ziff_to_string(value)
       if value.is_a?(Hash)
-        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? @@default_durs.key(value[:sleep]).to_s : value[:sleep].to_s) + value[:dot].to_s + (value[:octave].is_a?(String) ? value[:octave] : "") + value[:add].to_s + ((value.key?(:pc) and (value[:pc].to_i>9 or value[:pc].to_i<-9))  ? "=" : "") + (value[:note]==:r ? "r" : value[:pc].to_s) + (value[:pcs] ? value[:pcs].map{|v| (v.to_i>9 or v.to_i<-9) ? "="+v.to_s : ""+v.to_s }.join("") : "") + value[:separator].to_s
+        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? @@default_durs.key(value[:sleep]).to_s : value[:sleep].to_s) +
+        value[:dot].to_s +
+        (value[:octave].is_a?(String) ? value[:octave] : ((value[:octave].is_a?(Integer) && value[:octave]!=0) ? (value[:octave]>0 ? "^"*value[:octave] : "_"*value[:octave].abs) : "" )) +
+        value[:add].to_s +
+        ((value.key?(:pc) and (value[:pc].to_i>9 or value[:pc].to_i<-9))  ? "=" : "") +
+        (value[:note]==:r ? "r" : value[:pc].to_s) +
+        (value[:hpcs] ? value[:hpcs].map{ |v|
+          (v[:octave].is_a?(String) ? v[:octave] : ((v[:octave].is_a?(Integer) && v[:octave]!=0) ? (v[:octave]>0 ? "^"*v[:octave] : "_"*v[:octave].abs) : "" )) +
+          v[:add].to_s +
+          ((v[:pc].to_i>9 or v[:pc].to_i<-9) ? "="+v[:pc].to_s : ""+v[:pc].to_s)
+        }.join("") : "") +
+        value[:separator].to_s
       else
         value
       end
@@ -260,7 +271,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:run,:run_each,:char,:rhythm,:slide,:use)
+      ziff.except(:chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:hpcs,:run,:run_each,:char,:rhythm,:slide,:use)
     end
 
     def play_midi_out(md, opts)
