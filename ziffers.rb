@@ -40,7 +40,7 @@ module Ziffers
       :skip => false
     }
 
-    @@default_keys = [:wait, :fade, :fade_in, :fader, :parse_chords, :sched_ahead, :use, :run, :store, :rate_based, :transform_enum, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :inverse, :octave, :array_inverse, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm, :group, :on, :superset, :operation, :set, :init,:auto_cue,:delay,:sync,:sync_bpm,:seed]
+    @@default_keys = [:cycle, :apply, :wait, :fade, :fade_in, :fader, :parse_chords, :sched_ahead, :use, :run, :store, :rate_based, :transform_enum, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :inverse, :octave, :array_inverse, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm, :group, :on, :superset, :operation, :set, :init,:auto_cue,:delay,:sync,:sync_bpm,:seed]
 
     @@slice_default_keys = [:scale, :key, :synth, :amp, :release, :sustain, :decay, :attack, :sleep, :pan, :clickiness, :port, :channel]
 
@@ -271,7 +271,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:hpcs,:run,:run_each,:char,:rhythm,:slide,:use)
+      ziff.except(:apply, :chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:hpcs,:run,:run_each,:char,:rhythm,:slide,:use)
     end
 
     def play_midi_out(md, opts)
@@ -410,6 +410,7 @@ module Ziffers
         else
           play_ziff(ziff,defaults,index,loop_i)
         end
+
         sleep ziff[:sleep] if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
       end
       # Save loop state
@@ -527,6 +528,9 @@ module Ziffers
     end
 
     def normalize_effects(run,char=nil)
+      print "Normalizing effects"
+      run = [run] if run.is_a?(Hash)
+      run = [{with_fx: run}] if run.is_a?(Symbol)
       run.map do |effect|
         dup = {}
         effect_name = effect[:with_fx] ? "run-"+effect[:with_fx].to_s : "run"
@@ -552,6 +556,7 @@ module Ziffers
     end
 
     def normalize_melody(melody, opts, defaults)
+      defaults[:normalized] = true
       if melody.is_a?(String)
         return zparse(melody,opts,defaults)
       elsif melody.is_a?(Symbol) and melody == :r
@@ -608,7 +613,7 @@ module Ziffers
         $zloop_states[name] = {}
         $zloop_states[name][:loop_i] = 0
       end
-      $zloop_states[name][:cycle] = opts.delete(:cycle) if opts[:cycle]
+      $zloop_states[name][:cycle] = defaults.delete(:cycle) if defaults[:cycle]
 
       create_loop_opts(opts,$zloop_states[name])
 
@@ -996,9 +1001,15 @@ module Ziffers
 
   def apply_transformation(ziff, defaults, loop_i=0, note_i=0, melody_size=1)
     # TODO: Document apply
-    if defaults[:apply] and ((defaults[:apply][:on].is_a?(Integer) and (note_i+1)%defaults[:apply][:on]==0) or (defaults[:apply][:on].is_a?(Array) and defaults[:apply][:on].include?(note_i)))
-      defaults = defaults.dup
-      defaults = defaults.merge(defaults.delete(:apply))
+    if defaults[:apply]
+      apply_all = defaults[:apply].is_a?(Array) ? defaults[:apply] : [defaults[:apply]]
+      apply_all.each do |apply|
+        if (!apply[:on] or (apply[:on].is_a?(Integer) and apply[:on]==(note_i+1)) or (apply[:on].is_a?(Array) and apply[:on].include?(note_i+1)) or (apply[:on].is_a?(Range) and apply[:on] === (note_i+1)))
+          apply[:run_each] = apply.delete(:run) if apply[:run]
+          defaults = defaults.dup
+          defaults = defaults.except!(:apply).merge(apply)
+        end
+      end
     end
     defaults.each do |key,val|
       if val.is_a? Proc then
@@ -1009,13 +1020,15 @@ module Ziffers
         else
           val = val.()
         end
-      elsif val.is_a?(Array) and key!=:scale
+      elsif val.is_a?(Array) and ![:scale,:run,:run_each,:apply].include?(key)
         val = val.ring[loop_i*melody_size+note_i]
+        ziff[key] = val
       elsif val.is_a? SonicPi::Core::RingVector
         val = val[loop_i*melody_size+note_i]
+        ziff[key] = val
       end
       case key
-      when :synth, :amp, :release, :sustain, :decay, :attack, :sleep, :pan
+      when :synth # :amp, :release, :sustain, :decay, :attack, :sleep, :pan, :res, :cutoff
         ziff[key] = val
       when :key, :scale, :octave
         if ziff[key] != val
@@ -1040,6 +1053,8 @@ module Ziffers
         ziff = ziff.detune val
       when :object_transform
         ziff = send(val,ziff,loop_i,note_i,melody_size)
+      else
+        ziff[key] = val
       end
     end
     return ziff

@@ -114,8 +114,12 @@ grammar Ziffers
       c[:sleep] = c[:chord_sleep] if c[:chord_sleep]
 
       c.merge!($topts) { |key, important, default| important }
-      $tshared[:counter] = $tshared[:counter]+1
-      c = apply_transformation ZiffHash[c], $topts, 0, $tshared[:counter]
+      c = ZiffHash[c]
+      if !$tshared[:normalized]
+        c = apply_transformation c, $topts, 0, $tshared[:counter]
+        $tshared[:counter] = $tshared[:counter]+1
+      end
+      c
    end
    }
   end
@@ -228,9 +232,12 @@ grammar Ziffers
 
         v.merge!($topts) { |key, important, default| important }
         v[:sleep] = s.value if s.methods.include?(:value)
-
-        $tshared[:counter] = $tshared[:counter]+1
-        apply_transformation ZiffHash[v], $tshared, 0, $tshared[:counter]
+        v = ZiffHash[v]
+        if !$tshared[:normalized]
+          v = apply_transformation v, $tshared, 0, $tshared[:counter]
+          $tshared[:counter] = $tshared[:counter]+1
+        end
+        v
      end
     }
   end
@@ -332,6 +339,7 @@ grammar Ziffers
 
           if v.is_a?(Hash)
             $topts[:run_each] = v.delete(:run) if v[:run] and !v[:sample] and !v[:note]
+            v = apply_transformation(v, v[:apply] ? v[:apply] : {apply: v.except(:sample)})
           elsif v.is_a?(Symbol)
             v = {sample: v}
           end

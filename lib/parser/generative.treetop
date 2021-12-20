@@ -39,15 +39,17 @@ grammar GenerativeSyntax
                         set.map  do |c|
                             copy = Marshal.load(Marshal.dump(c))
                             if z and c
-                              if z[:pc] and c[:pc]
-                                copy[:pc] = z[:pc].method(op.operator).(c[:pc])
-                              elsif z[:pcs] and c[:pc]
-                                copy[:pcs] = z[:pcs].map {|pc| pc.method(op.operator).(c[:pc])}
-                                copy.delete(:pc)
-                              elsif c[:pcs] and z[:pc]
-                                copy[:pcs] = c[:pcs].map {|pc| pc.method(op.operator).(z[:pc])}
-                              elsif c[:pcs] and z[:pcs]
-                                copy[:pcs] = c[:pcs].map {|cpc| z[:pcs].map{|zpc| zpc.method(op.operator).(cpc) }}.flatten.uniq
+                              if z.is_a?(Hash) and c.is_a?(Hash)
+                                if z[:pc] and c[:pc]
+                                  copy[:pc] = z[:pc].method(op.operator).(c[:pc])
+                                elsif z[:pcs] and c[:pc]
+                                  copy[:pcs] = z[:pcs].map {|pc| pc.method(op.operator).(c[:pc])}
+                                  copy.delete(:pc)
+                                elsif c[:pcs] and z[:pc]
+                                  copy[:pcs] = c[:pcs].map {|pc| pc.method(op.operator).(z[:pc])}
+                                elsif c[:pcs] and z[:pcs]
+                                  copy[:pcs] = c[:pcs].map {|cpc| z[:pcs].map{|zpc| zpc.method(op.operator).(cpc) }}.flatten.uniq
+                                end
                               end
                             end
                             copy
