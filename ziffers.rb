@@ -271,7 +271,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:sync, :loop_name, :normalized, :apply, :chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:hpcs,:run,:run_each,:char,:rhythm,:slide,:use)
+      ziff.except(:sync, :loop_name, :normalized, :apply, :chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:hpcs,:run,:run_each,:char,:rhythm,:slide,:use,:A,:B,:C,:D,:E,:F,:G,:H,:I,:J,:K,:L,:M,:N,:O,:P,:Q,:R,:S,:T,:U,:W,:X,:Y)
     end
 
     def play_midi_out(md, opts)
