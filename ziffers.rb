@@ -271,7 +271,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:apply, :chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:hpcs,:run,:run_each,:char,:rhythm,:slide,:use)
+      ziff.except(:sync, :loop_name, :normalized, :apply, :chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:hpcs,:run,:run_each,:char,:rhythm,:slide,:use)
     end
 
     def play_midi_out(md, opts)
@@ -528,7 +528,6 @@ module Ziffers
     end
 
     def normalize_effects(run,char=nil)
-      print "Normalizing effects"
       run = [run] if run.is_a?(Hash)
       run = [{with_fx: run}] if run.is_a?(Symbol)
       run.map do |effect|
@@ -598,6 +597,23 @@ module Ziffers
       end
     end
 
+    def ziff(loop_string)
+      loops = parse_loops loop_string
+      shared = {}
+
+      all_loops = []
+
+      loops.each_with_index do |loop,i|
+        if loop[0].delete(' ').length<1 and loop[1]
+          shared = shared.merge(loop[1])
+        else
+          loop_name = ("zrow_"+i.to_s).to_sym
+          all_loops << loop_name
+          zloop loop_name, loop[0], loop[1] ? shared.merge(loop[1]) : shared, all_loops[0]!=loop_name ? {sync: all_loops[0]} : {}
+        end
+      end
+    end
+
     def zloop(name, melody, opts={}, defaults={})
 
       defaults[:loop_name] = name
@@ -652,7 +668,7 @@ module Ziffers
           sleep phase
         end
 
-        if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or ([true].include? opts[:stop]) or (melody.is_a?(String) and melody.start_with? "//") then
+        if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or ([true].include? opts[:stop]) or (melody.is_a?(String) and (melody.start_with? "//" or melody.start_with? "# ")) then
           $zloop_states.delete(name)
           stop
         end
@@ -1004,7 +1020,7 @@ module Ziffers
     if defaults[:apply]
       apply_all = defaults[:apply].is_a?(Array) ? defaults[:apply] : [defaults[:apply]]
       apply_all.each do |apply|
-        if (!apply[:on] or (apply[:on].is_a?(Integer) and apply[:on]==(note_i+1)) or (apply[:on].is_a?(Array) and apply[:on].include?(note_i+1)) or (apply[:on].is_a?(Range) and apply[:on] === (note_i+1)))
+        if ((!apply[:on] and !apply[:mod]) or (apply[:on].is_a?(Integer) and apply[:on]==(note_i+1)) or (apply[:mod].is_a?(Integer) and (note_i+1+(loop_i*melody_size)) % apply[:mod] == 0) or (apply[:on].is_a?(Array) and apply[:on].include?(note_i+1)) or (apply[:on].is_a?(Range) and apply[:on] === (note_i+1)))
           apply[:run_each] = apply.delete(:run) if apply[:run]
           defaults = defaults.dup
           defaults = defaults.except!(:apply).merge(apply)

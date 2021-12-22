@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (set / chord_between / set_between / ranges / group / array / random_decimal / pitch_classes / rest / sleep / s / ignore)*
+    (ignore_params / set / chord_between / set_between / ranges / group / array / random_decimal / pitch_classes / rest / sleep / s / ignore)*
     {
     def value
       elements.map {|v| v.value }.flatten.filter_map {|v| ziff_to_string(v) if v}.join("")
@@ -187,6 +187,15 @@ grammar GenerativeSyntax
   # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
    ([!\~&@|{}<>\[\]():;#^_%\n\-\/\*\.] / [a-zA-Z1-9])
+    {
+      def value
+        text_value
+      end
+    }
+  end
+
+  rule ignore_params
+    '<=' (([a-zA-Z0-9])+ ':' s? ([a-zA-Z0-9:-])+ ','? s?)+ '=>'
     {
       def value
         text_value

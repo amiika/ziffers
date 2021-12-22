@@ -1,0 +1,88 @@
+grammar Loops
+
+  rule base
+    space? opts:(key:([a-zA-Z0-9]+) ':' space? val:(symbol / decimal / integer / boolean / string / hash / array) ','? space?)+ space?
+    {
+    def value
+      Hash[*opts.elements.map {|p| [p.key.text_value.to_sym,p.val.value] }.flatten]
+    end
+    }
+  end
+
+  rule symbol
+    ':' s:(string)
+    {
+    def value
+      s.text_value.to_sym
+    end
+    }
+  end
+
+  rule boolean
+    t:('true' / 'false')
+    {
+    def value
+      t.text_value == 'true'
+    end
+    }
+  end
+
+  rule string
+    [a-zA-Z_\-]+
+    {
+    def value
+      text_value
+    end
+    }
+  end
+
+  rule integer
+    [-0-9]+
+    {
+    def value
+      text_value.to_i
+    end
+    }
+  end
+
+  rule decimal
+    [0-9]+ '.' [0-9]+
+    {
+      def value
+       text_value.to_f
+      end
+     }
+  end
+
+  rule range
+    s:(integer) '..' e:(integer)
+    {
+    def value
+      s.value..e.value
+    end
+    }
+  end
+
+  rule array
+  '[' space? items:((decimal / symbol / string / integer / bool / array) ','? space?)+ ']'
+  {
+    def value
+     items.elements.map {|v| v.value }
+    end
+   }
+  end
+
+  rule hash
+    '{' space? items:(key:([a-zA-Z0-9]+) ':' space? val:(decimal / range / symbol / string / integer / bool / array) ','? space?)+ '}'
+    {
+      def value
+           Hash[*items.elements.map {|p| [p.key.text_value.to_sym,p.val.value] }.flatten]
+      end
+     }
+  end
+
+  rule space
+    [^\S\n]+
+  end
+
+end

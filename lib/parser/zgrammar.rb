@@ -13,9 +13,11 @@ module Ziffers
 
     Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'ziffers.treetop')))
     Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'generative.treetop')))
+    Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'loops.treetop')))
 
     @@zparser = ZiffersParser.new
     @@rparser = GenerativeSyntaxParser.new
+    @@lparser = LoopsParser.new
 
     def resolve_subsets(subs,divSleep)
       new_list = subs.each_with_object([]) do |z,n|
@@ -91,6 +93,16 @@ module Ziffers
       end
 
       result.value
+    end
+
+    def parse_loops(text)
+      lines = text.split("\n").filter {|v| v!=""}
+      params = lines.map{ |l|
+        v = l.split("& ")
+        v[1] = @@lparser.parse(v[1]).value if v[1]
+        v
+      }
+      params
     end
 
   end
