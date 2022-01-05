@@ -31,11 +31,11 @@ module Ziffers
       new_list
     end
 
-    def sonic_random(minv,maxv)
-      return minv if minv == maxv
-      range = (minv - maxv).abs
+    def sonic_random(min,max)
+      return min if min == max
+      range = (min - max).abs
       r = SonicPi::Core::SPRand.rand_i!(range.to_i + 1)
-      smallest = [minv, maxv].min
+      smallest = [min, max].min
       (r + smallest)
     end
 
@@ -43,10 +43,10 @@ module Ziffers
       range = (min - max).abs
       r = SonicPi::Core::SPRand.rand!(range)
       smallest = [min, max].min
-      r+smallest
+      (r + smallest)
     end
 
-    def sonic_range(s,e,step=nil,mult=nil)
+    def sonic_range(s,e,step=nil,mult=nil,reflect=false)
       ms = s>e ? e : s # 1..7
       me = e>s ? e : s # 7..1
       if step and mult and mult=="*"
@@ -55,6 +55,7 @@ module Ziffers
       end
       nArr = (step ? (ms..me).step(step).to_a : (ms..me).to_a)
       nArr = nArr.reverse if s>e
+      nArr = nArr + nArr.drop(1).reverse.drop(1) if reflect
       nArr
     end
 
@@ -95,11 +96,21 @@ module Ziffers
       result.value
     end
 
-    def parse_loops(text)
+    def parse_loops(text, opts)
       lines = text.split("\n").filter {|v| v!=""}
+      $topts = opts
       params = lines.map{ |l|
-        v = l.split("& ")
+
+        if(l.rstrip.end_with?("\\"))
+          l = l.rstrip.delete_suffix("\\")
+          multi_line = true
+        else
+          multi_line = false
+        end
+
+        v = l.split("/")
         v[1] = @@lparser.parse(v[1]).value if v[1]
+        v[1] = v[1] ? v[1].merge({multi_line: true}) : {multi_line: true} if multi_line
         v
       }
       params

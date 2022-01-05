@@ -16,7 +16,7 @@ grammar Ziffers
   end
 
   rule escaped_opts
-    '<=' s? opts:(key:([a-zA-Z0-9]+) ':' s? val:([a-zA-Z0-9:-]+) ','? s?)+ '=>'
+    '|<' s? opts:(key:([a-zA-Z0-9]+) ':' s? val:([a-zA-Z0-9:-]+) ','? s?)+ '>|'
     {
     def value
       h = Hash[*opts.elements.map {|p| [p.key.text_value.to_sym,p.val.text_value.to_i] }.flatten]

@@ -1,12 +1,22 @@
 grammar Loops
 
   rule base
-    space? opts:(key:([a-zA-Z0-9]+) ':' space? val:(symbol / decimal / integer / boolean / string / hash / array) ','? space?)+ space?
+    space? opts:(hash_elements / parameter) space?
     {
-    def value
-      Hash[*opts.elements.map {|p| [p.key.text_value.to_sym,p.val.value] }.flatten]
-    end
+      def value
+        h = opts.value
+        h
+      end
     }
+  end
+
+  rule parameter
+    '$' p:(string)
+  {
+    def value
+      $topts[p.value.to_sym]
+    end
+  }
   end
 
   rule symbol
@@ -28,7 +38,7 @@ grammar Loops
   end
 
   rule string
-    [a-zA-Z_\-]+ [0-9]*
+    [a-zA-Z_]+ [0-9]*
     {
     def value
       text_value
@@ -45,6 +55,15 @@ grammar Loops
     }
   end
 
+  rule random_integer
+  '(' m:(integer) ',' x:(integer) ')'
+    {
+      def value
+        ->(){sonic_random(m.value,x.value)}
+      end
+    }
+  end
+
   rule decimal
     [0-9]+ '.' [0-9]+
     {
@@ -54,8 +73,17 @@ grammar Loops
      }
   end
 
+  rule random_decimal
+    '(' m:(decimal) ',' x:(decimal) ')'
+      {
+        def value
+          ->(){sonic_random_float(m.value,x.value)}
+        end
+      }
+  end
+
   rule range
-    s:(integer) '..' e:(integer)
+    s:(integer) '..' e:(integer) step?
     {
     def value
       s.value..e.value
@@ -63,8 +91,26 @@ grammar Loops
     }
   end
 
+  rule integer_range
+   '(' a:(integer) '..' b:(integer) ')' type:('+' / '*')? step:(integer)? reflect:('%')?
+   {
+   def value
+     sonic_range(a.value, b.value, step.methods.include?(:value) ? step.value : 1, type.text_value, reflect.text_value=="%" ? true : false)
+   end
+   }
+  end
+
+  rule decimal_range
+  '(' a:(decimal) '..' b:(decimal) ')' '+'? step:(decimal)? reflect:('%')?
+   {
+   def value
+     sonic_range(a.value,b.value, step.methods.include?(:value) ? step.value : 0.1, nil, reflect.text_value=="%" ? true : false)
+   end
+   }
+  end
+
   rule array
-  '[' space? items:((decimal / symbol / string / integer / bool / array) ','? space?)+ ']'
+  '[' space? items:((decimal / random_decimal / symbol / integer / random_integer / boolean / hash / array) ','? space?)+ ']'
   {
     def value
      items.elements.map {|v| v.value }
@@ -73,10 +119,19 @@ grammar Loops
   end
 
   rule hash
-    '{' space? items:(key:([a-zA-Z0-9]+) ':' space? val:(decimal / range / symbol / string / integer / bool / array) ','? space?)+ '}'
+    '{' hash_elements '}'
     {
       def value
-           Hash[*items.elements.map {|p| [p.key.text_value.to_sym,p.val.value] }.flatten]
+        hash_elements.value
+      end
+    }
+  end
+
+  rule hash_elements
+    space? items:(key:(string) ':' space? val:(symbol / parameter / decimal / random_decimal / range / integer_range / decimal_range / symbol / integer / random_integer / boolean / hash / array) ','? space?)+
+    {
+      def value
+           Hash[*items.elements.map {|p| [p.key.value.to_sym, p.val.value] }.flatten(1)]
       end
      }
   end
