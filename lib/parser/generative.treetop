@@ -186,7 +186,7 @@ grammar GenerativeSyntax
 
   # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
-   ([!\~&@|{}<>\[\]():;#^_%\n\-\/\*\.] / [a-zA-Z1-9])
+   ([!\~&@|{}<>\[\]():;#^_%\n\-\/\*\.`´\,\=] / [a-zA-Z1-9])
     {
       def value
         text_value
@@ -359,7 +359,6 @@ grammar GenerativeSyntax
      arr = sonic_range(a.value.to_i,b.value.to_i,step,type)
      arr = arr.map {|v| v.to_s.split("") }.flatten
      arr.each_with_object([]){|v,o| o.push({pc: v.to_i}) ; o.push(" ") }
-     #arr.zip(Array.new(arr.length," "))
    end
    }
   end
@@ -372,7 +371,6 @@ grammar GenerativeSyntax
      type = c.type if c.methods.include?(:type)
      arr = sonic_range(a.value.to_i,b.value.to_i,step,type)
      arr.each_with_object([]){|v,o| o.push({pc: v.to_i}) ; o.push(" ") }
-     #arr.zip(Array.new(arr.length," "))
    end
    }
   end

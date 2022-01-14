@@ -83,7 +83,7 @@ grammar Loops
   end
 
   rule range
-    s:(integer) '..' e:(integer) step?
+    s:(integer) '..' e:(integer)
     {
     def value
       s.value..e.value
@@ -137,7 +137,7 @@ grammar Loops
   end
 
   rule space
-    [^\S\n]+
+    (" " / "\n" / "\r")+
   end
 
 end

@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / bar / repeat / multisleep / summed_octave / fixed_octave / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / multiuse / use / slide / jumper / parens / reset / escaped_opts)*
+    (s / bar / repeat / multisleep / fixed_octave / numeric_octave / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / multiuse / use / slide / jumper / parens / reset / escaped_opts)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.filter_map do |v|
@@ -26,22 +26,20 @@ grammar Ziffers
     }
   end
 
-  rule summed_octave
-    o:(octave*) s
+  rule fixed_octave
+    o:([\^\_]*) s
     {
     def value
-      $topts[:octave] = 0 if !$topts[:octave]
-      $topts[:octave] += o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)}
+      $topts[:octave] = o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)}
       nil
     end
     }
   end
 
-  rule fixed_octave
+  rule numeric_octave
     '<' o:(integer) '>'
     {
       def value
-        $topts[:octave] = 0 if !$topts[:octave]
         $topts[:octave] = o.value
         nil
       end
@@ -148,6 +146,7 @@ grammar Ziffers
       end
       v = {:notes=>note_list, :pcs=>pitch_class_list, :hpcs=>e}
       v.merge!($topts)
+      v[:amp] = e[0][:amp] if e[0][:amp]
       v[:sleep] = $tchordsleep if $tchordsleep
       v
      end
@@ -226,15 +225,16 @@ grammar Ziffers
   end
 
   rule pitch_classes
-    s:(sleep)? o:('^' / '_')* a:('#' / 'b')* some_pitch_class:(normal_pitch_class / escaped_pitch_class)
+    prefix:(prefix_sleep / octave / add / dynamics / staccato)* some_pitch_class:(normal_pitch_class / escaped_pitch_class)
     {
       def value
         dgr = some_pitch_class.value
+        prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
+        prefixes = {} if !prefixes
 
         if !$topts[:midi]
-          oct = (!o.text_value.empty?) ? o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)} : 0
-          oct += $topts[:octave] if $topts[:octave]
-          addition = (!a.text_value.empty?) ? a.text_value.split('').inject(0){|sum,x| sum + (x=='#' ? 1 : -1)} : 0
+          oct = prefixes[:octave] ? prefixes[:octave] : ($topts[:octave] ? $topts[:octave] : 0)
+          addition = prefixes[:add] ? prefixes[:add] : 0
 
           v = get_ziff dgr, $topts[:key], $topts[:scale], oct, addition
         else
@@ -242,9 +242,15 @@ grammar Ziffers
         end
 
         v.merge!($topts) { |key, important, default| important }
-        v[:sleep] = s.value if s.methods.include?(:value)
+
+        v[:amp] = v[:amp] ? v[:amp]+(v[:amp]/2)*prefixes[:dynamics] : (prefixes[:dynamics]<0 ? 1.0/-(prefixes[:dynamics]-1) : 1.0+0.5*prefixes[:dynamics])  if prefixes[:dynamics]
+
+        v[:release] = v[:release]/(prefixes[:staccato]+1) if prefixes[:staccato]
+
+        v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
+
         v = ZiffHash[v]
-        if !$tshared[:normalized]
+        if !$tshared[:normalized] # If directly from zparse
           v = apply_transformation v, $tshared, 0, $tshared[:counter]
           $tshared[:counter] = $tshared[:counter]+1
         end
@@ -253,12 +259,113 @@ grammar Ziffers
     }
   end
 
+  rule prefix_sleep
+    s:([mklpdcwyhnqaefsxtgujz]) d:('.')*
+    {
+    def value
+        sum = $default_durs[s.text_value.to_sym]
+        sum = sum * (2.0-(1.0/(2*d.text_value.length))) if !d.text_value.empty?
+        {sleep: sum}
+     end
+    }
+  end
+
   rule octave
     ('^' / '_')
     {
       def value
-        {:octave=>text_value}
+        {octave: text_value=='^' ? 1 : -1}
      end
+    }
+  end
+
+  rule add
+    ('#' / 'b')
+    {
+      def value
+        {add: text_value=='#' ? 1 : -1}
+      end
+    }
+  end
+
+  rule dynamics
+    ('`' / '´')
+    {
+      def value
+        {dynamics: text_value=='´' ? 1 : -1}
+      end
+    }
+  end
+
+  rule staccato
+    ','
+    {
+      def value
+        {staccato: 1}
+      end
+    }
+  end
+
+  rule multiuse
+    use 2..
+      {
+      def value
+        samples = elements.collect {|v| v.value }.compact
+        sample_names = samples.map {|s| s[:sample]}
+        chars = samples.map {|s| s[:char]}
+        samples_hash = {samples: sample_names, chars: chars}
+        samples_hash.merge!(samples[0].except(:sample,:char))
+        samples_hash
+      end
+    }
+  end
+
+  rule use
+    prefix:(prefix_sleep / octave / add / dynamics / staccato)* u:[A-Z]
+    {
+    def value
+      use_list = $tshared[:use] if $tshared and $tshared.has_key?(:use)
+        if use_list
+          prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
+          prefixes = {} if !prefixes
+
+          $topts[:run_each] = use_list.delete(:run) if use_list[:run]
+          v = use_list.has_key?(u.text_value.to_sym) ? use_list[u.text_value.to_sym].dup : nil
+
+          return nil if !v
+
+          if v.is_a?(Hash)
+            $topts[:run_each] = v.delete(:run) if v[:run] and !v[:sample] and !v[:note]
+            v = apply_transformation(v, v[:apply] ? v[:apply] : {apply: v.except(:sample)})
+          elsif v.is_a?(Symbol)
+            v = {sample: v}
+          end
+
+          v.merge!($topts) { |key, important, default| important }
+
+          v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
+          v[:sleep] = 0.0 if v.has_key?(:cue)
+
+          v[:amp] = v[:amp] ? v[:amp]+(v[:amp]/2)*prefixes[:dynamics] : (prefixes[:dynamics]<0 ? 1.0/-(prefixes[:dynamics]-1) : 1.0+0.5*prefixes[:dynamics])  if prefixes[:dynamics]
+
+          if prefixes[:octave]
+            v[:pitch] = 0.0 if !v[:pitch]
+            v[:pitch] += prefixes[:octave]*12 if prefixes[:octave]
+          else
+            v[:pitch] = v[:pitch] ? v[:pitch]+$topts[:octave] : $topts[:octave] if $topts[:octave]
+          end
+
+          v[:pitch] = v[:pitch] ? v[:pitch]+$topts[:add] : $topts[:add] if prefixes[:add]
+
+          v[:pitch_stretch] = 1.0/prefixes[:staccato] if prefixes[:staccato]
+
+          v[:char] = u.text_value
+
+          !(v[:sample] or v[:note] or v[:cue]) ? nil : ZiffHash[v]
+        else
+          nil
+        end
+    end
     }
   end
 
@@ -275,6 +382,7 @@ grammar Ziffers
   ('[DC]' / '[DCF]' / '[F]' / '[S]' / '[DS]' / '[DSF]')
   {
     def value
+      # TODO: Not implemented
       {
         :jumper=>text_value
       }
@@ -309,62 +417,6 @@ grammar Ziffers
       def value
         elements.collect {|v| v.value }
       end
-    }
-  end
-
-  rule add
-    ('#' / 'b')
-    {
-      def value
-        {:add=>text_value}
-      end
-    }
-  end
-
-
-  rule multiuse
-    use 2..
-      {
-      def value
-        samples = elements.collect {|v| v.value }.compact
-        sample_names = samples.map {|s| s[:sample]}
-        chars = samples.map {|s| s[:char]}
-        samples_hash = {samples: sample_names, chars: chars}
-        samples_hash.merge!(samples[0].except(:sample,:char))
-        samples_hash
-      end
-    }
-  end
-
-
-  rule use
-    s:(sleep)? u:[A-Z]
-    {
-    def value
-      use_list = $tshared[:use] if $tshared and $tshared.has_key?(:use)
-        if use_list
-          $topts[:run_each] = use_list.delete(:run) if use_list[:run]
-          v = use_list.has_key?(u.text_value.to_sym) ? use_list[u.text_value.to_sym].dup : nil
-
-          return nil if !v
-
-          if v.is_a?(Hash)
-            $topts[:run_each] = v.delete(:run) if v[:run] and !v[:sample] and !v[:note]
-            v = apply_transformation(v, v[:apply] ? v[:apply] : {apply: v.except(:sample)})
-          elsif v.is_a?(Symbol)
-            v = {sample: v}
-          end
-
-          v[:sleep] =  (s.methods.include?(:value) ? s.value : (v.has_key?(:cue) ? 0.0 : $topts[:sleep]))
-
-          v.merge!($topts) { |key, important, default| important }
-          v[:char] = u.text_value
-
-          !(v[:sample] or v[:note] or v[:cue]) ? nil : ZiffHash[v]
-        else
-          nil
-        end
-    end
     }
   end
 
@@ -482,21 +534,8 @@ end
     }
   end
 
-  rule cycle
-    bar t:([0-9])+ ':' l:(repetition)* ':|'
-    {
-      def value
-      v =  {
-        :cycle => t.text_value.to_i,
-        :content => l.elements.collect { |v| v.value }.filter_map {|v| v if v}
-        }
-        v
-      end
-    }
-  end
-
   rule repetition
-    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / summed_octave / fixed_octave / slide / parens / cyclic / control / multiuse / use)*
+    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / numeric_octave / fixed_octave / slide / parens / cyclic / control / multiuse / use)*
     {
       def value
         elements.collect { |v| v.value }.filter_map {|v| v if v}
@@ -512,7 +551,7 @@ end
   end
 
   rule s
-     (" " / "\n")+
+     (" " / "\n" / "\r")+
      {
      def value
       nil

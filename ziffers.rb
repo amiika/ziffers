@@ -40,7 +40,7 @@ module Ziffers
       :skip => false
     }
 
-    @@default_keys = [:bpm, :use_arg_bpm_scaling, :cycle, :apply, :wait, :fade, :fade_in, :fader, :parse_chords, :sched_ahead, :use, :run, :store, :rate_based, :transform_enum, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :inverse, :octave, :array_inverse, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm, :group, :on, :superset, :operation, :set, :init,:auto_cue,:delay,:sync,:sync_bpm,:seed]
+    @@default_keys = [:bpm, :use_arg_bpm_scaling, :cycle, :apply, :wait, :fade, :fade_in, :fader, :parse_chords, :sched_ahead, :use, :run, :store, :rate_based, :transform_enum, :order_transform, :object_transform, :iteration, :combination, :permutation, :mirror, :reflect, :reverse, :inverse, :octave, :array_inverse, :array_transpose, :transpose, :transpose_enum, :repeated, :subset, :rotate, :detune, :augment, :inject, :zip, :append, :prepend, :pop, :shift, :shuffle, :pick, :stretch, :drop, :slice, :flex, :swap, :retrograde, :silence, :division, :compound, :harmonize, :rhythm, :group, :on, :superset, :operation, :set, :init,:auto_cue,:delay,:sync,:sync_bpm,:seed,:new_octave]
 
     @@slice_default_keys = [:scale, :key, :synth, :amp, :release, :sustain, :decay, :attack, :sleep, :pan, :clickiness, :port, :channel]
 
@@ -271,7 +271,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.except(:sync, :loop_name, :normalized, :apply, :chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :retrograde,:arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:hpcs,:run,:run_each,:char,:rhythm,:slide,:use,:A,:B,:C,:D,:E,:F,:G,:H,:I,:J,:K,:L,:M,:N,:O,:P,:Q,:R,:S,:T,:U,:W,:X,:Y)
+      ziff.except(:sync, :loop_name, :normalized, :apply, :chord_sleep, :chord_key, :roman, :replace, :sleep, :scale_length, :fade, :fade_in, :sample, :samples, :chars, :pc, :pc_orig, :octave, :phase, :pattern, :inverse, :on, :range, :negative, :send, :lambda, :synth, :cue, :rules, :eval, :gen, :retrograde,:arpeggio,:key,:scale,:chord_release,:chord_invert,:inverse,:rate_based,:skip,:midi,:control,:pcs,:hpcs,:run,:run_each,:char,:rhythm,:slide,:use,:A,:B,:C,:D,:E,:F,:G,:H,:I,:J,:K,:L,:M,:N,:O,:P,:Q,:R,:S,:T,:U,:W,:X,:Y)
     end
 
     def play_midi_out(md, opts)
@@ -346,7 +346,6 @@ module Ziffers
 
       loop_i = loop_name ? $zloop_states[loop_name][:loop_i] : 0
       loop_n = melody.length*(loop_i+1)
-
       loop do
         # TODO: Is this needed anymore? Added sliced loop_opts in zloop.
         # defaults = $zloop_states[loop_name][:defaults] if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
@@ -1062,11 +1061,18 @@ module Ziffers
         ziff[key] = val
       end
       case key
-      when :key, :scale, :octave
+      when :key, :scale
         if ziff[key] != val
           ziff[key] = val
           ziff.update_note
         end
+      when :octave
+        if ziff[:octave]
+          ziff[:octave] += val
+        else
+          ziff[:octave] = val
+        end
+        ziff.update_note
       when :chord_sleep
         ziff[:sleep] = val if ziff[:notes]
       when :transpose then

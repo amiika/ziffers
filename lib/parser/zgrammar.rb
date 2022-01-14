@@ -97,7 +97,7 @@ module Ziffers
     end
 
     def parse_loops(text, opts)
-      lines = text.split("\n").filter {|v| v!=""}
+      lines = text.lines.filter {|v| !v.strip.empty? }
       $topts = opts
       params = lines.map{ |l|
 
@@ -108,8 +108,9 @@ module Ziffers
           multi_line = false
         end
 
-        v = l.split("/")
-        v[1] = @@lparser.parse(v[1]).value if v[1]
+        v = l.split(" /") # space to separate from //
+
+        v[1] = @@lparser.parse(v[1]).value if v[1] and v[1]!=""
         v[1] = v[1] ? v[1].merge({multi_line: true}) : {multi_line: true} if multi_line
         v
       }
