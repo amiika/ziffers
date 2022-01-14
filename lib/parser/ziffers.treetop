@@ -27,10 +27,11 @@ grammar Ziffers
   end
 
   rule fixed_octave
-    o:([\^\_]*) s
+    o:([\^\_\,]+) s
     {
     def value
       $topts[:octave] = o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)}
+      $topts[:octave] = 0 if o.text_value.include?(",")
       nil
     end
     }
@@ -271,10 +272,10 @@ grammar Ziffers
   end
 
   rule octave
-    ('^' / '_')
+    ('^' / '_' / ',')
     {
       def value
-        {octave: text_value=='^' ? 1 : -1}
+        {octave: text_value=='^' ? 1 : text_value=='_' ? -1 : 0}
      end
     }
   end
@@ -298,7 +299,7 @@ grammar Ziffers
   end
 
   rule staccato
-    ','
+    '\''
     {
       def value
         {staccato: 1}

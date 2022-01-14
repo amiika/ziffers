@@ -113,7 +113,7 @@ def test_chords
 end
 
 def test_octaves
-  t_o = zparse "0 7 ^ 0 ^_ 0"
+  t_o = zparse "0 7 ^ 0 , 0"
   t_o.octaves
   assert(t_o.octaves,[0,1,1,0])
 end

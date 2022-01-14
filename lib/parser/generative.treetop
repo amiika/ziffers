@@ -186,7 +186,7 @@ grammar GenerativeSyntax
 
   # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
-   ([!\~&@|{}<>\[\]():;#^_%\n\-\/\*\.`´\,\=] / [a-zA-Z1-9])
+   ([!\~&@|{}<>\[\]():;#^_%\n\-\/\*\.`´\,\'] / [a-zA-Z1-9])
     {
       def value
         text_value
