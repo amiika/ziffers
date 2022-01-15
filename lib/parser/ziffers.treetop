@@ -38,7 +38,7 @@ grammar Ziffers
   end
 
   rule numeric_octave
-    '<' o:(integer) '>'
+    s '<' o:(integer) '>' s
     {
       def value
         $topts[:octave] = o.value
@@ -226,7 +226,7 @@ grammar Ziffers
   end
 
   rule pitch_classes
-    prefix:(prefix_sleep / octave / add / dynamics / staccato)* some_pitch_class:(normal_pitch_class / escaped_pitch_class)
+    prefix:(prefix_sleep / octave / escaped_octave / add / dynamics / staccato)* some_pitch_class:(normal_pitch_class / escaped_pitch_class)
     {
       def value
         dgr = some_pitch_class.value
@@ -277,6 +277,15 @@ grammar Ziffers
       def value
         {octave: text_value=='^' ? 1 : text_value=='_' ? -1 : 0}
      end
+    }
+  end
+
+  rule escaped_octave
+    '<' o:(integer) '>'
+    {
+      def value
+        {octave: o.value}
+      end
     }
   end
 
