@@ -217,10 +217,10 @@ grammar Ziffers
   end
 
   rule escaped_pitch_class
-    '=' e:('-'? [0-9]+)
+    '=' e:(decimal / integer)
     {
       def value
-        e.text_value.to_i
+        e.value
       end
     }
   end
@@ -232,6 +232,9 @@ grammar Ziffers
         dgr = some_pitch_class.value
         prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
         prefixes = {} if !prefixes
+
+        zlog "pitch class"
+        zlog dgr
 
         if !$topts[:midi]
           oct = prefixes[:octave] ? prefixes[:octave] : ($topts[:octave] ? $topts[:octave] : 0)
@@ -380,7 +383,7 @@ grammar Ziffers
   end
 
   rule eval
-    '=' e:([0-9\-*/\+])+ ' '
+    '=(' e:(([a-zA-Z0-9] / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!')*) ')'
     {
       def value
         eval(e.text_value)
@@ -466,7 +469,7 @@ grammar Ziffers
 end
 
   rule decimal
-    [0-9]+ '.' [0-9]+
+    '-'? [0-9]+ '.' [0-9]+
     {
       def value
        text_value.to_f

@@ -9,22 +9,37 @@ module Ziffers
 
     # Gets note from degree. Degree can also be negative or overflow to next octave
     def get_note_from_dgr(dgr, zkey, zscale, zoct=nil)
+      if dgr.is_a?(Float)
+        split_dgr = dgr.to_s.split(".")
+        remainder = split_dgr[1]
+        dgr = split_dgr[0].to_i
+      end
       scaleLength = scale(zkey,zscale).length-1
       dgr = dgr + zoct*scaleLength if zoct
       dgr+=1 if dgr>=0 if !@@degree_based
       if dgr>=scaleLength || dgr<0 then
         oct = (dgr-1)/scaleLength*12
         dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
-        return degree((dgr==0 ? scaleLength : dgr),zkey,zscale)+oct
+        note_value = degree((dgr==0 ? scaleLength : dgr),zkey,zscale)+oct
+        note_value = (note_value.to_s+"."+remainder).to_f if remainder
+        return note_value
       end
-      return degree(dgr,zkey,zscale)
+      note_value = degree(dgr,zkey,zscale)
+      note_value = (note_value.to_s+"."+remainder).to_f if remainder
+      zlog note_value
+      return note_value
     end
 
     # Get ziff object from degree. Same as get_note_from_dgr but returns hash object
     def get_ziff(dgr, zkey=:C, zscale=:major, oct=0, addition=0)
+      pc_orig = dgr
+      if dgr.is_a?(Float)
+        split_dgr = dgr.to_s.split(".")
+        remainder = split_dgr[1]
+        dgr = split_dgr[0].to_i
+      end
       scaleLength = scale(zkey,zscale).length-1
       #dgr = dgr + zoct*scaleLength if zoct!=0
-      pc_orig = dgr
       dgr+=1 if dgr>=0 if !@@degree_based
       if dgr>=scaleLength || dgr<0 then
         oct += (dgr-1)/scaleLength
@@ -32,6 +47,8 @@ module Ziffers
       end
       dgr = scaleLength if dgr == 0
       note_value = (degree(dgr,zkey,zscale)+(oct*12)+addition)
+      note_value = (note_value.to_s+"."+remainder).to_f if remainder
+      zlog note_value
       return {:note=>note_value>0 ? note_value>231 ? 230 : note_value : 1, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength}
     end
 

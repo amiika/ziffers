@@ -259,10 +259,10 @@ grammar GenerativeSyntax
   end
 
   rule escaped_pitch_class
-    '=' e:('-'? [0-9]+)
+    '=' e:(integer / decimal / random_between / random_decimal)
     {
       def value
-        e.text_value.to_i
+        "="+e.value.to_s
       end
     }
   end
@@ -286,7 +286,7 @@ grammar GenerativeSyntax
   end
 
   rule decimal
-    [0-9]* '.' [0-9]+
+    '-'? [0-9]* '.' [0-9]+
     {
       def value
        text_value.to_f
