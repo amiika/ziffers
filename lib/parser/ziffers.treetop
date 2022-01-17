@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / bar / repeat / multisleep / fixed_octave / numeric_octave / arpeggio / chords / pitch_classes / call / roman / eval / rest / control / multiuse / use / slide / jumper / parens / reset / escaped_opts)*
+    (s / bar / repeat / multisleep / fixed_octave / numeric_octave / arpeggio / chords / pitch_classes / call / eval / rest / control / multiuse / use / slide / jumper / parens / reset / escaped_opts)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.filter_map do |v|
@@ -38,7 +38,7 @@ grammar Ziffers
   end
 
   rule numeric_octave
-    s '<' o:(integer) '>' s
+    '<' o:(integer) '>' s
     {
       def value
         $topts[:octave] = o.value
@@ -232,9 +232,6 @@ grammar Ziffers
         dgr = some_pitch_class.value
         prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
         prefixes = {} if !prefixes
-
-        zlog "pitch class"
-        zlog dgr
 
         if !$topts[:midi]
           oct = prefixes[:octave] ? prefixes[:octave] : ($topts[:octave] ? $topts[:octave] : 0)
@@ -548,7 +545,7 @@ end
   end
 
   rule repetition
-    (repeat / s / bar / control / arpeggio / chords / pitch_classes / eval / rest / multisleep / numeric_octave / fixed_octave / slide / parens / cyclic / control / multiuse / use)*
+    (s / bar / repeat / multisleep / fixed_octave / numeric_octave / arpeggio / chords / pitch_classes / call / eval / rest / control / multiuse / use / slide / parens / reset / escaped_opts / cyclic)*
     {
       def value
         elements.collect { |v| v.value }.filter_map {|v| v if v}

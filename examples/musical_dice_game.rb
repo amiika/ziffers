@@ -1,6 +1,7 @@
 load "~/ziffers/ziffers.rb"
 
 # Musical dice game: https://en.wikipedia.org/wiki/Musikalisches_W%C3%BCrfelspiel
+# Very random version of musical dice game
 
 use_bpm 18
 use_synth :piano
@@ -13,12 +14,11 @@ live_loop :dice_game do
   r = rrand_i 0,175
   print tremble[r]
   print bass[r]
-  
+
   in_thread do
     zplay bass[r], octave: -1
   end
-  
-  zplay tremble[r], octave: 1
-  
-end
 
+  zplay tremble[r], octave: 1
+
+end
