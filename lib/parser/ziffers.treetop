@@ -561,7 +561,7 @@ end
   end
 
   rule s
-     (" " / "\n" / "\r")+
+     [\s\r\n]+
      {
      def value
       nil

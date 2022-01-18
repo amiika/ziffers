@@ -137,7 +137,12 @@ grammar Loops
   end
 
   rule space
-    (" " / "\n" / "\r")+
+      [\s\r\n]+
+      {
+        def value
+          text_value
+        end
+      }
   end
 
 end

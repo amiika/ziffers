@@ -107,12 +107,14 @@ module Ziffers
         else
           multi_line = false
         end
-
-        v = l.split(" /") # space to separate from //
-
-        v[1] = @@lparser.parse(v[1]).value if v[1] and v[1]!=""
-        v[1] = v[1] ? v[1].merge({multi_line: true}) : {multi_line: true} if multi_line
-        v
+        if l.include?("//")
+          [l]
+        else
+          v = l.split("/")
+          v[1] = @@lparser.parse(v[1]).value if v[1] and v[1]!=""
+          v[1] = v[1] ? v[1].merge({multi_line: true}) : {multi_line: true} if multi_line
+          v
+        end
       }
       params
     end

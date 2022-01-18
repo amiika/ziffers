@@ -213,10 +213,10 @@ grammar GenerativeSyntax
   end
 
   rule s
-      [\s]+
+      [\s\r\n]+
       {
         def value
-          text_value
+          " "
         end
       }
   end
