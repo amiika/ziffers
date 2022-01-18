@@ -226,7 +226,7 @@ grammar GenerativeSyntax
     {
      def value
      e = elements.collect {|v| v.value }
-      if $parse_chords
+      if Thread.current[:parse_chords]
         pitch_class_list = []
         e.each do |d|
           pitch_class_list.push(d[:pc])

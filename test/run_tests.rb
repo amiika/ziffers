@@ -153,7 +153,7 @@ def lazy_tests
     "h2 q 2 1 2 q ~<0.1>2555 h. 4 2 q.. ~<0.14>25 4 h ~<0.1>21221"
   ]
   
-  tests.each do |m|
+  tests.each_with_index do |m,i|
     r = zparse m
     r.durations
     r.notes

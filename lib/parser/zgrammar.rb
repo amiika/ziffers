@@ -4,7 +4,6 @@ require_relative "../defaults.rb"
 # For testing and debugging
 load "~/ziffers/lib/defaults.rb"
 '''
-
 module Ziffers
   module Grammar
     include SonicPi
@@ -62,13 +61,13 @@ module Ziffers
     # Parse shit using treeparse
     def parse_ziffers(text, opts, shared, durs)
       # TODO: Find a better way to inject parameters for the parser
-      $tchordsleep = opts[:chord_sleep]
-      $tshared = shared
-      $tshared[:counter] = 0
-      $topts = opts
-      $topts_orig = Marshal.load(Marshal.dump(opts))
-      $tarp = nil
-      $default_durs = durs
+      Thread.current[:tchordsleep] = opts[:chord_sleep]
+      Thread.current[:tshared] = shared
+      Thread.current[:counter] = 0
+      Thread.current[:topts] = opts
+      Thread.current[:topts_orig] = Marshal.load(Marshal.dump(opts))
+      Thread.current[:tarp] = nil
+      Thread.current[:default_durs] = durs
 
       result = @@zparser.parse(text)
 
@@ -85,7 +84,7 @@ module Ziffers
     def parse_generative(text, parse_chords=true)
       result = @@rparser.parse(text)
       # TODO: Find a better way to inject parameters for the parser
-      $parse_chords = parse_chords
+      Thread.current[:parse_chords] = parse_chords
 
       if !result
         puts @@rparser.failure_reason
@@ -98,9 +97,9 @@ module Ziffers
 
     def parse_loops(text, opts)
       lines = text.lines.filter {|v| !v.strip.empty? }
-      $topts = opts
+      Thread.current[:topts] = opts
       params = lines.map{ |l|
-
+        l = l.chomp
         if(l.rstrip.end_with?("\\"))
           l = l.rstrip.delete_suffix("\\")
           multi_line = true
