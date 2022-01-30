@@ -26,7 +26,6 @@ module Ziffers
       end
       note_value = degree(dgr,zkey,zscale)
       note_value = (note_value.to_s+"."+remainder).to_f if remainder
-      zlog note_value
       return note_value
     end
 
@@ -48,7 +47,6 @@ module Ziffers
       dgr = scaleLength if dgr == 0
       note_value = (degree(dgr,zkey,zscale)+(oct*12)+addition)
       note_value = (note_value.to_s+"."+remainder).to_f if remainder
-      zlog note_value
       return {:note=>note_value>0 ? note_value>231 ? 230 : note_value : 1, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength}
     end
 

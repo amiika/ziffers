@@ -1,4 +1,4 @@
-grammar Loops
+grammar Parameters
 
   rule base
     space? opts:(hash_elements / parameter) space?
@@ -14,7 +14,7 @@ grammar Loops
     '$' p:(string)
   {
     def value
-      Thread.current[:topts][p.value.to_sym]
+      Thread.current[:ziffers_param_opts][p.value.to_sym]
     end
   }
   end

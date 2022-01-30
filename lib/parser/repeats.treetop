@@ -1,0 +1,39 @@
+grammar Repeats
+
+  rule anything
+    (repeat / any / array)+
+    {
+      def value
+        elements.map{|v| v.value}.join("")
+      end
+    }
+  end
+
+  rule repeat
+   '[:' l:(any+) ':' p:([0-9]*) ']'
+    {
+      def value
+        ([l.text_value] * (p.text_value.strip.empty? ? 2 : p.text_value.to_i)).join(" | ")
+      end
+     }
+  end
+
+  rule any
+   ([!\~&@|{}<>=();#\^_%\n\r\s\t\-\/\*\+\.`´\,\'] / (':'? [a-zA-Z0-9+] ':'?))
+    {
+      def value
+        text_value
+      end
+    }
+  end
+
+  rule array
+    '[' any+ ']'
+    {
+      def value
+        text_value
+      end
+    }
+  end
+
+end

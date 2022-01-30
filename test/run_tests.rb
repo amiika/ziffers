@@ -24,14 +24,13 @@ def test2
   
   # Test loops and octaves etc.
   
-  m2 = zparse("[:q _ 0 , 1 <-1> 2 <0>0:][: , 2 3 h4:][:[:e 4 5 4 3 q 2 0:][:0 _4 h0:]:]", key: :e, scale: :major)
+  m2 = zparse("[:q _ 0 1 (-1) 2 (1)0:][: 2 3 h4:][:[:e 4 5 4 3 q 2 0:][:0 _4 h0:]:]", key: :e, scale: :major)
   print m2
   m2_s = zparams(m2,:sleep)
   m2_n = zparams(m2,:note)
   print m2_n
   assert_equal(m2_s,[0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.25, 0.25, 0.5, 0.125, 0.125, 0.125, 0.125, 0.25, 0.25, 0.125, 0.125, 0.125, 0.125, 0.25, 0.25, 0.25, 0.25, 0.5, 0.25, 0.25, 0.5, 0.125, 0.125, 0.125, 0.125, 0.25, 0.25, 0.125, 0.125, 0.125, 0.125, 0.25, 0.25, 0.25, 0.25, 0.5, 0.25, 0.25, 0.5])
-  assert_equal(m2_n, [52, 66, 56, 64, 52, 66, 56, 64, 68, 69, 71, 68, 69, 71, 71, 73, 71, 69, 68, 64, 71, 73, 71, 69, 68, 64, 64, 59, 64, 64, 59, 64, 71, 73, 71, 69, 68, 64, 71, 73, 71, 69, 68, 64, 64, 59, 64, 64, 59, 64])
-  
+  assert_equal(m2_n, [52, 54, 56, 64, 52, 54, 56, 64, 56, 57, 59, 56, 57, 59, 59, 61, 59, 57, 56, 52, 59, 61, 59, 57, 56, 52, 52, 47, 52, 52, 47, 52, 59, 61, 59, 57, 56, 52, 59, 61, 59, 57, 56, 52, 52, 47, 52, 52, 47, 52])
 end
 
 def test3
@@ -60,7 +59,7 @@ def test4
   assert_equal(t4_n,(chord_degree :i, :d, :major, 3).to_a)
   
   
-  t4_2 = zparse "i/1", key: :d, scale: :major
+  t4_2 = zparse "i+1", key: :d, scale: :major
   t4_2_n = zparams(t4_2,:notes)[0].to_a
   assert_equal(t4_2_n,(chord_degree :i, :d, :major, 1).to_a)
   
@@ -94,6 +93,7 @@ def test6
   
   # Regexp with '' eval syntax
   t6z_1 = zparse "q0 e0 1 2 3", rules: {/(?<=q)[0-9]/=>"=($+1)"}, gen: 3
+  print t6z_1
   t6_2 = zparams(t6z_1, :pc)
   assert_equal(t6_2,[3, 0, 1, 2, 3])
   
@@ -111,15 +111,25 @@ def test_chords
   tc = zparse "012 234 345 5679"
   tc_res =  [[60, 62, 64], [64, 65, 67], [65, 67, 69], [69, 71, 72, 76]]
   assert_equal(tc.notes,tc_res)
+  a = zparse "e i ii iii iv v vi vii", chord_name: "minor", chord_sleep: 0.15, chord_synth: :piano
+  assert(a.notes,[[60, 63, 67], [62, 65, 69], [64, 67, 71], [65, 68, 72], [67, 70, 74], [69, 72, 76], [71, 74, 78]])
+  
 end
 
 def test_octaves
-  t_o = zparse "0 7 ^ 0 , 0 _ 0"
+  t_o = zparse "0 7 ^ 0 | 0 _ 0"
   t_o.octaves
   assert(t_o.octaves,[0,1,1,0,-1])
   
-  to2 = zparse "0 <1> 2 <-2> 2 <3>1"
+  to2 = zparse "0 (1) 2 (-2) 2 (3)1"
   assert(to2.octaves,[0, 1, -2, 3])
+end
+
+def test_samples
+  a = zparse "A q B e A A", A: :ambi_dark_woosh, B: :ambi_sauna
+  b = a.durations
+  assert(a, [:ambi_dark_woosh, :ambi_sauna, :ambi_dark_woosh, :ambi_dark_woosh])
+  assert(b, [1.0, 0.25, 0.125, 0.125])
 end
 
 def lazy_tests
@@ -172,6 +182,7 @@ test5
 test6
 test_chords
 test_octaves
+test_samples
 
 
 print "All tests passed!"

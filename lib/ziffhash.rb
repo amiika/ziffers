@@ -22,6 +22,10 @@ module Ziffers
         self[:note]
       end
 
+      def measure
+        self[:measure]
+      end
+
       def deep_clone
         ZiffHash[Marshal.load(Marshal.dump(self))]
       end

@@ -141,7 +141,7 @@ grammar GenerativeSyntax
   end
 
   rule array
-    '[' first:(array_items) rest:(',' i:array_items)* ']'
+    '[' first:(array_items) rest:(',' i:array_items)+ ']'
     {
     def value
       if rest.empty?
@@ -164,11 +164,20 @@ grammar GenerativeSyntax
   end
 
   rule array_items
-    (set / ranges / group / pitch_classes / rest / s / sleep / array / random_between)*
+    (set / ranges / group / pitch_classes / rest / s / sleep / array / random_between / method)*
     {
     def value
       elements.map {|v| v.value }.filter_map {|v| v if v}
     end
+    }
+  end
+
+  rule method
+    ':' [a-zA-Z]+ ('<' [0-9\.\,]* '>')?
+    {
+      def value
+        text_value
+      end
     }
   end
 
@@ -186,7 +195,7 @@ grammar GenerativeSyntax
 
   # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
-   ([!\~&@|{}<>\[\]():;#^_%\n\-\/\*\.`´\,\'] / [a-zA-Z1-9])
+   ([!\~&@|{}<>\[\]():;#\^_%\n\-\/\*\+\.`´\,\'] / [a-zA-Z0-9])
     {
       def value
         text_value

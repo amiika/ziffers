@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / bar / repeat / multisleep / fixed_octave / numeric_octave / arpeggio / chords / pitch_classes / call / eval / rest / control / multiuse / use / slide / jumper / parens / reset / escaped_opts)*
+    (s / bar / repeat / multisleep / fixed_octave / numeric_octave / arpeggio / chords / pitch_classes / call / eval / rest / control / multiuse / use / slide / jumper / parens / reset / skip / escaped_opts)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.filter_map do |v|
@@ -27,18 +27,18 @@ grammar Ziffers
   end
 
   rule fixed_octave
-    o:([\^\_\,]+) s
+    o:([\^\_]+) (s / sleep)
     {
     def value
-      Thread.current[:topts][:octave] = o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)}
-      Thread.current[:topts][:octave] = 0 if o.text_value.include?(",")
+      Thread.current[:topts][:octave] = 0 if !Thread.current[:topts][:octave]
+      Thread.current[:topts][:octave] += o.text_value.split('').inject(0){|sum,x| sum + (x=='^' ? 1 : -1)}
       nil
     end
     }
   end
 
   rule numeric_octave
-    '<' o:(integer) '>' s
+    '(' o:(integer) ')' (s / sleep)
     {
       def value
         Thread.current[:topts][:octave] = o.value
@@ -126,7 +126,7 @@ grammar Ziffers
       c.merge!(Thread.current[:topts]) { |key, important, default| important }
       c = ZiffHash[c]
       if !Thread.current[:tshared][:normalized]
-        c = apply_transformation c, Thread.current[:topts], 0, Thread.current[:counter]
+        c = apply_transformation c, Thread.current[:tshared], 0, Thread.current[:counter]
         Thread.current[:counter] = Thread.current[:counter]+1
       end
       c
@@ -141,11 +141,13 @@ grammar Ziffers
       e = elements.collect {|v| v.value }
       pitch_class_list = []
       note_list = []
+      octave_list = []
       e.each do |d|
         pitch_class_list.push(d[:pc])
         note_list.push(d[:note])
+        octave_list.push(d[:octave])
       end
-      v = {:notes=>note_list, :pcs=>pitch_class_list, :hpcs=>e}
+      v = {:notes=>note_list, :pcs=>pitch_class_list, :hpcs=>e, :octaves=>octave_list}
       v.merge!(Thread.current[:topts])
       v[:amp] = e[0][:amp] if e[0][:amp]
       v[:sleep] = Thread.current[:tchordsleep] if Thread.current[:tchordsleep]
@@ -158,6 +160,7 @@ grammar Ziffers
     roman_number:([iv]+) rd:(roman_pick)? cd:(chord_name)? '*'? oct:([0-9])?
     {
       def value
+       name = Thread.current[:tshared][:chord_name].to_sym if Thread.current[:tshared][:chord_name]
        name = cd.value.to_sym if cd.methods.include?(:value)
        roman = roman_number.text_value.to_sym
         if name
@@ -165,6 +168,12 @@ grammar Ziffers
           notes = chord(root, name, {num_octaves: !oct.text_value.empty? ? oct.text_value.to_i : 1}).notes
         else
           notes = chord_degree(roman, Thread.current[:topts][:key], Thread.current[:topts][:scale], rd.methods.include?(:value) ? rd.value : 3)
+          # TODO: Use scale length for different scales
+          scale_length = scale(Thread.current[:topts][:key], Thread.current[:topts][:scale]).length-1
+          notes = notes + chord_degree(roman, (note_info Thread.current[:topts][:key]).midi_note+scale_length, Thread.current[:topts][:scale], rd.value-scale_length-1) if (rd.methods.include?(:value) && rd.value>scale_length)
+          notes = notes + chord_degree(roman, (note_info Thread.current[:topts][:key]).midi_note+scale_length*2, Thread.current[:topts][:scale], rd.value-scale_length-1*2) if (rd.methods.include?(:value) && rd.value>scale_length*2)
+          notes = notes + chord_degree(roman, (note_info Thread.current[:topts][:key]).midi_note+scale_length*3, Thread.current[:topts][:scale], rd.value-scale_length*3) if (rd.methods.include?(:value) && rd.value>scale_length*3)
+          notes = notes + chord_degree(roman, (note_info Thread.current[:topts][:key]).midi_note+scale_length*4, Thread.current[:topts][:scale], rd.value-scale_length*4) if (rd.methods.include?(:value) && rd.value>scale_length*4)
         end
         v = {
           :roman=>roman,
@@ -178,7 +187,7 @@ grammar Ziffers
   end
 
   rule roman_pick
-    '/' i:([0-9])
+    '+' i:([0-9]*)
     {
       def value
         i.text_value.to_i
@@ -196,13 +205,62 @@ grammar Ziffers
   end
 
   rule call
-    (':' [a-zA-Z]+)+
+    prefix:(prefix_sleep)* m:(method_call)+
     {
       def value
-      {
-        :method => elements.collect {|v| v.text_value },
-      }.merge!(Thread.current[:topts])
+        v = {methods: m.elements.collect {|v| v.value }}.merge!(Thread.current[:topts])
+        prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
 
+        if prefixes
+          v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
+        end
+        
+        ZiffHash[v]
+      end
+    }
+  end
+
+  rule method_call
+    method_name p:(parameter_list)?
+    {
+      def value
+      v = {
+        :method => method_name.value
+        }
+        v[:parameters] = p.value if p.methods.include?(:value)
+        v
+      end
+    }
+  end
+
+  rule method_name
+    ':' [a-zA-Z]+
+    {
+      def value
+        text_value
+      end
+    }
+  end
+
+  rule parameter_list
+    '<' first:(parameter) rest:(',' i:parameter)* '>'
+    {
+    def value
+      if rest.empty?
+        first.value
+      else
+        r = rest.elements.map {|v| v.i.value }
+        r = [first.value]+r
+      end
+    end
+    }
+  end
+
+  rule parameter
+    p:(decimal / integer)
+    {
+      def value
+        p.value
       end
     }
   end
@@ -234,7 +292,8 @@ grammar Ziffers
         prefixes = {} if !prefixes
 
         if !Thread.current[:topts][:midi]
-          oct = prefixes[:octave] ? prefixes[:octave] : (Thread.current[:topts][:octave] ? Thread.current[:topts][:octave] : 0)
+          oct = prefixes[:octave] ? prefixes[:octave] : 0
+          oct = oct + Thread.current[:topts][:octave] if Thread.current[:topts][:octave]
           addition = prefixes[:add] ? prefixes[:add] : 0
 
           v = get_ziff dgr, Thread.current[:topts][:key], Thread.current[:topts][:scale], oct, addition
@@ -252,7 +311,7 @@ grammar Ziffers
 
         v = ZiffHash[v]
         if !Thread.current[:tshared][:normalized] # If directly from zparse
-          v = apply_transformation v, Thread.current[:tshared], 0, Thread.current[:counter]
+          v = apply_transformation v, Thread.current[:tshared], 0, Thread.current[:counter]+(Thread.current[:tshared][:loop_i] ? Thread.current[:tshared][:loop_i] : 0)
           Thread.current[:counter] = Thread.current[:counter]+1
         end
         v
@@ -272,16 +331,16 @@ grammar Ziffers
   end
 
   rule octave
-    ('^' / '_' / ',')
+    ('^' / '_')
     {
       def value
-        {octave: text_value=='^' ? 1 : text_value=='_' ? -1 : 0}
+        {octave: (text_value=='^' ? 1 : -1) }
      end
     }
   end
 
   rule escaped_octave
-    '<' o:(integer) '>'
+    '(' o:(integer) ')'
     {
       def value
         {octave: o.value}
@@ -422,7 +481,7 @@ grammar Ziffers
   end
 
   rule subset
-    (s / bar / chords / pitch_classes / rest / eval / control / multiuse / use / parens / cyclic)*
+    (s / bar / chords / pitch_classes / rest / eval / control / multiuse / use / parens / cyclic)+
     {
       def value
         elements.collect {|v| v.value }
@@ -569,10 +628,23 @@ end
     }
   end
 
+  rule skip
+    '# '
+    {
+    def value
+      Thread.current[:topts][:skip] = Thread.current[:topts][:skip] ? false : true
+      nil
+    end
+  }
+  end
 
   rule bar
      '|' {
        def value
+          Thread.current[:topts].except!(:skip)
+          Thread.current[:topts][:octave] = 0
+          Thread.current[:topts][:sleep] = Thread.current[:topts_orig][:sleep] ? Thread.current[:topts_orig][:sleep] : 1.0
+          Thread.current[:topts][:measure]  = !Thread.current[:topts][:measure] ? 0 : Thread.current[:topts][:measure] += 1
           nil
         end
       }

@@ -12,11 +12,13 @@ module Ziffers
 
     Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'ziffers.treetop')))
     Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'generative.treetop')))
-    Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'loops.treetop')))
+    Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'parameters.treetop')))
+    Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'repeats.treetop')))
 
     @@zparser = ZiffersParser.new
     @@rparser = GenerativeSyntaxParser.new
-    @@lparser = LoopsParser.new
+    @@lparser = ParametersParser.new
+    @@repeatparser = RepeatsParser.new
 
     def resolve_subsets(subs,divSleep)
       new_list = subs.each_with_object([]) do |z,n|
@@ -60,7 +62,7 @@ module Ziffers
 
     # Parse shit using treeparse
     def parse_ziffers(text, opts, shared, durs)
-      # TODO: Find a better way to inject parameters for the parser
+      # TODO: Find a better way to inject parameters for the parser ... or at least combine & rename
       Thread.current[:tchordsleep] = opts[:chord_sleep]
       Thread.current[:tshared] = shared
       Thread.current[:counter] = 0
@@ -95,27 +97,34 @@ module Ziffers
       result.value
     end
 
-    def parse_loops(text, opts)
-      lines = text.lines.filter {|v| !v.strip.empty? }
-      Thread.current[:topts] = opts
-      params = lines.map{ |l|
-        l = l.chomp
-        if(l.rstrip.end_with?("\\"))
-          l = l.rstrip.delete_suffix("\\")
-          multi_line = true
-        else
-          multi_line = false
-        end
-        if l.include?("//")
-          [l]
-        else
-          v = l.split("/")
-          v[1] = @@lparser.parse(v[1]).value if v[1] and v[1]!=""
-          v[1] = v[1] ? v[1].merge({multi_line: true}) : {multi_line: true} if multi_line
-          v
-        end
-      }
-      params
+    def parse_params(text,opts={})
+      return nil if !text
+      Thread.current[:ziffers_param_opts] = opts
+
+      result = @@lparser.parse(text)
+
+      if !result
+        puts @@lparser.failure_reason
+        puts @@lparser.failure_line
+        puts @@lparser.failure_column
+      end
+
+      result.value
+    end
+
+    # Currently used only in multi line parsing
+    def unroll_repeats(text)
+      return nil if !text
+
+      result = @@repeatparser.parse(text)
+
+      if !result
+        puts @@repeatparser.failure_reason
+        puts @@repeatparser.failure_line
+        puts @@repeatparser.failure_column
+      end
+
+      result.value
     end
 
   end

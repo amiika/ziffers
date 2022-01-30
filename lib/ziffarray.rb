@@ -13,6 +13,24 @@ module Ziffers
     include Ziffers::Generators
     include Ziffers::Defaults
 
+    def deep_clone
+      ZiffHash[Marshal.load(Marshal.dump(self))]
+    end
+
+    def hash_measures
+      self.group_by {|d| d.measure }
+    end
+
+    def measures
+      self.hash_measures.values.map {|v| ZiffArray.new(v)}
+    end
+
+    def group_measures(i)
+      self.measures.each_slice(i).collect do |s|
+        s.map {|z| ZiffArray.new(z) }
+      end
+    end
+
     def subset(range)
       ZiffArray.new(self[range])
     end
@@ -44,11 +62,15 @@ module Ziffers
 
     def inverse(start=0)
       start = 0 if [true, false].include?(start) and start
-      ZiffArray.new(self.map {|n| n.invert start })
+      ZiffArray.new(self.map {|n| n.inverse start })
     end
 
     def duration
       self.durations.inject(0){|sum,x| sum+x }
+    end
+
+    def samples
+      self.map {|s| s[:sample] }
     end
 
     def retrograde(retrograde=true, chords=false)
@@ -303,7 +325,7 @@ module Ziffers
     end
 
     def prime
-      most_left_compact([self.normal_form.zero, self.invert.normal_form.zero])
+      most_left_compact([self.normal_form.zero, self.inverse.normal_form.zero])
     end
 
     # Adapted from: https://github.com/beausievers/Ruby-PCSet/blob/master/pcset.rb#L339
