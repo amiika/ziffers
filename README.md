@@ -24,8 +24,8 @@ z1 "e1", rules: {
 ```
 or complex drumlines with custom sample or midi mapping:
 ```
-breakbeat = "| q HB H | HS (H B) | (H B) (H B) | HS (H B)  |
-             |   HB H | HS H     | (H H) (r B) | HS (H H)  |"
+breakbeat = "| HB H | HS (H B)   | (HB S) (HB S)   | HS (H B S)  |
+             | HB H | HS (H B S) | (H H) (S r B)   | HS (H H)    |"
 
 samples = {
   B: :bd_tek,
@@ -33,7 +33,7 @@ samples = {
   H: {sample: :drum_cymbal_closed, amp: 0.2}
 }
 
-z1 breakbeat, use: samples
+z1 breakbeat, use: samples, sleep: 0.25
 ```
 or play infinite sequences. Easy as:
 ```
