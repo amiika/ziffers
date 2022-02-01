@@ -545,6 +545,7 @@ module Ziffers
     end
 
     def normalize_effects(run,char=nil)
+      print run
       run = [run] if run.is_a?(Hash)
       run = [{with_fx: run}] if run.is_a?(Symbol)
       run.map do |effect|
@@ -803,21 +804,23 @@ module Ziffers
       raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
       raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
       if !$zloop_states[name] then # If first time
+        print "FIRST TIME"
         $zloop_states[name] = {}
         $zloop_states[name][:loop_i] = 0
+      else
+        print "ALREADY HERE"
       end
       $zloop_states[name][:cycle] = defaults.delete(:cycle) if defaults[:cycle]
 
       create_loop_opts(opts,$zloop_states[name])
 
-      if opts[:phase] then
-        defaults[:phase] = opts.delete(:phase)
+      if defaults[:phase] then
         defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
       end
 
       #if melody.is_a?(Array) && melody[0].is_a?(Hash) then
       #  defaults[:preparsed] = true
-      if melody.is_a?(Enumerator) or ((opts[:parse] or (has_combinatorics(defaults)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !opts[:seed])
+      if melody.is_a?(Enumerator) or ((defaults[:parse] or (has_combinatorics(defaults)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !defaults[:seed])
 
         if melody.is_a? Enumerator then
           enumeration = melody
@@ -835,35 +838,35 @@ module Ziffers
       $zloop_states[name][:defaults] = opts.merge(defaults)
 
       live_loop name, defaults.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
+
+        if defaults[:stop] and ((defaults[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=defaults[:stop]) or ([true].include? defaults[:stop]) or (melody.is_a?(String) and (melody.start_with? "//" or melody.start_with? "# ")) then
+          $zloop_states.delete(name)
+          stop
+        end
+
         use_sched_ahead_time (defaults[:sched_ahead] ? defaults[:sched_ahead] : 1)
         use_arg_bpm_scaling defaults[:use_arg_bpm_scaling] ? defaults[:use_arg_bpm_scaling] : false
         eval_loop_opts(opts,$zloop_states[name])
         sync defaults[:wait] if defaults[:wait]
 
-        if opts[:phase] or defaults[:phase] then
-          defaults[:phase] = opts.delete(:phase) if opts[:phase]
+        if defaults[:phase] then
           phase = defaults[:phase].is_a?(Array) ? defaults[:phase][$zloop_states[name][:loop_i] % defaults[:phase].length] : defaults[:phase]
           sleep phase
-        end
-
-        if opts[:stop] and ((opts[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=opts[:stop]) or ([true].include? opts[:stop]) or (melody.is_a?(String) and (melody.start_with? "//" or melody.start_with? "# ")) then
-          $zloop_states.delete(name)
-          stop
         end
 
         if $zloop_states[name][:cycle] then
           loop_opts = opts.clone
           cycle_array = ($zloop_states[name][:cycle].is_a? Array) ? $zloop_states[name][:cycle] : [$zloop_states[name][:cycle]]
           cycle_array.each do |value|
-            raise "Expected :on in :cycle object!" if !value[:on]
-            mod_cycles = ($zloop_states[name][:loop_i]+1) % value[:on]
+            raise "Expected :to in :cycle object!" if !value[:at]
+            mod_cycles = ($zloop_states[name][:loop_i]+1) % value[:at]
             if value[:range] and value[:range].is_a?(Range) then
-              mod_cycles = value[:on] if mod_cycles == 0
+              mod_cycles = value[:at] if mod_cycles == 0
               if mod_cycles >= value[:range].begin and mod_cycles <= value[:range].end then
-                loop_opts = get_loop_opts(value.except(:on,:range),loop_opts,$zloop_states[name][:loop_i])
+                loop_opts = get_loop_opts(value.except(:at,:range),loop_opts,$zloop_states[name][:loop_i])
               end
             elsif mod_cycles == 0 then
-              loop_opts = get_loop_opts(value.except(:on),loop_opts,$zloop_states[name][:loop_i])
+              loop_opts = get_loop_opts(value.except(:at),loop_opts,$zloop_states[name][:loop_i])
             end
           end
         end
@@ -1192,8 +1195,12 @@ module Ziffers
     if defaults[:apply]
       apply_all = defaults[:apply].is_a?(Array) ? defaults[:apply] : [defaults[:apply]]
       apply_all.each do |apply|
-        if ((!apply[:on] and !apply[:mod]) or (apply[:on].is_a?(Integer) and apply[:on]==(note_i+1)) or (apply[:mod].is_a?(Integer) and (note_i+1+(loop_i*melody_size)) % apply[:mod] == 0) or (apply[:on].is_a?(Array) and apply[:on].include?(note_i+1)) or (apply[:on].is_a?(Range) and apply[:on] === (note_i+1)))
-          apply[:run_each] = apply.delete(:run) if apply[:run]
+        if ((!apply[:at] and !apply[:mod]) or (apply[:at].is_a?(Integer) and apply[:at]==(note_i)) or (apply[:mod].is_a?(Integer) and (note_i+1+(loop_i*melody_size)) % apply[:mod] == 0) or (apply[:at].is_a?(Array) and apply[:at].include?(note_i)) or (apply[:at].is_a?(Range) and apply[:at] === (note_i)))
+          with_key = apply.select {|k,v| k.to_s.start_with?("with_") }
+          if !with_key.empty?
+            fx_hash = {:run_each => apply.except(*[:at, :mod]) }
+            apply = fx_hash
+          end
           defaults = defaults.dup
           defaults = defaults.except!(:apply).merge(apply)
         end
