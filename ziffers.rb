@@ -357,8 +357,10 @@ module Ziffers
       loop_n = melody.length*(loop_i+1)
 
       loop do
-        # TODO: Is this needed anymore? Added sliced loop_opts in zloop.
-        # defaults = $zloop_states[loop_name][:defaults] if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
+
+        # Default opts for enums
+        defaults = $zloop_states[loop_name][:defaults] if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
+
         if !opts[:port] and defaults[:run] then
           block_with_effects normalize_effects(defaults[:run]) do
             zplayer(melody,opts,defaults,loop_i)
@@ -368,7 +370,6 @@ module Ziffers
         end
         print "Cycle index: "+loop_i.to_s if @@debug and loop_i>0
         break if !enum
-
         defaults[:loop_i] = loop_i
         melody = normalize_melody enum.next, opts, defaults
         loop_i = loop_i+1
@@ -546,7 +547,6 @@ module Ziffers
     end
 
     def normalize_effects(run,char=nil)
-      print run
       run = [run] if run.is_a?(Hash)
       run = [{with_fx: run}] if run.is_a?(Symbol)
       run.map do |effect|
