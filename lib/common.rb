@@ -14,6 +14,7 @@ module Ziffers
         remainder = split_dgr[1]
         dgr = split_dgr[0].to_i
       end
+      return {:note=>:r} if dgr==0 and @@degree_based
       scaleLength = scale(zkey,zscale).length-1
       dgr = dgr + zoct*scaleLength if zoct
       dgr+=1 if dgr>=0 if !@@degree_based
@@ -37,6 +38,7 @@ module Ziffers
         remainder = split_dgr[1]
         dgr = split_dgr[0].to_i
       end
+      return {:note=>:r} if dgr==0 and @@degree_based
       scaleLength = scale(zkey,zscale).length-1
       #dgr = dgr + zoct*scaleLength if zoct!=0
       dgr+=1 if dgr>=0 if !@@degree_based

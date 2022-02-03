@@ -209,6 +209,7 @@ module Ziffers
       end
     end
 
+    # https://oeis.org/A001113
     def euler
       Enumerator.new do |y|
         k, a, b, a1, b1 = 2, 3, 1, 8, 3
@@ -225,6 +226,45 @@ module Ziffers
         end
       end
     end
+
+  # https://oeis.org/A309600
+  def acid10
+  Enumerator.new do |y|
+    a = 7
+    i = 0
+    y << 7 if i==0
+    while true do
+        b = (a + 3 * (9 * a ** 3 - 17)) % (10 ** (i + 2))
+        y << (b - a) / (10 ** (i + 1))
+        i+=1
+        a = b
+      end
+
+    end
+  end
+
+  # https://oeis.org/A000695
+  def bruijn
+  Enumerator.new do |n|
+    x = 0
+    while true do
+      n << x
+      y = ~(x << 1)
+      x = (x - y) & y
+    end
+  end
+end
+
+  # https://oeis.org/A059905
+def sqr_walk
+  Enumerator.new do |y|
+    n = 0
+    while true do
+        y << (0..n.bit_length/2).to_a.map { |i| (n >> 2 * i & 1) << i}.reduce(:+)
+        n+=1
+      end
+    end
+  end
 
     # https://www.mathpages.com/home/kmath312/kmath312.htm
     def reverse_sum(n=17509097067,base=10)

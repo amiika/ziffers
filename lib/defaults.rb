@@ -7,6 +7,10 @@ module Ziffers
       @@default_durs[k.to_sym]
     end
 
+    def list_dur_chars
+      @@default_durs.to_a
+    end
+
       @@rhythm_keys = ['e','q','q.','h','h.','w','w.','d','d.','l']
 
       @@default_durs = {
@@ -35,6 +39,7 @@ module Ziffers
               'g': 0.021, # 40
               'u': 0.016, # 30 - 1/64
               'j': 0.010, # 20
+              'o': 0.005, # 10 - 1/128
               'z': 0.0 # 0
             }
 

@@ -21,6 +21,7 @@ load "~/ziffers/lib/generators.rb"
 load "~/ziffers/lib/defaults.rb"
 load "~/ziffers/lib/pc_sets.rb"
 '''
+
 print "Ziffers 2.0 alpha"
 
 module Ziffers
@@ -804,11 +805,8 @@ module Ziffers
       raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
       raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
       if !$zloop_states[name] then # If first time
-        print "FIRST TIME"
         $zloop_states[name] = {}
         $zloop_states[name][:loop_i] = 0
-      else
-        print "ALREADY HERE"
       end
       $zloop_states[name][:cycle] = defaults.delete(:cycle) if defaults[:cycle]
 
