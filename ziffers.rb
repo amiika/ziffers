@@ -577,6 +577,17 @@ module Ziffers
 
     def normalize_melody(melody, opts, defaults)
       defaults[:normalized] = true
+
+      if melody.is_a?(Proc)
+        loop_i = defaults[:loop_name] ? $zloop_states[defaults[:loop_name]][:loop_i] : 0
+        case melody.arity
+        when 0 then
+          melody = melody.()
+        when 1 then
+          melody = melody.(loop_i)
+        end
+      end
+
       if melody.is_a?(String)
         return zparse(melody,opts,defaults)
       elsif melody.is_a?(Symbol) and melody == :r
@@ -1208,6 +1219,7 @@ module Ziffers
       end
     end
     defaults.each do |key,val|
+
       if val.is_a? Proc then
         if val.arity == 1
           val = val.(note_i)
@@ -1217,13 +1229,16 @@ module Ziffers
           val = val.()
         end
         ziff[key] = val
-      elsif val.is_a?(Array) and ![:scale,:run,:run_each,:apply].include?(key)
+      end
+
+      if val.is_a?(Array) and ![:scale,:run,:run_each,:apply].include?(key)
         val = val.ring[loop_i*melody_size+note_i]
         ziff[key] = val
       elsif val.is_a? SonicPi::Core::RingVector
         val = val[loop_i*melody_size+note_i]
         ziff[key] = val
       end
+
       case key
       when :key, :scale
         if ziff[key] != val
