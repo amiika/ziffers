@@ -1270,6 +1270,8 @@ module Ziffers
         ziff = ziff.detune val
       when :object_transform
         ziff = send(val,ziff,loop_i,note_i,melody_size)
+      when :sleep
+        # Ignore these
       else # :synth, :amp, :release, :sustain, :decay, :attack, :sleep, :pan, :res, :cutoff, etc
         ziff[key] = val
       end
