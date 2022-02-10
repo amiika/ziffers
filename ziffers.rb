@@ -116,8 +116,10 @@ module Ziffers
 
     def ziff_to_string(value)
       if value.is_a?(Hash)
+        sleep_value = @@default_durs.key(value[:sleep])
+        sleep_value = "<"+value[:sleep].to_s+">" if !sleep_value
         # TODO: Clean this mess up
-        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? @@default_durs.key(value[:sleep]).to_s : value[:sleep].to_s) +
+        ""+((value[:sleep].is_a?(Integer) or value[:sleep].is_a?(Float)) ? sleep_value.to_s : value[:sleep].to_s) +
         value[:dot].to_s +
         (!value[:hpcs] ? (value[:octave].is_a?(String) ? value[:octave] : ((value[:octave].is_a?(Integer) && value[:octave]!=0) ? (value[:octave]>0 ? "^"*value[:octave] : "_"*value[:octave].abs) : "" )) : "") +
         value[:add].to_s +

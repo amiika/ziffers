@@ -88,6 +88,7 @@ module Ziffers
         puts @@zparser.failure_column
       end
       # Note to self: Do not call result.value more than once to avoid endless debugging.
+      raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
       ziffers = ZiffArray.new(result.value)
       apply_array_transformations ziffers, opts, shared
     end
@@ -102,8 +103,12 @@ module Ziffers
         puts @@rparser.failure_line
         puts @@rparser.failure_column
       end
-
+      raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
       result.value
+    end
+
+    def parse_failure(text)
+      return "'"+text.match(/after(\S*) (.*)/)[2]+"'"
     end
 
     def parse_params(text,opts={})
@@ -117,7 +122,7 @@ module Ziffers
         puts @@lparser.failure_line
         puts @@lparser.failure_column
       end
-
+      raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
       result.value
     end
 
@@ -132,7 +137,7 @@ module Ziffers
         puts @@repeatparser.failure_line
         puts @@repeatparser.failure_column
       end
-
+      raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
       result.value
     end
 

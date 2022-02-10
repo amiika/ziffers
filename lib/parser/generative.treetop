@@ -231,7 +231,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (set / ranges / group / pitch_classes / rest / s / sleep / array / set_between / control / cyclic)*
+    (set / ranges / group / pitch_classes / rest / s / sleep / array / set_between / control / cyclic / bar)*
     {
     def value
       elements.map {|v| v.value }.filter_map {|v| v if v}
@@ -255,7 +255,7 @@ grammar GenerativeSyntax
   end
 
   rule array_items
-    (set / ranges / group / pitch_classes / rest / s / sleep / array / random_between / method / control)*
+    (set / ranges / group / pitch_classes / rest / s / sleep / array / random_between / method / control / bar)*
     {
     def value
       elements.map {|v| v.value }.filter_map {|v| v if v}
@@ -515,6 +515,14 @@ grammar GenerativeSyntax
      end
     }
   end
+
+  rule bar
+     '|' {
+      def value
+       text_value
+     end
+     }
+   end
 
   rule sleep
     [mklpdcwyhnqaefsxtgujz] ('.')*
