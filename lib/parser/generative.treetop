@@ -10,17 +10,39 @@ grammar GenerativeSyntax
   end
 
   rule set
-    '{' ':'? content:(set_items) repeat_two:(':')? repeat:(integer)? '}' p:(('~' / '?') [1-9]*)? o:(operation)* inv:('_')? durs:(duration_set)?
+    '{' ':'? content:(set_items) repeat_two:(':')? repeat:(integer)? '}' p:(('~' / '?') [1-9]*)? t:(transform)? o:(operation)*  durs:(duration_set)?
     {
     def value
 
       reps = repeat.value if repeat.methods.include?(:value)
       reps = (reps and reps>1) ? reps : (repeat_two.text_value==":" ? 2 : 1)
 
-      set = reps.times.collect do
+      set = reps.times.collect do |i|
         original_set = content.value.flatten.filter {|v| v != " "}
 
-        set = ZiffArray.new(Marshal.load(Marshal.dump(original_set)))
+        set = Marshal.load(Marshal.dump(original_set))
+
+        set  = set.map {|v| v = v[:cycle][i%v[:cycle].length] if v.is_a?(Hash) and v[:cycle] ; v }.flatten
+
+        set = ZiffArray.new(set)
+
+       # TODO: This is bit experimental
+          if t.methods.include?(:value)
+            t.value.split("").each do |transform|
+              case transform
+              when "u"
+                set = set.uniq
+              when "i"
+                set = set.map{|v| v[:pc] = ~(v[:pc].to_i-1) if v.is_a?(Hash) ; v }
+              when "m"
+                set = set + set.reverse.drop(1)
+              when "r"
+                set = set + set.drop(1).reverse.drop(1)
+              when "o"
+                set = ZiffArray.new(set.ois.map{|v| {pc: v}})
+              end
+            end
+          end
 
         if p and p.text_value != ""
           set = set.shuffle if p.text_value[0]=="~"
@@ -34,50 +56,76 @@ grammar GenerativeSyntax
               case op.operator
               when '**', '*', '/', '+', '-', '^', '%', '|', '&', '<<', '>>'
                 if op.value.kind_of?(Array)
-
                     set = op_values.map do |z|
                         set.map  do |c|
-                            copy = Marshal.load(Marshal.dump(c))
+                            c_dup = Marshal.load(Marshal.dump(c))
+                            z_dup = Marshal.load(Marshal.dump(z))
+
+                            z_dup = z_dup[:cycle][i%z_dup[:cycle].length] if z_dup.is_a?(Hash) and z_dup[:cycle]
+
                             if z and c
                               if z.is_a?(Hash) and c.is_a?(Hash)
                                 if z[:pc] and c[:pc]
-                                  copy[:pc] = z[:pc].method(op.operator).(c[:pc])
-                                elsif z[:pcs] and c[:pc]
-                                  copy[:pcs] = z[:pcs].map {|pc| pc.method(op.operator).(c[:pc])}
-                                  copy.delete(:pc)
-                                elsif c[:pcs] and z[:pc]
-                                  copy[:pcs] = c[:pcs].map {|pc| pc.method(op.operator).(z[:pc])}
-                                elsif c[:pcs] and z[:pcs]
-                                  copy[:pcs] = c[:pcs].map {|cpc| z[:pcs].map{|zpc| zpc.method(op.operator).(cpc) }}.flatten.uniq
+                                  c_dup[:pc] = z[:pc].method(op.operator).(c[:pc])
+                                elsif z[:hpcs] and c[:pc]
+                                  c_dup[:hpcs] = z_dup[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op.operator).(c[:pc]); h}
+                                  c_dup.delete(:pc)
+                                elsif c[:hpcs] and z[:pc]
+                                  c_dup[:hpcs] = c[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op.operator).(z[:pc]); h}
+                                elsif c[:hpcs] and z[:hpcs]
+                                  c_dup[:hpcs] = c_dup[:hpcs].map {|ch| z[:hpcs].map{|zh| zh = Marshal.load(Marshal.dump(zh)) ; zh[:pc] = zh[:pc].method(op.operator).(ch[:pc]) ; zh }}.flatten
                                 end
                               end
                             end
-                            copy
+                            c_dup
                         end
                       end
                     set = set.flatten
 
                 else
-
                     operation_value = op.value.to_i
+
                     set = set.map do |v|
-                    if v.is_a?(Hash)
-                      if v[:pc]
-                        v[:pc] = v[:pc].to_i.method(op.operator).(operation_value)
-                      elsif v[:pcs]
-                        v[:pcs] = v[:pcs].map {|pc| pc.method(op.operator).(operation_value) }
+                      v = Marshal.load(Marshal.dump(v))
+                      if v.is_a?(Hash)
+                        if v[:pc]
+                          v[:pc] = v[:pc].to_i.method(op.operator).(operation_value)
+                        elsif v[:hpcs]
+                          v[:hpcs] = v[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op.operator).(operation_value); h }
+                        end
                       end
-                    end
+
                       v
                     end
 
                 end
               when '<>'
                 set = set.zip(op_values).flatten if op_values
-              when '<*>'
+              when '<+>'
                 set = set.product(op_values).flatten if op_values
               when '<->'
                 set = set-op_values if op_values
+              when '<*>'
+                if op_values
+                set = set.ois.map do |v|
+                  op_values.map do |z|
+                    z = Marshal.load(Marshal.dump(z))
+                    if z[:hpcs] and v.is_a?(Array)
+                      z[:hpcs] = v.map {|ival| z[:hpcs].map {|h|  {pc: h[:pc]+ival} } }.flatten
+                    elsif z[:pc] and v.is_a?(Array)
+                        z[:hpcs] = v.map {|ival| {pc: z[:pc]+ival} }
+                        z.delete(:pc)
+                    elsif z[:hpcs] and v.is_a?(Integer)
+                      z[:hpcs] = z[:hpcs].map {|h|  h[:pc] = h[:pc]+v ; h }
+
+                    else
+                       z[:pc] =  z[:pc]+v
+                     end
+                     z
+                    end
+                  end
+                end
+                set = set.flatten
               when '<&>'
                 set = set&op_values if op_values
               when '<|>'
@@ -86,9 +134,10 @@ grammar GenerativeSyntax
             end
           end
         end
-        set = set.map{|v| v[:pc] = ~(v[:pc].to_i-1) if v.is_a?(Hash) } if inv.text_value == '_'
+
         set.zip(Array.new(set.length-1," "))
       end
+
     set = set.zip(Array.new(reps," "))
 
     durations = durs.value if durs.methods.include?(:value)
@@ -99,6 +148,33 @@ grammar GenerativeSyntax
       set
     end
 
+    end
+    }
+  end
+
+  # TODO: Not in use yet - Works - but only for single sets
+    rule euclid
+      onbeat:(set) '<' s:([1-9]+) ',' e:([1-9]+) ','? r:([1-9]+)? '>' offbeat:(set)?
+      {
+      def value
+        result = bin_euclid(s.text_value.to_i,e.text_value.to_i)
+        .map do |n|
+          if n==1
+            onbeat.value
+          else
+            offbeat.methods.include?(:value) ? offbeat.value : "r "
+          end
+        end
+        r.empty? ? result : result.rotate(r.text_value.to_i)
+      end
+      }
+    end
+
+  rule transform
+    ':' type:([a-z]+)
+    {
+    def value
+      type.text_value
     end
     }
   end
@@ -124,7 +200,7 @@ grammar GenerativeSyntax
   end
 
   rule operation
-    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '<>' / '<&>' / '<->' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)?
+    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '<>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)?
     {
     def operator
       op.text_value
@@ -155,7 +231,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (set / ranges / group / pitch_classes / rest / s / sleep / array / set_between)*
+    (set / ranges / group / pitch_classes / rest / s / sleep / array / set_between / control / cyclic)*
     {
     def value
       elements.map {|v| v.value }.filter_map {|v| v if v}
@@ -163,8 +239,23 @@ grammar GenerativeSyntax
     }
   end
 
+  rule cyclic
+  '<' first:(set_items) following:(';' i:set_items)* '>'
+    {
+    def value
+      if following.empty?
+        {:cycle=>first.value}
+      else
+        r = following.elements.map {|v| v.i.value }
+        r.prepend(first.value)
+        {:cycle=>r}
+      end
+    end
+    }
+  end
+
   rule array_items
-    (set / ranges / group / pitch_classes / rest / s / sleep / array / random_between / method)*
+    (set / ranges / group / pitch_classes / rest / s / sleep / array / random_between / method / control)*
     {
     def value
       elements.map {|v| v.value }.filter_map {|v| v if v}
@@ -181,16 +272,13 @@ grammar GenerativeSyntax
     }
   end
 
-  rule step
-  op:('+' / '*') min_max
-  {
-    def type
-      op.text_value
-    end
-    def value
-      min_max.value
-    end
-  }
+  rule control
+    [A-Z]
+    {
+      def value
+        text_value
+      end
+    }
   end
 
   # Characters ignored by generative parsing and parsed using ziffers parser
@@ -240,8 +328,8 @@ grammar GenerativeSyntax
         e.each do |d|
           pitch_class_list.push(d[:pc])
         end
-        v = {:pcs=>pitch_class_list, :hpcs=>e}
-        v
+        v = {:hpcs=>e}
+        ZiffHash[v]
       else
         e.zip(Array.new(e.length-1," "))
       end
@@ -258,20 +346,12 @@ grammar GenerativeSyntax
     }
   end
 
-  rule escaped_method
+  # Not in use
+  rule escaped_eval
     '=(' e:(([a-zA-Z0-9] / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!')*) ')'
     {
       def value
         eval(e.text_value)
-      end
-    }
-  end
-
-  rule escaped_pitch_class
-    '=' e:(integer / decimal / random_between / random_decimal)
-    {
-      def value
-        "="+e.value.to_s
       end
     }
   end
@@ -396,6 +476,18 @@ grammar GenerativeSyntax
    }
   end
 
+  rule step
+    op:('+' / '*') min_max
+    {
+      def type
+        op.text_value
+      end
+      def value
+        min_max.value
+      end
+    }
+  end
+
   rule integer_array
     '[' first:(min_max) rest:(',' i:(min_max))* ']'
     {
@@ -411,7 +503,7 @@ grammar GenerativeSyntax
   end
 
   rule pitch_classes
-   z:(sleep)* o:('^' / '_')* a:('#' / 'b')* d:(normal_pitch_class / escaped_pitch_class / escaped_method / random_pitch_class / random_between)
+   z:(sleep)* o:('^' / '_')* a:('#' / 'b')* d:(normal_pitch_class / escaped_eval / random_pitch_class / random_between)
     {
      def value
        dgr = d.value

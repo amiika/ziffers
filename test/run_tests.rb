@@ -113,7 +113,8 @@ def test_chords
   assert_equal(tc.notes,tc_res)
   a = zparse "e i ii iii iv v vi vii", chord_name: "minor", chord_sleep: 0.15, chord_synth: :piano
   assert(a.notes,[[60, 63, 67], [62, 65, 69], [64, 67, 71], [65, 68, 72], [67, 70, 74], [69, 72, 76], [71, 74, 78]])
-  
+  a = zparse "T43 E34 931"
+  assert(a.orig_pcs,[[10, 4, 3], [11, 3, 4], [9, 3, 1]])
 end
 
 def test_octaves
@@ -130,6 +131,13 @@ def test_samples
   b = a.durations
   assert(a, [:ambi_dark_woosh, :ambi_sauna, :ambi_dark_woosh, :ambi_dark_woosh])
   assert(b, [1.0, 0.25, 0.125, 0.125])
+end
+
+def test_ois
+  a = zparse "4 7 9 1", scale: :chromatic
+  assert(a.ois, [0,3,5,9])
+  a = zparse "4791", scale: :chromatic
+  assert(a[0].ois, [0,3,5,9])
 end
 
 def lazy_tests
@@ -164,6 +172,7 @@ def lazy_tests
   ]
   
   tests.each_with_index do |m,i|
+    print m
     r = zparse m
     r.durations
     r.notes

@@ -73,6 +73,20 @@ module Ziffers
       end
     end
 
+    # Adapted from: https://github.com/beausievers/Ruby-PCSet/blob/master/pcset.rb#L339
+    def most_left_compact(pcset_array)
+      if !pcset_array.all? {|pcs| pcs.length == pcset_array[0].length}
+        raise ArgumentError, "PCSet.most_left_compact: All PCSets must be of same cardinality", caller
+      end
+      zeroed_pitch_arrays = pcset_array.map {|pcs| pcs.zero.pcs}
+      binaries = zeroed_pitch_arrays.map {|array| array.inject(0) {|sum, n| sum + 2**n}}
+      winners = []
+      binaries.each_with_index do |num, i|
+        if num == binaries.min then winners.push(pcset_array[i]) end
+      end
+      winners.sort[0]
+    end
+
     # Pitch class interval
     def pc_int(a,b,mod=12) 6-2%12
       r = (b-a)%mod

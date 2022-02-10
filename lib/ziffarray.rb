@@ -199,12 +199,12 @@ module Ziffers
       notes
     end
 
-    def keys(key)
-      self.map{|x| x[key] or x[key]}
+    def pitch_classes
+      self.map{|x| x[:pc] or (x[:hpcs] and x[:hpcs].map{|p| p[:pc]})}
     end
 
-    def pitch_classes
-      self.map{|x| x[:pc] or x[:pcs]}
+    def orig_pcs
+      self.map{|x| x[:pc_orig] or (x[:hpcs] and x[:hpcs].map{|p| p[:pc_orig]}) }
     end
 
     alias pcs pitch_classes
@@ -291,7 +291,7 @@ module Ziffers
     end
 
     def to_pc_set
-      ZiffArray.new(self.uniq.sort_by { |hash| hash[:pc] })
+      ZiffArray.new(self.select{|v| v[:pc] }.uniq.sort_by { |hash| hash[:pc] })
     end
 
     #def sort
@@ -309,6 +309,24 @@ module Ziffers
       }
     end
 
+    # OIS - ordered pitch-class intervallic structure
+    def ois(r=nil)
+      #arr = self.pitch_classes #.select {|v| v.is_a?(Integer)}.compact
+      if self.length>0
+        pc_list = self.select {|v| v[:pc] }.compact
+        if !r
+          r = pc_list[0][:pc] if pc_list[0]
+        end
+        if pc_list.length==0
+          return self.map {|v| v.ois }
+        else
+          return self.map {|v| (v[:pc] and v[:pc].is_a?(Integer)) ? pc_int(r, v[:pc]) : v.ois }
+        end
+      else
+        return nil
+      end
+    end
+
     def cycles
       tempar = self.to_pc_set
       arar = []
@@ -317,7 +335,7 @@ module Ziffers
     end
 
     def normal_form
-      most_left_compact(self.cycles)
+      ZiffArray.new(most_left_compact(self.cycles))
     end
 
     def zero
@@ -325,21 +343,7 @@ module Ziffers
     end
 
     def prime
-      most_left_compact([self.normal_form.zero, self.inverse.normal_form.zero])
-    end
-
-    # Adapted from: https://github.com/beausievers/Ruby-PCSet/blob/master/pcset.rb#L339
-    def most_left_compact(pcset_array)
-      if !pcset_array.all? {|pcs| pcs.length == pcset_array[0].length}
-        raise ArgumentError, "PCSet.most_left_compact: All PCSets must be of same cardinality", caller
-      end
-      zeroed_pitch_arrays = pcset_array.map {|pcs| pcs.zero.pcs}
-      binaries = zeroed_pitch_arrays.map {|array| array.inject(0) {|sum, n| sum + 2**n}}
-      winners = []
-      binaries.each_with_index do |num, i|
-        if num == binaries.min then winners.push(pcset_array[i]) end
-      end
-      ZiffArray.new(winners.sort[0])
+      ZiffArray.new(most_left_compact([self.normal_form.zero, self.inverse.normal_form.zero]))
     end
 
     def durations

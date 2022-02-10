@@ -101,10 +101,10 @@ grammar Parameters
   end
 
   rule decimal_range
-  '(' a:(decimal) '..' b:(decimal) ')' '+'? step:(decimal)? reflect:('%')?
+  '(' a:(decimal) '..' b:(decimal) ')' type:('+' / '*')? step:(decimal)? reflect:('%')?
    {
    def value
-     sonic_range(a.value,b.value, step.methods.include?(:value) ? step.value : 0.1, nil, reflect.text_value=="%" ? true : false)
+     sonic_range(a.value,b.value, step.methods.include?(:value) ? step.value : 0.1, type.text_value, reflect.text_value=="%" ? true : false)
    end
    }
   end

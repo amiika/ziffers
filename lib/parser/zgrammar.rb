@@ -50,16 +50,23 @@ module Ziffers
     end
 
     def sonic_range(s,e,step=nil,mult=nil,reflect=false)
-      ms = s>e ? e : s # 1..7
-      me = e>s ? e : s # 7..1
-      if step and mult and mult=="*"
-        ms = ms*step
-        me = me*step
-      end
-      nArr = (step ? (ms..me).step(step).to_a : (ms..me).to_a)
-      nArr = nArr.reverse if s>e
+      ms = (s>e) ? e : s # 1..7
+      me = (e<s) ? s : e # 7..1
+      nArr = step ? (mult and mult=="*") ? ms.step(by: step).take(me.abs) : ms.step(by: step, to: me).to_a : ms.is_a?(Float) ? ms.step(to: me, by: 0.1).to_a : ms.step(to: me).to_a
+      nArr = nArr.reverse if e<s
       nArr = nArr + nArr.drop(1).reverse.drop(1) if reflect
       nArr
+    end
+
+    def bin_euclid(pulse,step)
+      ratio = 1.0*step/pulse
+      rhythm = Array.new(step,0);
+      index = 0
+      pulse.times do
+        rhythm[index.to_i] = 1
+        index += ratio
+      end
+      return rhythm
     end
 
     # Parse shit using treeparse

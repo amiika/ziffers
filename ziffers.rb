@@ -126,7 +126,7 @@ module Ziffers
         (value[:hpcs] ? value[:hpcs].map{ |v|
           (v[:octave].is_a?(String) ? v[:octave] : ((v[:octave].is_a?(Integer) && v[:octave]!=0) ? (v[:octave]>0 ? "^"*v[:octave] : "_"*v[:octave].abs) : "" )) +
           v[:add].to_s +
-          ((v[:pc].to_i>9 or v[:pc].to_i<-9) ? "="+v[:pc].to_s : ""+v[:pc].to_s)
+          ((v[:pc].to_i>9 or v[:pc].to_i<-9) ? "=("+v[:pc].to_s+")" : ""+v[:pc].to_s)
         }.join("") : "") +
         value[:separator].to_s
       else
@@ -241,6 +241,8 @@ module Ziffers
 
         n = zpreparse(n,defaults.delete(:parsekey)) if defaults[:parsekey]!=nil
         n = n.gsub(/([0-9][0-9])/) {|m| "=#{$1}" } if defaults[:midi] # Hack for midi
+
+        n = expand_zspread(n) # Hack for spread
 
         defaults[:rules] = defaults.delete(:replace) if defaults[:replace]
         if defaults[:rules] and !shared[:lsystemloop] then
@@ -1005,6 +1007,7 @@ module Ziffers
       ziff.merge(opts) {|_,a,b| (a.is_a? Numeric) ? a * b : b }
     end
 
+    # TODO: Create rule for this that handles cycles
     def zspread ziff, x, y, rotate=0, join=" ", offbeat="r"
       cycleZ = ziff.kind_of?(Array)
       cycleO = offbeat.kind_of?(Array)

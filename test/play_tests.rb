@@ -4,6 +4,8 @@ use_synth :piano
 
 Ziffers.debug
 
+use_bpm 200
+
 def testzplay
   
   # Test octaves
@@ -183,6 +185,7 @@ end
 testzplay
 testchords
 testcontrolchars
+testlsystem
 testrandom
 testslide
 testzsample
@@ -194,4 +197,3 @@ testUseChars
 testpreparse
 testeffects
 testadjust
-testlsystem

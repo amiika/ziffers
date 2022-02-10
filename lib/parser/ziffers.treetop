@@ -214,7 +214,7 @@ grammar Ziffers
         if prefixes
           v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
         end
-        
+
         ZiffHash[v]
       end
     }
@@ -275,7 +275,7 @@ grammar Ziffers
   end
 
   rule escaped_pitch_class
-    '=' e:(decimal / integer)
+    '=' '('? e:(decimal / integer) ')'?
     {
       def value
         e.value
@@ -576,7 +576,7 @@ end
          r.times do |i|
           rep = rep_value.each_with_object([]) do |v,o|
             if v.is_a?(Hash) and v[:cycle]
-              o.push(v[:cycle][i])
+              o.push(v[:cycle][i%v[:cycle].length])
             else
               o.push(v)
             end

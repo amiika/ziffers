@@ -228,7 +228,7 @@ module Ziffers
     end
 
   # https://oeis.org/A309600
-  def acid10
+  def a309600
   Enumerator.new do |y|
     a = 7
     i = 0
@@ -240,6 +240,54 @@ module Ziffers
         a = b
       end
 
+    end
+  end
+
+# https://oeis.org/A225410
+def a225401
+Enumerator.new do |y|
+  a = 7
+  i = 0
+  y << 7 if i==0
+  while true do
+      b = (a + 3 * (9 * a ** 3 - 7)) % (10 ** (i + 2))
+      y << (b - a) / (10 ** (i + 1))
+      i+=1
+      a = b
+    end
+  end
+end
+
+
+  # https://oeis.org/A225408
+  # 10-adic integer x=.....8457 satisfying x^3 = -7.
+  def a225408
+  Enumerator.new do |y|
+    a = 7
+    i = 0
+    y << 7 if i==0
+    while true do
+        b = (a + 7 * (a ** 3 + 7)) % (10 ** (i + 2))
+        y << (b - a) / (10 ** (i + 1))
+        i+=1
+        a = b
+      end
+    end
+  end
+
+  # https://oeis.org/A225406
+  # Digits of the 10-adic integer 9^(1/3).
+  def a225406
+  Enumerator.new do |y|
+    a = 9
+    i = 0
+    y << 9 if i==0
+    while true do
+        b = (a + 3 * (a ** 3 - 9)) % (10 ** (i + 2))
+        y << (b - a) / (10 ** (i + 1))
+        i+=1
+        a = b
+      end
     end
   end
 
@@ -255,7 +303,7 @@ module Ziffers
   end
 end
 
-  # https://oeis.org/A059905
+# https://oeis.org/A059905
 def sqr_walk
   Enumerator.new do |y|
     n = 0

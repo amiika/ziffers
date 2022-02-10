@@ -14,6 +14,10 @@ module Ziffers
         self[:pc]
       end
 
+      def pcs
+        self[:hpcs].map {|h| h[:pc] }
+      end
+
       def dgr
         self[:pc]+1
       end
@@ -54,16 +58,63 @@ module Ziffers
         note_info(self[:note]).midi_string
       end
 
+      def is_chord?
+        self[:hpcs]
+      end
+
+      # OIS - ordered pitch-class intervallic structure
+      def ois(r=nil)
+        if self[:hpcs]
+          r = self[:hpcs][0][:pc] if !r
+          return self.pcs.map {|v| pc_int(r, v) }
+        else
+          return nil
+        end
+      end
+
+      def to_pc_set
+        return self if !self[:pcs]
+        temp = self.deep_clone
+        temp[:hpcs] = temp[:hpcs].select{|v| v[:pc] }.uniq.sort_by { |hash| hash[:pc] }
+        temp.update_note
+        temp
+      end
+
+      def cycles
+        return self if !self[:pcs]
+        tempar = self.to_pc_set
+        arar = []
+        tempar[:hpcs].length.times do
+            tempar[:hpcs] = tempar[:hpcs].unshift(tempar[:hpcs].pop)
+            arar.push tempar.deep_clone
+          end
+        arar
+      end
+
+      def normal_form
+        return self if !self[:pcs]
+        most_left_compact(self.cycles)
+      end
+
+      def zero
+        transpose(-1 * self[:hpcs][0][:pc])
+      end
+
+      def prime
+        return self if !self[:pcs]
+        most_left_compact([self.normal_form.zero, self.inverse.normal_form.zero])
+      end
+
       def transpose(i, inv=false)
         ziff = self.deep_clone
         if ziff[:note]!=:r
           n = scale(ziff[:key], ziff[:scale]).length-1
-          if ziff[:pcs]
-            ziff[:pcs].each_with_index do |originalDegree, index|
-              val = inv ? i-originalDegree : originalDegree+i
-              ziff[:octave] += val/n if val>=n or val<0
+          if ziff[:hpcs]
+            ziff[:hpcs].each_with_index do |h, index|
+              val = inv ? i-h[:pc] : h[:pc]+i
+              h[:octave] += val/n if val>=n or val<0
               val = val % n
-              ziff[:pcs][index] = val
+              h[:pc] = val
               ziff.update_note
             end
           elsif ziff[:pc]
@@ -82,11 +133,13 @@ module Ziffers
       def update_note
         if self[:pc]
           self.merge!(get_ziff(self[:pc], self[:key], self[:scale], self[:octave]))
-        elsif self[:pcs]
+        elsif self[:hpcs]
           notes = []
-          self[:pcs].each do |d|
-            notes.push(get_note_from_dgr(d, self[:key], self[:scale], self[:octave]))
+          self[:hpcs].each do |d|
+            pc = d[:pc]
+            notes.push(get_note_from_dgr(pc, self[:key], self[:scale], self[:octave]))
           end
+          self[:pcs] = self[:hpcs].map {|h| h[:pc] }
           self[:notes] = notes
         end
       end
