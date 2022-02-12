@@ -39,7 +39,7 @@ module Ziffers
       :sleep => 1.0
     }
 
-    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :cc, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :pitch, :run_each, :methods]
+    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :cc, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :pitch, :run_each, :methods]
 
     @@debug = false
     @@set_keys = [:pc]
@@ -230,21 +230,19 @@ module Ziffers
 
         parsed_use = defaults.select{|k,v| k.length<2 and /[[:upper:]]/.match(k)} # Parse capital letters from the opts
 
-        if !parsed_use.empty? then
-          parsed_use.each do |key,val|
-            if (val.is_a? String) or (val.is_a? Integer) then
-              n = n.gsub key.to_s, val
-              parsed_use.delete(:key)
-            end
-          end
+        if parsed_use
+          defaults[:use] = defaults[:use] ? defaults[:use].merge(parsed_use) : parsed_use
           defaults.except!(*parsed_use.keys)
-          defaults[:use] = defaults[:use] ? shared[:use].merge(parsed_use) : parsed_use
+        end
+
+        defaults[:use].each do |key,val|
+          if (val.is_a? String) or (val.is_a? Integer) then
+            n = n.gsub key.to_s, val.is_a?(Integer) ? '='+val.to_s : val
+            defaults[:use].delete(:key)
+          end
         end
 
         n = zpreparse(n,defaults.delete(:parsekey)) if defaults[:parsekey]!=nil
-
-        # TODO: Refactor this hacky stuff
-        n = n.gsub(/(^|\s)([0-9][0-9])/) {|m| " =#{$2}" } if defaults[:midi] or defaults[:cc] # Hack for midi
         n = expand_zspread(n) # Hack for spread
 
         defaults[:rules] = defaults.delete(:replace) if defaults[:replace]
@@ -254,6 +252,8 @@ module Ziffers
         end
         n = parse_generative n, (defaults.has_key?(:parse_chords) ? defaults[:parse_chords] : true)
         print "G: "+n if @@debug
+
+        n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9][0-9])/) {|m| "#{$1}=#{$2}" } if defaults[:midi] or defaults[:cc] # Hack for midi
 
         parsed = parse_ziffers(n, opts, defaults, @@default_durs)
         print "P: "+zstring(parsed) if @@debug
@@ -290,7 +290,7 @@ module Ziffers
       midi md, opts
     end
 
-    def normalize_sample_arrays(ziff,index,loop_i)
+    def normalize_ziff_methods(ziff,index,loop_i)
       ziff.each do |key,val|
         if val.is_a?(SonicPi::Core::RingVector) or val.kind_of?(Array) then
           char_key = ziff[:chars] ? ziff[:chars].join("") : ziff[:char]
@@ -392,15 +392,7 @@ module Ziffers
           next
         end
         ziff = apply_transformation(ziff, defaults, loop_i, index, melody.length)
-      # TODO: Keep or not to keep?
-      '''  if ziff[:lambda] then
-          ziff[:lambda].() if ziff[:lambda].arity == 0
-          ziff[:lambda].(ziff) if ziff[:lambda].arity == 1
-          ziff[:lambda].(ziff,index) if ziff[:lambda].arity == 2
-          ziff[:lambda].(ziff,index,loop_i) if ziff[:lambda].arity == 3
-          ziff[:lambda].(ziff,index,loop_i,melody.length) if ziff[:lambda].arity == 4
-        end
-        "'''
+
         if ziff[:methods] then
           ziff[:methods].each do |f|
             in_thread do
@@ -488,7 +480,9 @@ module Ziffers
             synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), clean(ziff)
           end
         end
-      elsif ziff[:port] then
+      elsif ziff[:method]
+          normalize_ziff_methods(ziff,index,loop_i)
+      elsif ziff[:port] and ziff[:note] then
         if ziff[:cc]
           midi_cc ziff[:cc], [127,ziff[:note]].min, port: ziff[:port], channel: ziff[:channel]
         else
@@ -496,8 +490,7 @@ module Ziffers
           play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
         end
       else
-        #slide = ziff.delete(:control)
-        if ziff[:sample]!=nil or ziff[:samples]!=nil then
+        if ziff[:sample] or ziff[:samples] or ziff[:method] then
           if defaults[:rate_based] && ziff[:note]!=nil then
             ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
           elsif ziff[:pc]!=nil then
@@ -510,12 +503,15 @@ module Ziffers
           # Normalize sample parameters
           if ziff[:samples]
             ziff[:samples].each do |s|
-              sample s, clean(ziff)
-              # TODO: Normalize for group of samples?
+              if s[:method]
+                normalize_ziff_methods(s,index,loop_i)
+              else
+                normalize_ziff_methods(s,index,loop_i)
+                sample (s[:sample_dir] ? [s[:sample_dir], s[:sample]] : s[:sample]), clean(s)
+              end
             end
-          else
-            # TODO: Lambda's not running in every loop?
-            normalize_sample_arrays(ziff,index,loop_i)
+          else # Sample
+            normalize_ziff_methods(ziff,index,loop_i)
             c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
           end
         elsif ziff[:note] or ziff[:notes]

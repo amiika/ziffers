@@ -198,6 +198,9 @@ def test_generative
   print a.notes
   assert_equal(a.notes, [2,4,6,8])
   
+  a = zparse "q40 _40 ^40 `40 '40 ´40", midi: true
+  assert_equal(a.notes, [40,40,40,40,40,40])
+  
 end
 
 print "Testing"

@@ -393,10 +393,8 @@ grammar Ziffers
       {
       def value
         samples = elements.collect {|v| v.value }.compact
-        sample_names = samples.map {|s| s[:sample]}
         chars = samples.map {|s| s[:char]}
-        samples_hash = {samples: sample_names, chars: chars}
-        samples_hash.merge!(samples[0].except(:sample,:char))
+        samples_hash = {samples: samples, chars: chars, sleep: samples[0][:sleep]}
         samples_hash
       end
     }
@@ -421,6 +419,8 @@ grammar Ziffers
             v = apply_transformation(v, v[:apply] ? v[:apply] : {apply: v.except(:sample)})
           elsif v.is_a?(Symbol)
             v = {sample: v}
+          elsif v.is_a?(Proc)
+            v = {method: v}
           end
 
           v.merge!(Thread.current[:topts]) { |key, important, default| important }
@@ -443,7 +443,7 @@ grammar Ziffers
 
           v[:char] = u.text_value
 
-          !(v[:sample] or v[:note] or v[:cue]) ? nil : ZiffHash[v]
+          !(v[:sample] or v[:note] or v[:cue]) ? v : ZiffHash[v]
         else
           nil
         end
