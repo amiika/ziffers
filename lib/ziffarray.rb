@@ -347,7 +347,7 @@ module Ziffers
     end
 
     def durations
-        ZiffArray.new(self.map{|x,i| x.duration })
+        self.map{|x,i| x.duration }
     end
 
     def merge_lengths(arr, loop_n=0)

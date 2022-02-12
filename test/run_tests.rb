@@ -24,7 +24,7 @@ def test2
   
   # Test loops and octaves etc.
   
-  m2 = zparse("[:q _ 0 1 (-1) 2 (1)0:][: 2 3 h4:][:[:e 4 5 4 3 q 2 0:][:0 _4 h0:]:]", key: :e, scale: :major)
+  m2 = zparse("[:q _ 0 1 (-1) 2 (0)0:][: 2 3 h4:][:[:e 4 5 4 3 q 2 0:][:0 _4 h0:]:]", key: :e, scale: :major)
   print m2
   m2_s = zparams(m2,:sleep)
   m2_n = zparams(m2,:note)
@@ -112,32 +112,31 @@ def test_chords
   tc_res =  [[60, 62, 64], [64, 65, 67], [65, 67, 69], [69, 71, 72, 76]]
   assert_equal(tc.notes,tc_res)
   a = zparse "e i ii iii iv v vi vii", chord_name: "minor", chord_sleep: 0.15, chord_synth: :piano
-  assert(a.notes,[[60, 63, 67], [62, 65, 69], [64, 67, 71], [65, 68, 72], [67, 70, 74], [69, 72, 76], [71, 74, 78]])
+  assert_equal(a.notes,[[60, 63, 67], [62, 65, 69], [64, 67, 71], [65, 68, 72], [67, 70, 74], [69, 72, 76], [71, 74, 78]])
   a = zparse "T43 E34 931"
-  assert(a.orig_pcs,[[10, 4, 3], [11, 3, 4], [9, 3, 1]])
+  assert_equal(a.orig_pcs,[[10, 4, 3], [11, 3, 4], [9, 3, 1]])
 end
 
 def test_octaves
   t_o = zparse "0 7 ^ 0 | 0 _ 0"
   t_o.octaves
-  assert(t_o.octaves,[0,1,1,0,-1])
+  assert_equal(t_o.octaves,[0,1,1,0,-1])
   
   to2 = zparse "0 (1) 2 (-2) 2 (3)1"
-  assert(to2.octaves,[0, 1, -2, 3])
+  assert_equal(to2.octaves,[0, 1, -2, 3])
 end
 
 def test_samples
   a = zparse "A q B e A A", A: :ambi_dark_woosh, B: :ambi_sauna
-  b = a.durations
-  assert(a, [:ambi_dark_woosh, :ambi_sauna, :ambi_dark_woosh, :ambi_dark_woosh])
-  assert(b, [1.0, 0.25, 0.125, 0.125])
+  assert_equal(a.samples, [:ambi_dark_woosh, :ambi_sauna, :ambi_dark_woosh, :ambi_dark_woosh])
+  assert_equal(a.durations, [1.0, 0.25, 0.125, 0.125])
 end
 
 def test_ois
   a = zparse "4 7 9 1", scale: :chromatic
-  assert(a.ois, [0,3,5,9])
+  assert_equal(a.ois, [0,3,5,9])
   a = zparse "4791", scale: :chromatic
-  assert(a[0].ois, [0,3,5,9])
+  assert_equal(a[0].ois, [0,3,5,9])
 end
 
 def lazy_tests
@@ -181,6 +180,26 @@ def lazy_tests
   
 end
 
+
+#TODO
+
+def test_generative
+  
+  with_random_seed 2345 do
+    a = zparse "e {: (0,6) :5}"
+    assert_equal(a.pcs, [3,6,1,5,6])
+  end
+  
+  a = zparse "e {: 10..15+2 }", cc: 20
+  print a.notes
+  assert_equal(a.notes, [10,12,14])
+  
+  a = zparse "e {: 2..4*2 }", cc: 20
+  print a.notes
+  assert_equal(a.notes, [2,4,6,8])
+  
+end
+
 print "Testing"
 lazy_tests
 test1
@@ -192,6 +211,8 @@ test6
 test_chords
 test_octaves
 test_samples
+test_ois
+test_generative
 
 
 print "All tests passed!"

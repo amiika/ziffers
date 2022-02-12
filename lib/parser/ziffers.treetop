@@ -295,8 +295,12 @@ grammar Ziffers
         if (Thread.current[:topts][:midi] || Thread.current[:topts][:cc])
           v = {note: dgr, pc: note_pc(dgr), octave: note_oct(dgr), scale: :chromatic }
         else
-          oct = prefixes[:octave] ? prefixes[:octave] : 0
-          oct = oct + Thread.current[:topts][:octave] if Thread.current[:topts][:octave]
+          if prefixes[:fixed_octave]
+            oct = prefixes[:fixed_octave]
+          else
+            oct = prefixes[:octave] ? prefixes[:octave] : 0
+            oct = oct + Thread.current[:topts][:octave] if Thread.current[:topts][:octave]
+          end
           addition = prefixes[:add] ? prefixes[:add] : 0
           v = get_ziff dgr, Thread.current[:topts][:key], Thread.current[:topts][:scale], oct, addition
         end
@@ -352,7 +356,7 @@ grammar Ziffers
     '(' o:(integer) ')'
     {
       def value
-        {octave: o.value}
+        {fixed_octave: o.value}
       end
     }
   end

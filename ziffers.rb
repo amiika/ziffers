@@ -244,7 +244,7 @@ module Ziffers
         n = zpreparse(n,defaults.delete(:parsekey)) if defaults[:parsekey]!=nil
 
         # TODO: Refactor this hacky stuff
-        n = n.gsub(/\b([0-9][0-9])/) {|m| "=#{$1}" } if defaults[:midi] or defaults[:cc] # Hack for midi
+        n = n.gsub(/(^|\s)([0-9][0-9])/) {|m| " =#{$2}" } if defaults[:midi] or defaults[:cc] # Hack for midi
         n = expand_zspread(n) # Hack for spread
 
         defaults[:rules] = defaults.delete(:replace) if defaults[:replace]
@@ -252,7 +252,6 @@ module Ziffers
           gen = defaults[:gen] ? defaults[:gen] : 1
           n = lsystem(n,defaults,gen,nil)[gen-1]
         end
-
         n = parse_generative n, (defaults.has_key?(:parse_chords) ? defaults[:parse_chords] : true)
         print "G: "+n if @@debug
 
@@ -882,7 +881,7 @@ module Ziffers
           loop_opts = opts.clone
           cycle_array = ($zloop_states[name][:cycle].is_a? Array) ? $zloop_states[name][:cycle] : [$zloop_states[name][:cycle]]
           cycle_array.each do |value|
-            raise "Expected :to in :cycle object!" if !value[:at]
+            raise "Expected :at in :cycle object!" if !value[:at]
             mod_cycles = ($zloop_states[name][:loop_i]+1) % value[:at]
             if value[:range] and value[:range].is_a?(Range) then
               mod_cycles = value[:at] if mod_cycles == 0
@@ -908,7 +907,7 @@ module Ziffers
             zplay $zloop_states[name][:melody], opts, defaults
           else
             if loop_opts then
-                zplay loop_opts[:pattern] ? loop_opts[:pattern] : melody, loop_opts, defaults
+                zplay loop_opts[:pattern] ? loop_opts[:pattern] : melody, opts, defaults.merge(loop_opts)
             else
                 zplay melody, opts, defaults
             end
