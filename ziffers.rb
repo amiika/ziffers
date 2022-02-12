@@ -39,7 +39,7 @@ module Ziffers
       :sleep => 1.0
     }
 
-    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :pitch, :run_each, :methods]
+    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :cc, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :pitch, :run_each, :methods]
 
     @@debug = false
     @@set_keys = [:pc]
@@ -242,8 +242,9 @@ module Ziffers
         end
 
         n = zpreparse(n,defaults.delete(:parsekey)) if defaults[:parsekey]!=nil
-        n = n.gsub(/([0-9][0-9])/) {|m| "=#{$1}" } if defaults[:midi] # Hack for midi
 
+        # TODO: Refactor this hacky stuff
+        n = n.gsub(/\b([0-9][0-9])/) {|m| "=#{$1}" } if defaults[:midi] or defaults[:cc] # Hack for midi
         n = expand_zspread(n) # Hack for spread
 
         defaults[:rules] = defaults.delete(:replace) if defaults[:replace]
@@ -489,8 +490,12 @@ module Ziffers
           end
         end
       elsif ziff[:port] then
-        sustain = ziff[:sustain]!=nil ? ziff[:sustain] : ziff[:release]
-        play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
+        if ziff[:cc]
+          midi_cc ziff[:cc], [127,ziff[:note]].min, port: ziff[:port], channel: ziff[:channel]
+        else
+          sustain = ziff[:sustain]!=nil ? ziff[:sustain] : ziff[:release]
+          play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
+        end
       else
         #slide = ziff.delete(:control)
         if ziff[:sample]!=nil or ziff[:samples]!=nil then
@@ -595,7 +600,7 @@ module Ziffers
       elsif melody.is_a?(Symbol) and melody == :r
         return zparse("r",opts,defaults)
       elsif melody.is_a?(Numeric) # zplay 1 OR zmidi 85
-        if defaults[:midi] then
+        if defaults[:midi] or defaults[:cc] then
           opts[:note] = melody
         else
           defaults[:parse_chords]=false if !defaults.has_key?(:parse_chords)
@@ -637,7 +642,6 @@ module Ziffers
       input = unroll_repeats input
       merge_opts = {}
       live_loop :ziffers do
-        stop if opts[:stop]
         zplay_multi_line(input, opts, shared, merge_opts)
       end
     end
@@ -653,13 +657,13 @@ module Ziffers
     end
 
     def zplay_multi_line(input, opts={}, shared={},merge_opts={})
-      tick(:multi_line)
+      idx = tick(:multi_line)
       parsed = parse_rows(input)
       measures = parsed[:rows].transpose
       row_options = parsed[:options]
 
       # Parse measures
-      ziffs = measures.ring[look(:multi_line)].map.with_index do |m,i|
+      ziffs = measures.ring[idx].map.with_index do |m,i|
         if m
           m_index = parsed[:shared_options].filter_map.with_index { |e, i| i if !e }
           shared_options = parsed[:shared_options].flatten[0..m_index[i]].compact.last
@@ -691,12 +695,14 @@ module Ziffers
 
     def parse_rows(input)
       lines = input.split("\n").to_a.filter {|v| !v.strip.empty? }
+      lines = lines.filter {|n| !n.start_with? "//" }
       parameters = lines.map {|l| l.split("/") }
-      rows = parameters.map{|p|p[0]}.filter {|v| !v.strip.empty? }.map {|l| l.split("|").filter {|v| !v.strip.empty? } }
+      rows = parameters.map{|p| p[0]}.filter {|v| !v.strip.empty? }.map {|l| l.split("|").filter {|v| !v.strip.empty? } }
       rows_length = rows.map(&:length).max
       rows = rows.map {|v| v.length<rows_length ? v+Array.new(rows_length-v.length){ nil } : v }
       shared_options = parameters.map {|p| p[1].split("|").map{|sp| (sp && sp.strip.empty? ? nil : parse_params(sp))} if p[0]=="" }
       options = parameters.map{|p| p[0].empty? ? false : (p[1] ? p[1].split("|").map{|sp| sp && sp.strip.empty? ? nil : parse_params(sp)} : nil) }.filter {|v| v!=false }
+      rows = rows.map {|v| v.map.with_index {|m,i| m and m.strip=="..." ? v[i] = v[i-1] : m }}
       {rows: rows, shared_options: shared_options, options: options}
     end
 
@@ -731,7 +737,12 @@ module Ziffers
 
     # Plays tracks notation
     def zplay_tracks(m, opts={}, shared=nil)
-      line = m.split("\n").to_a.filter {|v| !v.strip.empty? }.ring[tick(:ztracker)]
+      lines = m.split("\n").to_a.filter {|v| !v.strip.empty? }
+      lines = lines.filter {|n| !n.start_with? "//" }
+
+      ## TODO: Do ... continue syntax parsin here?
+
+      line = lines.ring[tick(:ztracker)]
       result = zparse_tracks line, opts, shared, look(:ztracker)
 
       while result[:shared_opts] do
@@ -961,7 +972,13 @@ module Ziffers
       end
     end
 
-    def get_live_loops(live_loops=[]) # TODO: Bit hacky. Maybe there is a better way?
+    def get_live_loops(live_loops=[])
+
+      # TODO TEST:
+      # @named_subthreads.map do |name, thread|
+      #   name.to_s[10..-1] if name.to_s.start_with?('live_loop')
+      # end.compact
+
       Thread.list.each do |t|
         sonic_thread = t.thread_variable_get(:sonic_pi_system_thread_locals)
         if sonic_thread then

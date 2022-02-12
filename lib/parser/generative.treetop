@@ -26,7 +26,7 @@ grammar GenerativeSyntax
 
         set = ZiffArray.new(set)
 
-       # TODO: This is bit experimental
+       # TODO: This is bit experimental. Maybe remove ... but keep reflect?
           if t.methods.include?(:value)
             t.value.split("").each do |transform|
               case transform
@@ -348,7 +348,7 @@ grammar GenerativeSyntax
 
   # Not in use
   rule escaped_eval
-    '=(' e:(([a-zA-Z0-9] / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!')*) ')'
+    '=' '('? e:(([a-zA-Z0-9] / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!')*) ')'?
     {
       def value
         eval(e.text_value)
@@ -422,7 +422,7 @@ grammar GenerativeSyntax
   end
 
   rule min_max
-    v:(integer / integer_array / random_between)
+    v:(integer / integer_array / random_between / escaped_eval)
     {
       def value
         v.value
