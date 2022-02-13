@@ -404,14 +404,14 @@ module Ziffers
         # TODO: Merge rate not working. Merges too much?
         #ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
 
-        if defaults[:fade]
+        if defaults[:fade] or defaults[:fade_in] or defaults[:fade_out]
           tick_reset(:adjust_amp)
-          fade = defaults.delete(:fade)
+          fade = defaults[:fade] ? defaults.delete(:fade) : defaults[:fade_in] ? 0.0..1.0 : 1.0..0.0
           fade_from = fade.begin
           fade_to = fade.end
-          fade_in = defaults.delete(:fade_in)
+          fade_in_cycles = defaults.delete(:fade_in) || defaults.delete(:fade_out)
           fader = defaults.delete(:fader)
-          defaults[:adjust_amp] = zrange((fader ? fader : :quart), fade_from, fade_to, fade_in ? fade_in*melody.length : melody.length)
+          defaults[:adjust_amp] = zrange((fader ? fader : :quart), fade_from, fade_to, fade_in_cycles ? fade_in_cycles*melody.length : melody.length)
         end
 
         if defaults[:adjust_amp] then
