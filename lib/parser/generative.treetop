@@ -483,7 +483,9 @@ grammar GenerativeSyntax
         op.text_value
       end
       def value
-        min_max.value
+        val = min_max.value
+        val+=1 if val==0
+        val
       end
     }
   end

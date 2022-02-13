@@ -52,8 +52,26 @@ module Ziffers
     def sonic_range(s,e,step=nil,mult=nil,reflect=false)
       ms = (s>e) ? e : s # 1..7
       me = (e<s) ? s : e # 7..1
-      nArr = step ? (mult and mult=="*") ? ms.step(by: step).take(me.abs) : ms.step(by: step, to: me).to_a : ms.is_a?(Float) ? ms.step(to: me, by: 0.1).to_a : ms.step(to: me).to_a
-      nArr = nArr.reverse if e<s
+
+      if (mult and mult=="*")
+        if s>e
+          if e>0
+            nArr = s.step(by: step).take(e.abs)
+          else
+            if e<0
+              nArr = s.step(by: -step).take(e.abs)
+            else
+              nArr = ms.step(by: step).take(me.abs).reverse
+            end
+          end
+        else
+          nArr = s.step(by: e<0 ? -step : step).take(e.abs)
+        end
+      else
+        nArr = step ? ms.step(by: step, to: me).to_a : ms.is_a?(Float) ? ms.step(to: me, by: 0.1).to_a : ms.step(to: me).to_a
+        nArr = nArr.reverse if e<s
+      end
+
       nArr = nArr + nArr.drop(1).reverse.drop(1) if reflect
       nArr
     end

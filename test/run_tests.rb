@@ -190,16 +190,55 @@ def test_generative
     assert_equal(a.pcs, [3,6,1,5,6])
   end
   
-  a = zparse "e {: 10..15+2 }", cc: 20
+  a = zparse "e { 10..15+2 }", cc: 20
   print a.notes
   assert_equal(a.notes, [10,12,14])
   
-  a = zparse "e {: 2..4*2 }", cc: 20
+  a = zparse "e { 2..4*2 }", cc: 20
   print a.notes
   assert_equal(a.notes, [2,4,6,8])
   
   a = zparse "q40 _40 ^40 `40 '40 ´40", midi: true
   assert_equal(a.notes, [40,40,40,40,40,40])
+  
+  a = zparse "0..5"
+  assert_equal(a.orig_pcs,[0,1,2,3,4,5])
+  
+  a = zparse "5..0"
+  assert_equal(a.orig_pcs,[5,4,3,2,1,0])
+  
+  a = zparse "0..5+2"
+  assert_equal(a.orig_pcs,[0,2,4])
+  
+  a = zparse "5..0+2"
+  assert_equal(a.orig_pcs,[4,2,0])
+  
+  a = zparse "5..0*2"
+  assert_equal(a.orig_pcs,[8,6,4,2,0])
+  
+  a = zparse "0..5*2"
+  assert_equal(a.orig_pcs,[0,2,4,6,8])
+  
+  a = zparse "-2..2"
+  assert_equal(a.orig_pcs,[-2,-1,0,1,2])
+  
+  a = zparse "2..-2"
+  assert_equal(a.orig_pcs,[2,1,0,-1,-2])
+  
+  a = zparse "-2..2+2"
+  assert_equal(a.orig_pcs,[-2,0,2])
+  
+  a = zparse "-2..2*2"
+  assert_equal(a.orig_pcs,[-2,0])
+  
+  a = zparse "4..2*2"
+  assert_equal(a.orig_pcs,[4,6])
+  
+  a = zparse "4..2*-2"
+  assert_equal(a.orig_pcs,[4,2])
+  
+  a = zparse "4..-2*2"
+  assert_equal(a.orig_pcs,[4,2])
   
 end
 
