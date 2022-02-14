@@ -30,10 +30,10 @@ grammar GenerativeSyntax
             t.value.split("").each do |transform|
               case transform
               when "!"
-                set = set.uniq
-              when "%"
-                set = set + set.drop(1).reverse.drop(1)
+                set = set.compact.uniq
               when "@"
+                set = set + set.compact.drop(1).reverse.drop(1)
+              when "$"
                 set = set.compact.map{|v| v[:pc].to_s.split("").map{|d| {pc: d.to_i} } }.flatten
               when "&"
                 set = set.compact.map{|v| v[:hpcs] = v[:pc].to_s.split("").map{|i| {pc: i.to_i } } ; v.delete(:pc) ; v  }
@@ -180,7 +180,7 @@ grammar GenerativeSyntax
     end
 
   rule transform
-    [\!\%\@\&]
+    [\!\$\@\&]+
     {
     def value
       text_value
