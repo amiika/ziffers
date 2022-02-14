@@ -1066,7 +1066,11 @@ module Ziffers
       r+n.join
     end
 
-    def lsystem(ax,opts,gen,loopGen)
+    def regex_replace(ax,h)
+      (lsystem ax, {rules: h})[0]
+    end
+
+    def lsystem(ax,opts,gen=1,loopGen=nil)
       rules = opts[:rules]
       gen.times.collect.with_index do |i|
         i = loopGen if loopGen # If lsystem is used in loop instead of gens

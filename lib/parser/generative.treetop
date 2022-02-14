@@ -10,7 +10,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    '{' ':'? content:(set_items) repeat_two:(':')? repeat:(integer)? '}' p:(('~' / '?') [1-9]*)? t:(transform)? o:(operation)*  durs:(duration_set)?
+    '{' ':'? content:(set_items) repeat_two:(':')? repeat:(integer)? '}' p:(('~' / '?') [1-9]*)? t:(transform)? o:(operation)* durs:(duration_set)? polyfunction:(poly_range)?
     {
     def value
 
@@ -26,20 +26,17 @@ grammar GenerativeSyntax
 
         set = ZiffArray.new(set)
 
-       # TODO: This is bit experimental. Maybe remove ... but keep reflect?
           if t.methods.include?(:value)
             t.value.split("").each do |transform|
               case transform
-              when "u"
+              when "!"
                 set = set.uniq
-              when "i"
-                set = set.map{|v| v[:pc] = ~(v[:pc].to_i-1) if v.is_a?(Hash) ; v }
-              when "m"
-                set = set + set.reverse.drop(1)
-              when "r"
+              when "%"
                 set = set + set.drop(1).reverse.drop(1)
-              when "o"
-                set = ZiffArray.new(set.ois.map{|v| {pc: v}})
+              when "@"
+                set = set.compact.map{|v| v[:pc].to_s.split("").map{|d| {pc: d.to_i} } }.flatten
+              when "&"
+                set = set.compact.map{|v| v[:hpcs] = v[:pc].to_s.split("").map{|i| {pc: i.to_i } } ; v.delete(:pc) ; v  }
               end
             end
           end
@@ -135,6 +132,18 @@ grammar GenerativeSyntax
           end
         end
 
+        if polyfunction.methods.include?(:value)
+         set = set.compact.map do |v|
+            if v[:pc]
+              v[:pc] = eval polyfunction.value.gsub("x",v[:pc].to_s)
+              v
+            elsif v[:hpcs]
+              v[:hpcs] = v[:hpcs].map {|h| h[:pc] = eval polyfunction.value.gsub("x",h[:pc].to_s) ; h }
+              v
+            end
+          end
+        end
+
         set.zip(Array.new(set.length-1," "))
       end
 
@@ -171,10 +180,10 @@ grammar GenerativeSyntax
     end
 
   rule transform
-    ':' type:([a-z]+)
+    [\!\%\@\&]
     {
     def value
-      type.text_value
+      text_value
     end
     }
   end
@@ -418,6 +427,9 @@ grammar GenerativeSyntax
       def value
         sonic_random(m.value,x.value)
       end
+      def text_value
+        sonic_random(m.value,x.value).to_s
+      end
     }
   end
 
@@ -476,8 +488,41 @@ grammar GenerativeSyntax
    }
   end
 
+  rule poly_range
+    p:(polyfunc)
+    {
+      def value
+        a = regex_replace p.value, {/([1-9]+)(x)/=>"$1*$2", "^"=>"**",")("=>")*("}
+        a
+      end
+    }
+  end
+
+  rule polyfunc
+    first:(term) rest:(op:([\+\-\*])? t:(term))*
+    {
+      def value
+        if rest.empty?
+          first.value
+        else
+          r = rest.elements.map {|v| v.op.text_value+v.t.value }
+          first.value+r.flatten.join("")
+        end
+      end
+    }
+  end
+
+  rule term
+    '(' (integer / integer_array / random_between)? 'x' '^'? (integer / integer_array / random_between)? ([\+\-\*])? (integer / integer_array / random_between)? ')'
+    {
+      def value
+        elements.map {|v| v.methods.include?(:value) ? v.value : v.text_value }.flatten.compact.join("")
+      end
+    }
+  end
+
   rule step
-    op:('+' / '*') min_max
+    op:('+' / [*] 1..2) min_max
     {
       def type
         op.text_value

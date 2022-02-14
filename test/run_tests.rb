@@ -242,6 +242,19 @@ def test_generative
   
 end
 
+def test_polynomials
+  a = zparse "q {0 2 3}(x^2)"
+  assert_equals(a,[0,4,9])
+  a = zparse "q {{0..5}(x+1)(x-2)(x-2)}@"
+  assert_equals(a,[4,2,0,4,2,0,5,4])
+  a = zparse "q {{0..5}((1,6)x^(1,3))(2x)}@"
+  assert_equals(a,[0,6,1,6,2,7,0,5,1,2,1,2,5,0])
+  a = zparse "q {{0..2}((1,6)x^(1,3))(2x)}&"
+  assert_equals(a,[0,6,[1,6]])
+  a = zparse "q {{0 1 0 1}((1,6)x^(1,3))(2x)}!"
+  assert_equals(a,[0,6,10])
+end
+
 print "Testing"
 lazy_tests
 test1

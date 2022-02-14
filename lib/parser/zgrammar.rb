@@ -67,6 +67,10 @@ module Ziffers
         else
           nArr = s.step(by: e<0 ? -step : step).take(e.abs)
         end
+      elsif (mult and mult=="**")
+        raise "Invalid geometric sequence" if ms<0 or me<=0
+        nArr = (ms...me).map { |v| a = ((ms==0 ? ms+1 : ms) * step.abs ** v).to_i ; step<0 ? -a : a}
+        nArr = nArr.reverse if e<s
       else
         nArr = step ? ms.step(by: step, to: me).to_a : ms.is_a?(Float) ? ms.step(to: me, by: 0.1).to_a : ms.step(to: me).to_a
         nArr = nArr.reverse if e<s
