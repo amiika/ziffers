@@ -1,4 +1,4 @@
-'''
+
 require_relative "./lib/enumerables.rb"
 require_relative "./lib/monkeypatches.rb"
 require_relative "./lib/parser/zgrammar.rb"
@@ -20,7 +20,7 @@ load "~/ziffers/lib/common.rb"
 load "~/ziffers/lib/generators.rb"
 load "~/ziffers/lib/defaults.rb"
 load "~/ziffers/lib/pc_sets.rb"
-
+'''
 
 print "Ziffers 2.0 alpha"
 
