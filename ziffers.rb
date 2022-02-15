@@ -110,7 +110,7 @@ module Ziffers
       @@default_opts.merge!(Hash[current_synth_defaults.to_a])
     end
 
-    def zrange(func,start,finish,duration,time=nil)
+    def tweak(func,start,finish,duration,time=nil)
       (1..duration).map { |t| time ? $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f,time.to_f) : $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f) }
     end
 
@@ -411,7 +411,7 @@ module Ziffers
           fade_to = fade.end
           fade_in_cycles = defaults.delete(:fade_in) || defaults.delete(:fade_out)
           fader = defaults.delete(:fader)
-          defaults[:adjust_amp] = zrange((fader ? fader : :quart), fade_from, fade_to, fade_in_cycles ? fade_in_cycles*melody.length : melody.length)
+          defaults[:adjust_amp] = tweak((fader ? fader : :quart), fade_from, fade_to, fade_in_cycles ? fade_in_cycles*melody.length : melody.length)
         end
 
         if defaults[:adjust_amp] then

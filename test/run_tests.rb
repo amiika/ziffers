@@ -242,17 +242,19 @@ def test_generative
   
 end
 
-def test_polynomials
+def test_conditionals
   a = zparse "q {0 2 3}(x^2)"
-  assert_equals(a,[0,4,9])
-  a = zparse "q {{0..5}(x+1)(x-2)(x-2)}@"
-  assert_equals(a,[4,2,0,4,2,0,5,4])
-  a = zparse "q {{0..5}((1,6)x^(1,3))(2x)}@"
-  assert_equals(a,[0,6,1,6,2,7,0,5,1,2,1,2,5,0])
-  a = zparse "q {{0..2}((1,6)x^(1,3))(2x)}&"
-  assert_equals(a,[0,6,[1,6]])
-  a = zparse "q {{0 1 0 1}((1,6)x^(1,3))(2x)}!"
-  assert_equals(a,[0,6,10])
+  assert_equal(a.orig_pcs,[0,4,9])
+  a = zparse "q {{0..5}((x+1)(x-2)(x-2))}$"
+  assert_equal(a.orig_pcs,[4,2,0,4,2,0,5,4])
+  with_random_seed 35531 do
+    a = zparse "q {{0..5}(((1,6)x^(1,3))(2x))}$"
+    assert_equal(a.orig_pcs,[0,4,6,4,3,2,4,1,0,2,4,2,5,0,0])
+    a = zparse "q {{0..2}(((1,6)x^(1,3))(2x))}&"
+    assert_equal(a.orig_pcs,[0,4,[3,2]])
+    a = zparse "q {{0 1 0 1}(((1,6)x^(1,3))(2x))}!"
+    assert_equal(a.orig_pcs,[0,6])
+  end
 end
 
 print "Testing"
@@ -268,6 +270,7 @@ test_octaves
 test_samples
 test_ois
 test_generative
+test_conditionals
 
 
 print "All tests passed!"

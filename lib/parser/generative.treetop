@@ -10,7 +10,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    '{' ':'? content:(set_items) repeat_two:(':')? repeat:(integer)? '}' p:(('~' / '?') [1-9]*)? t:(transform)? o:(operation)* durs:(duration_set)? polyfunction:(poly_range)?
+    '{' ':'? content:(set_items) repeat_two:(':')? repeat:(integer)? '}' p:(('~' / '?') [1-9]*)? t:(transform)? o:(operation)* durs:(duration_set)? f:(ternary)?
     {
     def value
 
@@ -132,16 +132,18 @@ grammar GenerativeSyntax
           end
         end
 
-        if polyfunction.methods.include?(:value)
-         set = set.compact.map do |v|
-            if v[:pc]
-              v[:pc] = eval polyfunction.value.gsub("x",v[:pc].to_s)
-              v
-            elsif v[:hpcs]
-              v[:hpcs] = v[:hpcs].map {|h| h[:pc] = eval polyfunction.value.gsub("x",h[:pc].to_s) ; h }
-              v
+        if f.methods.include?(:value)
+          tfunc = f.value
+          set = set.compact.map do |v|
+              if v[:pc]
+                eval_func(v,tfunc)
+              elsif v[:hpcs]
+                v[:hpcs] = v[:hpcs].map do |h|
+                  eval_func(h,tfunc)
+                end
+                v
+              end
             end
-          end
         end
 
         set.zip(Array.new(set.length-1," "))
@@ -157,6 +159,19 @@ grammar GenerativeSyntax
       set
     end
 
+    end
+    def eval_func(v,tfunc)
+      if tfunc.is_a?(Array)
+        cond = eval tfunc[0].gsub("x",v[:pc].to_s)
+        if cond
+          v[:pc] = eval tfunc[1].gsub("x",v[:pc].to_s)
+        else
+          v[:pc] = eval tfunc[2].gsub("x",v[:pc].to_s) if tfunc[2]
+        end
+      else
+        v[:pc] = eval tfunc.gsub("x",v[:pc].to_s)
+      end
+      v
     end
     }
   end
@@ -488,35 +503,80 @@ grammar GenerativeSyntax
    }
   end
 
-  rule poly_range
-    p:(polyfunc)
+  rule ternary
+  '(' t:(conditional / clause) ')'
     {
       def value
-        a = regex_replace p.value, {/([1-9]+)(x)/=>"$1*$2", "^"=>"**",")("=>")*("}
+        t.value
+      end
+    }
+  end
+
+  rule conditional
+    cond:(condition) '?' first:(clause) ':'? second:(clause)?
+    {
+      def value
+        a = [cond.methods.include?(:value) ? cond.value : nil,first.methods.include?(:value) ? first.value : nil, second.methods.include?(:value) ? second.value : nil]
         a
       end
     }
   end
 
-  rule polyfunc
-    first:(term) rest:(op:([\+\-\*])? t:(term))*
+  rule condition
+    'x' comparison clause
+    {
+      def value
+        elements.map {|v| v.methods.include?(:value) ? v.value : v.text_value }.flatten.compact.join("")
+      end
+    }
+  end
+
+  rule comparison
+    ([<>!=] [=] 0..1)
+    {
+      def value
+        text_value
+      end
+    }
+  end
+
+  rule clause
+    first:(mult_term / integer / integer_array / random_between / escaped_clause) rest:(op:operator cl:(mult_term / integer / integer_array / random_between / escaped_clause))*
     {
       def value
         if rest.empty?
-          first.value
+          first.value.to_s
         else
-          r = rest.elements.map {|v| v.op.text_value+v.t.value }
-          first.value+r.flatten.join("")
+          r = rest.elements.map {|v| v.op.value+v.cl.value.to_s }
+          first.value.to_s+r.flatten.join("")
         end
       end
     }
   end
 
-  rule term
-    '(' (integer / integer_array / random_between)? 'x' '^'? (integer / integer_array / random_between)? ([\+\-\*])? (integer / integer_array / random_between)? ')'
+  rule escaped_clause
+    '(' clause ')'
     {
       def value
-        elements.map {|v| v.methods.include?(:value) ? v.value : v.text_value }.flatten.compact.join("")
+      "("+clause.value.to_s+")"
+    end
+    }
+  end
+
+  rule mult_term
+    a:(integer / integer_array / random_between)? b:('x')
+    {
+      def value
+        a.methods.include?(:value) ? a.value.to_s+"*"+b.text_value : b.text_value
+      end
+    }
+  end
+
+  rule operator
+    op:('*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / ')(')
+    {
+      def value
+        op.text_value=="^" ? "**" : op.text_value==")(" ? ")*(" : text_value
       end
     }
   end
