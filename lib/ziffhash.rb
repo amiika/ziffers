@@ -18,8 +18,16 @@ module Ziffers
         self[:hpcs].map {|h| h[:pc] }
       end
 
+      def notes
+        self[:notes] || [self[:note]]
+      end
+
       def dgr
         self[:pc]+1
+      end
+
+      def tpc
+        midi_to_tpc(self[:note],self[:key])
       end
 
       def note
@@ -50,8 +58,34 @@ module Ziffers
         self[:pc]*=val
       end
 
+      # TODO: Do this based on tcp value instead
       def note_name
         note_info(self[:note]).pitch_class
+      end
+
+      def to_s
+        if self[:sleep]
+          sleep_value = @@default_durs.key(self[:sleep])
+          sleep_value = "<"+self[:sleep].to_s+">" if !sleep_value
+        end
+        if self[:octave]
+          if self[:octave].is_a?(Integer)
+            octave_value = (self[:octave]>0 ? "^"*self[:octave] : "_"*self[:octave].abs)
+          else
+            octave_value = self[:octave].to_s
+          end
+        end
+        if self[:pc]
+          pc = ((self[:pc].to_i>9 or self[:pc].to_i<-9)  ? "=(#{self[:pc].to_s})" : self[:pc].to_s)
+        end
+        zs =  (self[:prefix] || "") +
+              (self[:add] || "") +
+              (octave_value || "") +
+              ((sleep_value and !self[:hpcs]) ? sleep_value.to_s : "") +
+              ((self[:note] and self[:note]==:r) ? "r" : "") +
+              (pc || "") +
+              (self[:hpcs] ? self[:hpcs].map {|h| h.to_s }.join("") : "")
+        zs
       end
 
       def midi_name

@@ -7,34 +7,34 @@ Ziffers.debug
 use_bpm 200
 
 def testzplay
-
+  
   # Test octaves
   zplay "e __6 _0 _1 _2 _3 _4 _5 _6 0 1 2 3 4 5 6 ^0 ^1 ^2 ^3 ^4 ^5 ^6 ^^0"
-
+  
   # Test degrees
   zplay "e E T 9 8 7 6 5 4 3 2 1 0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -T -E"
-
+  
   # frere jacques
   zplay "[:q 0 1 2 0:] [:q 2 3 h4:] [: [:e 4 5 4 3 q 2 0:] [:q 0 _4 h0:] :]", key: :e, scale: :major
-
+  
   # Same using list notation
   zplay "[: (0 1 2 0) :] [: ((2 3)4) :] [: [: ((4 5)(4 3)2 0) :] [: ((0 _4) 0) :] :]", key: :e, scale: :major
-
+  
   # row row
   zplay "q. 0 0 | q0 e1 q.2 | q2 e1 q2 e3 | h.4 | e 7 7 7 4 4 4 2 2 2 0 0 0 | q4 e3 q2 e1 | h. 0 "
-
+  
   # Test additions: Jericho
   zplay "[: q 0 #-1 0 1 2 1 2 3 4 h 4 4 r <q3 h3 3 r q4 h 4 4 r ; q 2 3 h 4 3 2 1 0> :]", key: :b, scale: :minor
-
+  
   # Ode to joy
   zplay "[: q 2 2 3 4 | q 4 3 2 1 | q 0 0 1 2 <q2 1 h1 ; q1 0 h0> :] q 1 1 2 0 | q 1 e 2 3 q 2 0 | q 1 e 2 3 q 2 1| q 0 1 h _4 | q 2 2 3 4 | q 4 3 2 1| q 0 0 1 2| q 1 0 h0|"
-
+  
   # twinkle twinkle
   zplay "q [: 0 0 4 4 5 5 h4 q 3 3 2 2 1 1 h0 < [:q4 4 3 3 2 2 h1 :] ;  > :]"
-
+  
   # Numbered loops
   zplay "q [: 0 1 2 :] [: 5 0 5 :3] [: 0 3 :4] _2"
-
+  
 end
 
 def testchords
@@ -64,14 +64,9 @@ def testrandom
   sleep 0.5
   zplay "e {0..11}~"
   sleep 0.5
-  zplay "e { (00000,1000) :3}"
+  zplay "e { (100,1000) :3}&"
   sleep 0.5
-  # Not in ziffers 2 (yet)
-  #zplay "e(0..2)%s"
-  #sleep 0.5
-  #zplay "e(0..2)%r"
-  #sleep 0.5
-  #zplay "e(0..2)%m"
+  zplay "e {0..2}@"
   sleep 0.5
   zplay "e {0..6}?"
   sleep 0.5
@@ -79,24 +74,20 @@ def testrandom
   sleep 0.5
   zplay "e {0..6}~2*2"
   sleep 0.5
-  zplay "e{(0,6)}+1*2/3%7"
+  zplay "e {(0,6)}+1*2/3%7"
   sleep 0.5
-  zplay "e{(1000,4000)}<wqqee>"
+  zplay "e {(1000,4000)}<wqqee>"
   sleep 0.5
-  zplay "e{0..8}<wqqeee>"
+  zplay "e {0..8}<wqqeee>"
   sleep 0.5
-  zplay "e{0..8}~<wqqeee>"
+  zplay "e {0..8}~<wqqeee>"
   sleep 0.5
-  zplay "{: 100;;1000 :3}?5<qee>"
+  zplay "q {: 100..1000 :3}?5$<qee>"
   sleep 0.5
-  zplay "{: 0..4 :4}~2+1*3<eqe>"
-  # Use chars and random things supported in Ziffers 2
-  # zplay "e Z1.? ? ? ? ? Z[1.15,0.5,1] ? ? ? ? Z1.(1,5) ? ? ? ?"
-  #sleep 0.5
-  #with_synth :beep do
-  #  2.times do zplay "q ii 443e45 iv 01212345 i q 223e45 v [q6654,e64534231,q????]", chord_sleep: 0, groups: false end
-  #  zplay "q $ I? C0.? (0,1) I? C0.? (1,2) I? C0.? (2,3) $ [0,1,2] I? [3,4,5] I? [3,4,5] ~ ????????? ", groups: false
-  #end
+  zplay "q {: 100..1000 :3}?5&<qee>"
+  sleep 0.5
+  zplay "q {: 0..4 :4}~2+1*3<eqe>"
+
 end
 
 def testslide

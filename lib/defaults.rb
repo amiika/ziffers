@@ -7,9 +7,29 @@ module Ziffers
       @@default_durs[k.to_sym]
     end
 
+    def get_default_opts
+      @@default_opts
+    end
+
     def list_dur_chars
       @@default_durs.to_a
     end
+
+    def set_default_opts(opts)
+      @@default_opts.merge!(opts)
+    end
+
+    def merge_synth_defaults
+      @@default_opts.merge!(Hash[current_synth_defaults.to_a])
+    end
+
+    @@default_opts = {
+      :key => :c,
+      :scale => :major,
+      :release => 1.0,
+      :sleep => 1.0,
+      :synth => :piano
+    }
 
       @@rhythm_keys = ['e','q','q.','h','h.','w','w.','d','d.','l']
 

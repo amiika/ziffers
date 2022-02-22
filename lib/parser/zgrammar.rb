@@ -42,11 +42,13 @@ module Ziffers
       (r + smallest)
     end
 
-    def sonic_random_float(min,max)
+    def sonic_random_float(min,max,ro=nil)
       range = (min - max).abs
       r = SonicPi::Core::SPRand.rand!(range)
       smallest = [min, max].min
-      (r + smallest)
+      v = (r + smallest)
+      v = v.round(ro) if ro
+      v
     end
 
     def sonic_range(s,e,step=nil,mult=nil,reflect=false)
@@ -91,16 +93,20 @@ module Ziffers
       return rhythm
     end
 
+    def deep_clone(h)
+      Marshal.load(Marshal.dump(h))
+    end
+
     # Parse shit using treeparse
-    def parse_ziffers(text, opts, shared, durs)
+    def parse_ziffers(text, opts, shared)
       # TODO: Find a better way to inject parameters for the parser ... or at least combine & rename
-      Thread.current[:tchordsleep] = opts[:chord_sleep]
       Thread.current[:tshared] = shared
       Thread.current[:counter] = 0
       Thread.current[:topts] = opts
-      Thread.current[:topts_orig] = Marshal.load(Marshal.dump(opts))
       Thread.current[:tarp] = nil
-      Thread.current[:default_durs] = durs
+      opts = opts.filter {|k,v| !v.is_a?(Proc) }
+      Thread.current[:topts_orig] = Marshal.load(Marshal.dump(opts))
+      Thread.current[:default_durs] = @@default_durs
 
       result = @@zparser.parse(text)
 
@@ -115,10 +121,15 @@ module Ziffers
       apply_array_transformations ziffers, opts, shared
     end
 
-    def parse_generative(text, parse_chords=true)
+    def parse_generative(text, opts={}, shared={})
+      shared = shared.filter {|k,v| !v.is_a?(Proc) }
+      opts = opts.filter {|k,v| !v.is_a?(Proc) }
+      Thread.current[:default_durs] = @@default_durs
+      Thread.current[:tshared] = deep_clone(shared.except(:rules))
+      Thread.current[:tchordsleep] = opts[:chord_sleep]
+      Thread.current[:topts] = deep_clone(opts)
+
       result = @@rparser.parse(text)
-      # TODO: Find a better way to inject parameters for the parser
-      Thread.current[:parse_chords] = parse_chords
 
       if !result
         puts @@rparser.failure_reason

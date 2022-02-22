@@ -35,6 +35,14 @@ module Ziffers
       ZiffArray.new(self[range])
     end
 
+    def vals(k)
+      self.map{|v| v[k] }
+    end
+
+    def tpcs
+      self.map{|v| v.tpc}
+    end
+
     def <=>(zarr)
       self.pcs <=> zarr.pcs
     end
@@ -70,7 +78,13 @@ module Ziffers
     end
 
     def samples
-      self.map {|s| s[:sample] }
+      self.map do |s|
+        if s[:samples]
+          s[:samples].map {|h| h[:sample] }
+        else
+          s[:sample]
+        end
+      end
     end
 
     def retrograde(retrograde=true, chords=false)
@@ -297,6 +311,10 @@ module Ziffers
     #def sort
     # ZiffArray.new(self.sort_by { |hash| hash[:pc] })
     #end
+
+    def to_s
+      self.map {|h| h.to_s}.join(" ")
+    end
 
     def content
       self
