@@ -207,6 +207,13 @@ def test_generative
   with_random_seed 2345 do
     a = zparse "e {: (0,6) :5}"
     assert_equal(a.pcs, [3,6,1,5,6])
+    a = zparse "q % ? % ? % ? % ?"
+    assert_equal(a.durations,[0.59, 0.135, 0.164, 0.254])
+    assert_equal(a.pcs,[2, 3, 2, 2])
+    a = zparse "{: (%>0.5?0:1) :5}"
+    assert_equal(a.pcs,[1, 1, 1, 1, 0])
+    a = zparse "{: (%>0.5?0..2:{: (4,7) :3}) :5}"
+    assert_equal(a.pcs,[6, 5, 4, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2])
   end
   
   a = zparse "[: <q;e> 0 2 :]"
@@ -272,16 +279,46 @@ end
 def test_conditionals
   a = zparse "q {0 2 3}(x^2)"
   assert_equal(a.orig_pcs,[0,4,9])
+  
   a = zparse "q {{0..5}((x+1)(x-2)(x-2))}$"
   assert_equal(a.orig_pcs,[4,2,0,4,2,0,5,4])
+  
+  a = zparse "{1 2 r 3 4}(2x)"
+  assert_equal(a.pcs,[2, 4, nil, 6, 1])
+  
+  a = zparse "{1 2 (-2) 3 4}(2x)"
+  assert_equal(a.octaves,[0,0,-2,-1])
+  
+  a = zparse "{{1 2 3}+{2 3 4}}(x>3?x:x*3)"
+  assert_equal(a.pcs,[2, 4, 5, 3, 6, 2, 4, 5, 6, 3, 6, 2, 5, 6, 0])
+  
+  
   with_random_seed 35531 do
+    
     a = zparse "q {{0..5}(((1,6)x^(1,3))(2x))}$"
     assert_equal(a.orig_pcs,[0,4,6,4,3,2,4,1,0,2,4,2,5,0,0])
+    
     a = zparse "q {{0..2}(((1,6)x^(1,3))(2x))}&"
     assert_equal(a.orig_pcs,[0,4,[3,2]])
+    
     a = zparse "q {{0 1 0 1}(((1,6)x^(1,3))(2x))}!"
     assert_equal(a.orig_pcs,[0,6])
+    
+    a = zparse "q {1..10}(x%(1,5)==0?x+4:x-4)"
+    assert_equal(a.pcs,[4, 6, 6, 1, 1, 3, 3, 5, 5, 0])
   end
+  
+  with_random_seed 23532 do
+    a = zparse "1 (%>0.4?2) (2) 3"
+    assert_equal(a.pcs,[1,3])
+    assert_equal(a.octaves,[0,2])
+    a = zparse "1 (%>0.05?2) (2) 3"
+    assert_equal(a.pcs,[1,2,3])
+    assert_equal(a.octaves,[0,0,2])
+    a = zparse "q {0..10}(x%(2,4)==0?x-(1,3):x+(1,3))"
+    assert_equal(a.pcs,[5, 4, 5, 6, 2, 1, 2, 3, 6, 5, 6])
+  end
+  
 end
 
 def test_transforms

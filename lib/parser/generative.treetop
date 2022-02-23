@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (ignore_params / assign_set / use / escaped_multi_octave / repeat / set / ranges / group / roman / array / random_decimal / decimal_sleep / pitch_classes / multisleep / conditional_pc / multioctave / rest /  s / bar / parens / random_percent / ignore)*
+    (ignore_params / assign_set / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / group / roman / array / random_decimal / decimal_sleep / pitch_classes / multisleep / multioctave / rest /  s / bar / parens / random_percent / ignore)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
@@ -15,7 +15,7 @@ grammar GenerativeSyntax
               v.to_s
             end
           elsif v.is_a?(Array)
-            v.flatten.reject {|e| e.to_s.empty? }.filter_map {|v| v.to_s if v}.join(" ")
+            v.flatten.reject {|e| e.to_s.empty? }.filter_map {|v| v.to_s if v}
           else
            v.to_s
           end
@@ -34,7 +34,7 @@ grammar GenerativeSyntax
       reps = (reps and reps>1) ? reps : (repeat_two.text_value==":" ? 2 : 1)
 
       set = reps.times.collect do |i|
-        original_set = content.value.flatten.filter {|v| v != " "}
+        original_set = content.value.flatten
 
         set = Marshal.load(Marshal.dump(original_set))
 
@@ -65,7 +65,7 @@ grammar GenerativeSyntax
         if !o.empty? then
           o.elements.each do |op|
             if op.methods.include?(:value) then
-              op_values = ZiffArray.new(op.value.flatten.filter {|v| v and v != " "}) if op.value.is_a?(Array)
+              op_values = ZiffArray.new(op.value.flatten) if op.value.is_a?(Array)
               case op.operator
               when '**', '*', '/', '+', '-', '^', '%', '|', '&', '<<', '>>'
                 if op.value.kind_of?(Array)
@@ -107,7 +107,6 @@ grammar GenerativeSyntax
                           v[:hpcs] = v[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op.operator).(operation_value); h }
                         end
                       end
-
                       v
                     end
 
@@ -130,7 +129,6 @@ grammar GenerativeSyntax
                         z.delete(:pc)
                     elsif z[:hpcs] and v.is_a?(Integer)
                       z[:hpcs] = z[:hpcs].map {|h|  h[:pc] = h[:pc]+v ; h }
-
                     else
                        z[:pc] =  z[:pc]+v
                      end
@@ -151,6 +149,7 @@ grammar GenerativeSyntax
         if eval_f.methods.include?(:value)
           tfunc = eval_f.value
           set = set.compact.map do |v|
+            if v.is_a?(Hash)
               if v[:pc]
                 eval_func(v,tfunc)
               elsif v[:hpcs]
@@ -160,13 +159,11 @@ grammar GenerativeSyntax
                 v
               end
             end
+            v
+          end
         end
-
-        #set.zip(Array.new(set.length-1," "))
         set
       end
-
-  #  set = set.zip(Array.new(reps," "))
 
     durations = durs.value if durs.methods.include?(:value)
     if durations and durations.is_a?(Array)
@@ -249,7 +246,7 @@ grammar GenerativeSyntax
     '<' durs:(sleep / s)* '>'
     {
     def value
-      durs.elements.map {|v| v.value }.filter_map {|v| v if v!=" "}
+      durs.elements.map {|v| v.value }
     end
     }
   end
@@ -310,7 +307,7 @@ grammar GenerativeSyntax
           end
           rep_result += rep
           end
-         rep_result = rep_result.flatten.map {|h| h.to_s }.join(" ")
+         rep_result = rep_result.flatten.map {|h| h.to_s }
          rep_result
        end
      }
@@ -331,37 +328,37 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_pc / parens / control / bar / set / ignore)*
+    (ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / control / bar / set / ignore)*
     {
     def value
-      elements.map {|v| v.value }.filter {|v| v and v!= " "}
+      elements.map {|v| v.value }
     end
     }
   end
 
   rule repeat_subset
-    (ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_pc / parens / bar / control / ignore)*
+    (ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / control / ignore)*
     {
     def value
-      elements.map {|v| v.methods.include?(:exact_value) ? v.exact_value : v.value }.filter {|v| v and v!= " "}
+      elements.map {|v| v.methods.include?(:exact_value) ? v.exact_value : v.value }
     end
     }
   end
 
   rule cyclic_subset
-    (ranges / repeat / use / escaped_multi_octave / group / roman  / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_pc / parens  / control / ignore)*
+    (ranges / repeat / use / escaped_multi_octave / group / roman  / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens  / control / ignore)*
     {
     def value
-      elements.map {|v| v.value }.filter {|v| v and v!= " "}
+      elements.map {|v| v.value }
     end
     }
   end
 
   rule array_subset
-    (use / ranges / escaped_multi_octave / group / roman / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_pc / parens / bar / control / ignore)*
+    (use / ranges / escaped_multi_octave / group / roman / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / control / ignore)*
     {
     def value
-      elements.map {|v| v.value }.filter {|v| v and v!= " "}
+      elements.map {|v| v.value }
     end
     }
   end
@@ -370,7 +367,7 @@ grammar GenerativeSyntax
     (use / ranges / escaped_multi_octave / group / roman / pitch_classes / multioctave / rest / s / random_between / parens / control / ignore)*
     {
     def value
-      elements.map {|v| v.value }.filter {|v| v and v!= " "}
+      elements.map {|v| v.value }
     end
     }
   end
@@ -566,7 +563,7 @@ grammar GenerativeSyntax
         #v.merge!(Thread.current[:topts])
         ZiffHash[v]
       else
-        e.zip(Array.new(e.length-1," "))
+        e
       end
      end
     }
@@ -652,7 +649,8 @@ grammar GenerativeSyntax
      step = c.value if c.methods.include?(:value)
      type = c.type if c.methods.include?(:type)
      arr = sonic_range(a.value.to_i,b.value.to_i,step,type)
-     arr.each_with_object([]){|v,o| o.push(ZiffHash[{pc: v}]) ; o.push(" ") }
+     arr = arr.map {|v| ZiffHash[{pc: v}] }
+     ZiffArray[arr]
    end
    }
   end
@@ -669,26 +667,29 @@ grammar GenerativeSyntax
   }
 end
 
-rule conditional_pc
-  '(' conditional ')'
+rule conditional_assingment
+  '(' conditional_set ')'
   {
     def value
-      eval_func conditional.value
+      eval_cond conditional_set.value
     end
-    def eval_func(tfunc)
-      if tfunc.is_a?(Array)
-        cond = eval tfunc[0]
-        if cond
-          eval_pc = eval tfunc[1]
-        else
-          eval_pc = eval tfunc[2]
-        end
+    def eval_cond(tfunc)
+      cond = eval tfunc[0]
+      if cond
+        tfunc[1]
       else
-        eval_pc = eval tfunc
+        tfunc[2]
       end
-      v = eval_pc.to_s.split("").map {|a| {pc: a}}
-      v = (v.length>1 ? {hpcs: v} : v)
-      ZiffHash[v[0]]
+    end
+  }
+end
+
+rule conditional_set
+  cond:(condition) '?' first:(set / set_items) ':'? second:(set / set_items)?
+  {
+    def value
+      a = [(cond.methods.include?(:value) ? cond.value : nil), (first.methods.include?(:value) ? first.value : nil), (second.methods.include?(:value) ? second.value : nil)]
+      a
     end
   }
 end
@@ -713,7 +714,7 @@ end
   end
 
   rule condition
-    ('x' / clause) comparison ('x' / clause)
+    (clause) comparison (clause)
     {
       def value
         elements.map {|v| v.methods.include?(:value) ? v.value : v.text_value }.flatten.compact.join("")
