@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (ignore_params / assign_set / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / group / roman / array / random_decimal / decimal_sleep / pitch_classes / multisleep / multioctave / rest /  s / bar / parens / random_percent / ignore)*
+    (ignore / ignore_params / assign_set / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / group / roman / array / random_decimal / decimal_sleep / pitch_classes / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
@@ -26,7 +26,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    '{' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? '}' p:(('~' / '?') [1-9]*)? t:(transform)? o:(operation)* durs:(duration_set)? eval_f:(ternary)?
+    '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? t:(transform)? o:(operation)* durs:(duration_set)? eval_f:(ternary)?
     {
     def value
 
@@ -280,7 +280,7 @@ grammar GenerativeSyntax
   end
 
   rule parens
-    '(' parens_subset ')'
+    '[' parens_subset ']'
     {
       def value
         s = parens_subset.elements.collect { |v| v.value }.filter_map {|v| v if v.is_a?(Hash)}
@@ -328,7 +328,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / control / bar / set / ignore)*
+    (ignore / ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / control / bar / set)*
     {
     def value
       elements.map {|v| v.value }
@@ -337,16 +337,18 @@ grammar GenerativeSyntax
   end
 
   rule repeat_subset
-    (ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / control / ignore)*
+    (ignore / ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / control)*
     {
     def value
-      elements.map {|v| v.methods.include?(:exact_value) ? v.exact_value : v.value }
+    zlog "IN REPEAET"
+    zlog elements
+      elements.map {|v| zlog v.methods.include?(:exact_value) ; v.methods.include?(:exact_value) ? v.exact_value : v.value }
     end
     }
   end
 
   rule cyclic_subset
-    (ranges / repeat / use / escaped_multi_octave / group / roman  / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens  / control / ignore)*
+    (ignore / ranges / repeat / use / escaped_multi_octave / group / roman  / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens  / control)*
     {
     def value
       elements.map {|v| v.value }
@@ -355,7 +357,7 @@ grammar GenerativeSyntax
   end
 
   rule array_subset
-    (use / ranges / escaped_multi_octave / group / roman / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / control / ignore)*
+    (ignore / use / ranges / escaped_multi_octave / group / roman / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / control)*
     {
     def value
       elements.map {|v| v.value }
@@ -364,7 +366,7 @@ grammar GenerativeSyntax
   end
 
   rule parens_subset
-    (use / ranges / escaped_multi_octave / group / roman / pitch_classes / multioctave / rest / s / random_between / parens / control / ignore)*
+    (ignore / use / ranges / escaped_multi_octave / group / roman / pitch_classes / multioctave / rest / s / random_between / parens / control)*
     {
     def value
       elements.map {|v| v.value }
@@ -373,7 +375,7 @@ grammar GenerativeSyntax
   end
 
   rule cyclic
-  '<' first:(cyclic_subset) following:(';' i:cyclic_subset)* '>'
+  '<' first:(cyclic_subset) following:(';' i:cyclic_subset)+ '>'
     {
     def value
       if following.empty?
@@ -406,7 +408,7 @@ grammar GenerativeSyntax
   end
 
   rule escaped_decimal
-  '<' decimal '>'
+  '[' decimal ']'
   {
     def value
       text_value
@@ -450,7 +452,7 @@ grammar GenerativeSyntax
         o.text_value
       end
       def exact_value
-        "("+o.elements.map {|v| (v.text_value=='^' ? 1 : -1)}.inject(0,:+).to_s+")"
+        "<"+o.elements.map {|v| (v.text_value=='^' ? 1 : -1)}.inject(0,:+).to_s+">"
      end
     }
   end
@@ -592,7 +594,7 @@ grammar GenerativeSyntax
     '?'
     {
       def value
-        SonicPi::Core::SPRand.rand_i!(11)
+        SonicPi::Core::SPRand.rand_i!(Thread.current[:topts][:scale] ? (scale 0, Thread.current[:topts][:scale]).length : 9)
       end
     }
   end
@@ -668,7 +670,7 @@ grammar GenerativeSyntax
 end
 
 rule conditional_assingment
-  '(' conditional_set ')'
+  '{' conditional_set '}'
   {
     def value
       eval_cond conditional_set.value
@@ -695,7 +697,7 @@ rule conditional_set
 end
 
   rule ternary
-  '(' t:(conditional / clause) ')'
+  '{' t:(conditional / clause) '}'
     {
       def value
         t.value
@@ -804,9 +806,10 @@ end
     prefix:(escaped_prefix_sleep / prefix_octave / prefix_sleep / octave / escaped_octave / add / dynamics / staccato)* d:(normal_pitch_class / escaped_eval / random_pitch_class / random_between)
     {
       def value
-
+        zlog "PITCH CLASS"
         prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
         prefixes = {} if !prefixes
+        zlog prefixes
 
         dgr = d.value
         v = {:pc=>dgr}
@@ -834,7 +837,7 @@ end
   end
 
   rule escaped_prefix_sleep
-  '<' decimal '>'
+  '[' decimal ']'
   {
     def value
       {sleep: decimal.value}
@@ -849,22 +852,22 @@ end
         {prefix: o.text_value }
       end
       def exact_value
-        {prefix: "("+o.elements.map {|v| (v.text_value=='^' ? 1 : -1)}.inject(0,:+).to_s+")" }
+        {prefix: "<"+o.elements.map {|v| (v.text_value=='^' ? 1 : -1)}.inject(0,:+).to_s+">" }
      end
     }
   end
 
   rule slide
-    '~' escaped_decimal?
+    '~' v:('<' [0-9]+ '.' [0-9]+ '>')?
     {
       def value
-        text_value
+        v.text_value
      end
     }
   end
 
   rule escaped_octave
-    '(' o:(integer) ')'
+    '<' o:(integer) '>'
     {
       def value
         {prefix: text_value}
@@ -873,7 +876,7 @@ end
   end
 
   rule escaped_multi_octave
-    o:('(' integer ')') s
+    o:('<' integer '>') s
     {
       def value
         o.text_value

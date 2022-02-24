@@ -66,7 +66,7 @@ module Ziffers
       def to_s
         if self[:sleep]
           sleep_value = @@default_durs.key(self[:sleep])
-          sleep_value = "<"+self[:sleep].to_s+">" if !sleep_value
+          sleep_value = "["+self[:sleep].to_s+"]" if !sleep_value
         end
         if self[:octave]
           if self[:octave].is_a?(Integer)

@@ -21,7 +21,7 @@ grammar Ziffers
   end
 
   rule numeric_octave
-    '(' o:(integer) ')' (s / sleep)
+    '<' o:(integer) '>' (s / sleep)
     {
       def value
         Thread.current[:topts][:octave] = o.value
@@ -240,7 +240,7 @@ grammar Ziffers
   end
 
   rule escaped_prefix_sleep
-  '<' decimal '>'
+  '[' decimal ']'
   {
     def value
       {sleep: decimal.value}
@@ -258,7 +258,7 @@ grammar Ziffers
   end
 
   rule escaped_octave
-    '(' o:(integer) ')'
+    '<' o:(integer) '>'
     {
       def value
         {fixed_octave: o.value}
@@ -434,21 +434,21 @@ end
   end
 
   rule slide
-  '~' e:(escaped_decimal)? s? c:(chords)
+  '~' e:( '<' v:([0-9]+ '.' [0-9]+) '>')? s? c:(chords)
     {
       def value
         v = {
           :slide=>c.value.merge!(Thread.current[:topts])
         }
         v.merge!(Thread.current[:topts])
-        v[:note_slide] = e.value if e.methods.include?(:value)
+        v[:note_slide] = e.v.text_value.to_f if !e.empty?
         ZiffHash[v]
       end
     }
   end
 
   rule escaped_decimal
-  '<' decimal '>'
+  '[' decimal ']'
   {
     def value
       decimal.value
