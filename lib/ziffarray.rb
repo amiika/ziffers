@@ -36,7 +36,7 @@ module Ziffers
     end
 
     def vals(k)
-      self.map{|v| v[k] }
+      self.map{|v| v[k] || (v[:hpcs] && v[:hpcs].map{|p| p[k] }) || (v[:samples] && v[:samples].map{|p| p[k] })}
     end
 
     def tpcs
@@ -45,6 +45,10 @@ module Ziffers
 
     def <=>(zarr)
       self.pcs <=> zarr.pcs
+    end
+
+    def -(x)
+      ZiffArray.new(super)
     end
 
     def +(x)
@@ -224,7 +228,11 @@ module Ziffers
     alias pcs pitch_classes
 
     def octaves
-      self.map{|x| x[:octave] or x[:octave]}
+      self.map{|x| x[:octave] or (x[:hpcs] and x[:hpcs].map{|p| p[:octave]})}
+    end
+
+    def pitches
+      self.map{|x| x[:pitch] or (x[:samples] and x[:samples].map{|p| p[:pitch]})}
     end
 
     def notes
@@ -237,6 +245,10 @@ module Ziffers
 
     def midi_names
       self.map{|x| x.midi_name }
+    end
+
+    def fuse(inject_melody)
+      ZiffArray.new(self.inject(inject_melody){|a,j| a.flat_map{|n| [n,j.augment(n)]}})
     end
 
     def augment(opts)
@@ -312,8 +324,8 @@ module Ziffers
     # ZiffArray.new(self.sort_by { |hash| hash[:pc] })
     #end
 
-    def to_s
-      self.map {|h| h.to_s}.join(" ")
+    def to_z
+      self.map {|h| h.to_z}.join(" ")
     end
 
     def content
@@ -368,6 +380,10 @@ module Ziffers
         self.map{|x,i| x.duration }
     end
 
+    def rotate(v)
+      ZiffArray.new(super)
+    end
+
     def merge_lengths(arr, loop_n=0)
       ZiffArray.new(self.map.with_index{|x,i| x.change_duration arr[(i+loop_n)%arr.length]})
     end
@@ -394,13 +410,22 @@ module Ziffers
       if val.is_a?(Array)
         pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
       elsif val.is_a?(SonicPi::Core::RingVector)
-        pattern = ints_to_lengths(bools_to_seq(val))
+        if (!!val[0] == val[0])
+        seq_length = val.length.to_f
+        pattern = bools_to_seq(val).map {|v| v / seq_length }
+      else
+        pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
+      end
       elsif val.is_a?(Integer)
         pattern = ints_to_lengths(val.to_s.split("").map{|v| v.to_i})
       elsif val.is_a?(Hash)
         # TODO: Create more elegant functions for hex etc.
         numbers = val.slice(0,1,2,3,4,5,6,7,8,9,10,11)
-        pattern = ints_to_lengths(bools_to_seq(val[:hex].to_s(2).split("").map{|b| b=="1" ? true : false }.flatten)) if val[:hex]
+        if val[:hex]
+          bools = val[:hex].to_s(2).split("").map{|b| b=="1" ? true : false }.flatten
+          seq_length = bools.length.to_f
+          pattern = bools_to_seq(bools).map {|v| v / seq_length }
+        end
         pattern = map_pcs_to_durations(numbers) if numbers and numbers.size>0
         pattern = schillinger(val) if val[:minor] and val[:major]
         pattern = val[:pattern] if val[:pattern]

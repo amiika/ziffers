@@ -63,10 +63,10 @@ module Ziffers
         note_info(self[:note]).pitch_class
       end
 
-      def to_s
+      def to_z
         if self[:sleep]
           sleep_value = @@default_durs.key(self[:sleep])
-          sleep_value = "<"+self[:sleep].to_s+">" if !sleep_value
+          sleep_value = "["+self[:sleep].to_s+"]" if !sleep_value
         end
         if self[:octave]
           if self[:octave].is_a?(Integer)
@@ -76,15 +76,19 @@ module Ziffers
           end
         end
         if self[:pc]
-          pc = ((self[:pc].to_i>9 or self[:pc].to_i<-9)  ? "=(#{self[:pc].to_s})" : self[:pc].to_s)
+          pc = ((self[:pc].to_i>9 or self[:pc].to_i<-9 or self[:pc].is_a?(Float))  ? "{#{self[:pc].to_s}}" : self[:pc].to_s)
         end
         zs =  (self[:prefix] || "") +
               (self[:add] || "") +
+              (self[:staccato] || "") +
+              (self[:dynamics] || "") +
               (octave_value || "") +
-              ((sleep_value and !self[:hpcs]) ? sleep_value.to_s : "") +
+              ((sleep_value and !self[:hpcs] and !self[:samples]) ? sleep_value.to_s : "") +
               ((self[:note] and self[:note]==:r) ? "r" : "") +
+              (self[:char] || "") +
               (pc || "") +
-              (self[:hpcs] ? self[:hpcs].map {|h| h.to_s }.join("") : "")
+              (self[:hpcs] ? self[:hpcs].map {|h| h.to_z }.join("") : "") +
+              (self[:samples] ? self[:samples].map {|h| h.to_z }.join("") : "")
         zs
       end
 
@@ -166,12 +170,12 @@ module Ziffers
       # TODO: Add ignore_octave parameter?
       def update_note
         if self[:pc]
-          self.merge!(get_ziff(self[:pc], self[:key], self[:scale], self[:octave]))
+          self.merge!(get_ziff(self[:pc], self[:key], self[:scale], (self[:octave] || 0)))
         elsif self[:hpcs]
           notes = []
           self[:hpcs].each do |d|
             pc = d[:pc]
-            notes.push(get_note_from_dgr(pc, self[:key], self[:scale], self[:octave]))
+            notes.push(get_note_from_dgr(pc, self[:key], self[:scale], (self[:octave] || 0)))
           end
           self[:pcs] = self[:hpcs].map {|h| h[:pc] }
           self[:notes] = notes
@@ -195,6 +199,7 @@ module Ziffers
           end
           interval = interval.() if (interval.is_a? Proc)
           ziff[:note] = get_interval_note ziff[:pc], interval, 0, ziff[:key], ziff[:scale]
+          ziff[:pc] = ziff[:pc]+interval
         end
         ziff
       end

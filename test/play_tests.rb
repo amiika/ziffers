@@ -4,7 +4,7 @@ use_synth :piano
 
 Ziffers.debug
 
-use_bpm 200
+use_bpm 80
 
 def testzplay
   
@@ -18,7 +18,7 @@ def testzplay
   zplay "[:q 0 1 2 0:] [:q 2 3 h4:] [: [:e 4 5 4 3 q 2 0:] [:q 0 _4 h0:] :]", key: :e, scale: :major
   
   # Same using list notation
-  zplay "[: (0 1 2 0) :] [: ((2 3)4) :] [: [: ((4 5)(4 3)2 0) :] [: ((0 _4) 0) :] :]", key: :e, scale: :major
+  zplay "[: [0 1 2 0] :] [: [[2 3]4] :] [: [: [[4 5][4 3]2 0] :] [: [[0 _4] 0] :] :]", key: :e, scale: :major
   
   # row row
   zplay "q. 0 0 | q0 e1 q.2 | q2 e1 q2 e3 | h.4 | e 7 7 7 4 4 4 2 2 2 0 0 0 | q4 e3 q2 e1 | h. 0 "
@@ -62,32 +62,32 @@ end
 def testrandom
   zplay "e 0..11"
   sleep 0.5
-  zplay "e {0..11}~"
+  zplay "e (0..11)~"
   sleep 0.5
-  zplay "e { (100,1000) :3}&"
+  zplay "e ( (100,1000) :3)&"
   sleep 0.5
-  zplay "e {0..2}@"
+  zplay "e (0..2)@"
   sleep 0.5
-  zplay "e {0..6}?"
+  zplay "e (0..6)?"
   sleep 0.5
-  zplay "e {0..6}?2"
+  zplay "e (0..6)?2"
   sleep 0.5
-  zplay "e {0..6}~2*2"
+  zplay "e (0..6)~2*2"
   sleep 0.5
-  zplay "e {(0,6)}+1*2/3%7"
+  zplay "e ((0,6))+1*2/3%7"
   sleep 0.5
-  zplay "e {(1000,4000)}<wqqee>"
+  zplay "e ((1000,4000))<wqqee>"
   sleep 0.5
-  zplay "e {0..8}<wqqeee>"
+  zplay "e (0..8)<wqqeee>"
   sleep 0.5
-  zplay "e {0..8}~<wqqeee>"
+  zplay "e (0..8)~<wqqeee>"
   sleep 0.5
-  zplay "q {: 100..1000 :3}?5$<qee>"
+  zplay "q (: 100..1000 :3)?5$<qee>"
   sleep 0.5
-  zplay "q {: 100..1000 :3}?5&<qee>"
+  zplay "q (: 100..1000 :3)?5&<qee>"
   sleep 0.5
-  zplay "q {: 0..4 :4}~2+1*3<eqe>"
-
+  zplay "q (: 0..4 :4)~2+1*3<eqe>"
+  
 end
 
 def testslide
@@ -96,7 +96,7 @@ def testslide
     zplay "q [: ~80 ~50 :]"
     zplay "q ~<0.5>0123"
     zplay "h ~<10.0>0123 "
-    zplay "h2 q 2 1 2 q ~<0.1>2555 h. 4 2 q.. ~<0.14>25 4 h ~<0.1>21221"
+    zplay "h2 q 2 1 2 q ~<0.2>255 h. 4 2 q.. ~<0.2>255 4 h ~<0.3>2121"
   end
 end
 
@@ -126,7 +126,7 @@ def testlsystem
   with_synth :beep do
     zplay "q 0", rules: {"0"=>"0 2","2"=>"5 3 2 0"}, gen: 3
     zplay "q?", rules: {"q?"=>"q? e ? ? ? q?"}, gen: 2, scale: :major_pentatonic
-    zplay "q1", rules: {/[a-z][0-6]/=>"{0..6}~<qeqqe>"}, gen: 2, scale: :gong
+    zplay "q1", rules: {/[a-z][0-6]/=>"(0..6)~<qeqqe>"}, gen: 2, scale: :gong
     zplay "q1", rules: {/(3)1/=>"q =($1+1) 1 =($2+2)",/[1-7]/=>"e 3 1 3"}, gen: 3
     # TODO: Fix these?
     # zplay "q 1 2 3", rules: {/[1-9]/=>"'$*1' {e,q} '$*2'"}, gen: 4
@@ -145,11 +145,11 @@ def testSimult
 end
 
 def testListSyntax
-  zplay "w 5 ((5 3)(3 2 1 0)) 7 2"
+  zplay "w 5 [[5 3][3 2 1 0]] 7 2"
   zplay "w 5 q 5 3 e 3 2 1 0 w 7 2"
-  zplay "h 1 (0 2 1 3) 2 ((4 2)1 3 1) 5 (6 4(5 3)2) 3 (2 3 1 4) "
-  zplay "w (0(1 2(2 3(5))))"
-  zplay "h 1 (5 3) w 1 (3 1(2 1 0)) -2 (-1 2 (3 4(7 8))) ^3 _8"
+  zplay "h 1 [0 2 1 3] 2 [[4 2]1 3 1] 5 [6 4[5 3]2] 3 [2 3 1 4] "
+  zplay "w [0[1 2[2 3[5]]]]"
+  zplay "h 1 [5 3] w 1 [3 1[2 1 0]] -2 [-1 2 [3 4[7 8]]] ^3 _8"
 end
 
 def testUseChars
@@ -159,7 +159,7 @@ def testUseChars
 end
 
 def testpreparse
-  zplay "q [:(c d e c):][:((e f) g):]", parsekey: :c, key: :e
+  zplay "q [:[c d e c]:][:[[e f] g]:]", parsekey: :c, key: :e
 end
 
 def testeffects

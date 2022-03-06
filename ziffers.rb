@@ -32,7 +32,7 @@ module Ziffers
     include Ziffers::Common
     include Ziffers::Generators
 
-    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :cc, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :pitch, :run_each, :methods]
+    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :cc, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :pitch, :run_each, :method]
 
     @@debug = false
     @@set_keys = [:pc]
@@ -96,9 +96,9 @@ module Ziffers
     end
 
     def expand_zspread(n)
-      n = n.gsub(/\{(.+)\}\<(\d+),(\d+),?(\d+)?,?(.+)?\>(\{.+\})?/) do
+      n = n.gsub(/\((.+)\)\<(\d+),(\d+),?(\d+)?,?(.+)?\>(\(.+\))?/) do
         a = $1.split(";")
-        b = $6.tr("{}","").split(";") if $6
+        b = $6.tr("()","").split(";") if $6
         zspread((a.length>1 ? a : a[0]), $2.to_i, $3.to_i, ($4 ? $4.to_i : 0), ($5 ? $5 : " "),(b ? (b.length>1 ? b : b[0]) : "r"))
       end
     end
@@ -156,9 +156,12 @@ module Ziffers
         opts = defaults.slice(*@@slice_opts_keys)
 
         opt_lambdas = opts.select {|k,v| v.is_a?(Proc) }
-        opt_lambdas = opt_lambdas.map {|v| [v[0],v[1].()] }.to_h
-        procs = opts.extract!(*opt_lambdas.keys)
-        defaults = defaults.merge(procs)
+        #opt_lambdas = opt_lambdas.map {|v| [v[0],v[1].()] }.to_h
+
+        if !opt_lambdas.empty?
+          procs = opts.extract!(*opt_lambdas.keys)
+          defaults = defaults.merge(procs)
+        end
 
         opt_arrays = opts.delete_if {|v| v.is_a?(Array) or v.is_a?(SonicPi::Core::RingVector) }
         defaults = defaults.merge(opt_arrays)
@@ -174,7 +177,7 @@ module Ziffers
 
         defaults[:use].each do |key,val|
           if (val.is_a? String) or (val.is_a? Integer) then
-            n = n.gsub key.to_s, val.is_a?(Integer) ? '='+val.to_s : val
+            n = n.gsub key.to_s, val.is_a?(Integer) ? "{#{val.to_s}}" : val
             defaults[:use].delete(:key)
           end
         end
@@ -190,10 +193,10 @@ module Ziffers
         n = parse_generative n, opts, defaults
         print "G: "+n if @@debug
 
-        n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9][0-9])/) {|m| "#{$1}=#{$2}" } if defaults[:midi] or defaults[:cc] # Hack for midi
+        n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9][0-9])/) {|m| "#{$1}{#{$2}}" } if defaults[:midi] or defaults[:cc] # Hack for midi
 
         parsed = parse_ziffers(n, opts, defaults)
-        print "P: "+parsed.to_s if @@debug
+        print "P: "+parsed.to_z if @@debug
         parsed
       else
         normalize_melody n, opts, shared
@@ -330,12 +333,10 @@ module Ziffers
         end
         ziff = apply_transformation(ziff, defaults, loop_i, index, melody.length)
 
-        if ziff[:methods] then
-          ziff[:methods].each do |f|
+        if ziff[:method] then
             in_thread do
-              send f[:method][1..], *f[:parameters]
+              eval(ziff[:method])
             end
-          end
         end
 
         # TODO: Merge rate not working. Merges too much?
@@ -636,20 +637,6 @@ module Ziffers
       options = parameters.map{|p| p[0].empty? ? false : (p[1] ? p[1].split("|").map{|sp| sp && sp.strip.empty? ? nil : parse_params(sp)} : nil) }.filter {|v| v!=false }
       rows = rows.map {|v| v.map.with_index {|m,i| m and m.strip=="..." ? v[i] = v[i-1] : m }}
       {rows: rows, shared_options: shared_options, options: options}
-    end
-
-    def parse_tracks(input, opts={})
-      parameters = input.split("/")
-      row = parameters[0] if parameters and parameters[0] and parameters[0].strip!=""
-      row_options = parameters[1].split("|").map {|v| v.strip.empty? ? nil : parse_params(v,opts) } if row and parameters[1]
-      shared_options = parameters[1].split("|").map {|v| v.strip.empty? ? nil : parse_params(v,opts) } if !row and parameters[1]
-      row_options = row_options[0] if row_options and row_options.length == 1
-      shared_options = shared_options[0] if shared_options and shared_options.length == 1
-      result = {}
-      result[:tracks] = row.split("|").filter {|v| !v.strip.empty? } if row
-      result[:options] = row_options if row_options
-      result[:shared_options] = shared_options if shared_options
-      result
     end
 
     # Looper for track notation
@@ -1014,7 +1001,7 @@ module Ziffers
         ax = rules.each_with_object(ax.dup) do |(k,v),s|
           v = v[i] if (v.is_a? Array or v.is_a? SonicPi::Core::RingVector) # [nil,"1"].ring -> every other
           if v then
-            s.gsub!(/{{.*?}}|(#{k.is_a?(String) ? Regexp.escape(k) : k})/) do |m|
+            s.gsub!(/{<{.*?}>}|(#{k.is_a?(String) ? Regexp.escape(k) : k})/) do |m|
             g = Regexp.last_match.captures
             if g[0] and !g[0].empty? then # If there is at least one match
               if v.is_a?(Proc) or v.respond_to?(:call)
@@ -1029,14 +1016,14 @@ module Ziffers
                 rep = g.length>1 ? v.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : v.gsub("$",m)
                 rep = parse_generative(rep,opts,defaults) if (defaults[:stable]==nil or (defaults[:stable]!=nil and defaults[:stable]==false))
               end
-              "{{#{rep}}}" # Escape
+              "{<{#{rep}}>}" # Escape
             else
               m # If escaped
             end
           end
         end
       end
-      ax = ax.gsub(/{{(.*?)}}/) {$1}
+      ax = ax.gsub(/{<{(.*?)}>}/) {$1}
       ax = parse_generative(ax,opts,defaults) if (defaults[:stable]!=nil and defaults[:stable]==false)
       print "Gen #{i}: "+ax if @@debug
       ax
@@ -1058,12 +1045,12 @@ module Ziffers
       zmel=[]
       arr.each do |item|
         if item.is_a? Array then
-          zmel.push note_array_to_hash(item,opts)
+          zmel.push ZiffHash[note_array_to_hash(item,opts)]
         elsif item.is_a? Numeric then
             #opts = defaults.merge!(opts) Not working with plain arrays?
             ziff = get_ziff(item, opts[:key], opts[:scale], opts[:octave] ? opts[:octave] : 0)
             ziff.merge!(opts) { |key, important, default| important }
-            zmel.push(ziff)
+            zmel.push(ZiffHash[ziff])
         elsif item.is_a? Hash then
           zmel.push(ZiffHash[item])
         end
@@ -1114,8 +1101,9 @@ module Ziffers
         melody = melody.reflect
       when :subset then
         melody = (val.is_a? Numeric) ? ZiffArray.new(melody[val]) : melody[val]
-      when :inject then
-        melody = melody.inject(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)){|a,j| a.flat_map{|n| [n,augment(j, n)]}}
+      when :fuse then
+        inject_melody = val.is_a?(Array) ? val : normalize_melody(val, opts, defaults.except(:fuse))
+        melody = melody.fuse inject_melody
       when :zip then
         melody = melody.zip(val.is_a?(Array) ? val : (normalize_melody val, opts, defaults)).flatten
       when :append then

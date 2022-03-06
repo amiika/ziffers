@@ -27,8 +27,7 @@ module Ziffers
       :key => :c,
       :scale => :major,
       :release => 1.0,
-      :sleep => 1.0,
-      :synth => :piano
+      :sleep => 1.0
     }
 
       @@rhythm_keys = ['e','q','q.','h','h.','w','w.','d','d.','l']

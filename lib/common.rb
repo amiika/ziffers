@@ -78,7 +78,7 @@ module Ziffers
     # Adapted from: https://github.com/beausievers/Ruby-PCSet/blob/master/pcset.rb#L339
     def most_left_compact(pcset_array)
       if !pcset_array.all? {|pcs| pcs.length == pcset_array[0].length}
-        raise ArgumentError, "PCSet.most_left_compact: All PCSets must be of same cardinality", caller
+        raise ArgumentError, "All PCSets must be of same cardinality", caller
       end
       zeroed_pitch_arrays = pcset_array.map {|pcs| pcs.zero.pcs}
       binaries = zeroed_pitch_arrays.map {|array| array.inject(0) {|sum, n| sum + 2**n}}
