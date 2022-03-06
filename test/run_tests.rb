@@ -1,7 +1,6 @@
 load "~/ziffers/ziffers.rb"
-# Todo: Add more tests
 
-# Ziffers.debug
+#Ziffers.debug
 
 def test1
 
@@ -95,7 +94,7 @@ def test6
   #assert_equal(t6_1,["1", "2", "0", "1"])
 
   # Regexp with '' eval syntax
-  t6z_1 = zparse "q0 e0 1 2 3", rules: {/(?<=q)[0-9]/=>"=($+1)"}, gen: 3
+  t6z_1 = zparse "q0 e0 1 2 3", rules: {/(?<=q)[0-9]/=>"{$+1}"}, gen: 3
   print t6z_1
   t6_2 = zparams(t6z_1, :pc)
   assert_equal(t6_2,[3, 0, 1, 2, 3])
@@ -187,7 +186,15 @@ def lazy_tests
     "q [: ~80 ~50 :]",
     "q ~<0.5>0123",
     "h ~<10.0>0123 ",
-    "h2 q 2 1 2 q ~<0.1>2555 h. 4 2 q.. ~<0.14>25 4 h ~<0.1>21221"
+    "h2 q 2 1 2 q ~<0.1>2555 h. 4 2 q.. ~<0.14>25 4 h ~<0.1>21221",
+    "(0 1 2)+(0 1 2)",
+    "(0 1 2)-(2 3 4)",
+    "(0 1 2)*(1 2 3)",
+    "(0 1 2)<->(3 4 1)",
+    "(2 3 4)<>(2 3 2)",
+    "(1 2 3)<+>(3 2 1)",
+    "(3 4 3)<*>(1 2 3)",
+    "(0 1 (2 3))<*>(1 2 3)"
   ]
 
   tests.each_with_index do |m,i|
@@ -275,7 +282,7 @@ def test_generative
 end
 
 def test_conditionals
-  a = zparse "q (0 2 3){x^2}"
+  a = zparse "q (0 2 3){x**2}"
   assert_equal(a.orig_pcs,[0,4,9])
 
   a = zparse "q ((0..5){(x+1)(x-2)(x-2)})$"
@@ -287,19 +294,19 @@ def test_conditionals
   a = zparse "(1 2 <-2> 3 4){2x}"
   assert_equal(a.octaves,[0,0,-2,-1])
 
-  a = zparse "((1 2 3)+(2 3 4)){x>3?x:x*3}"
-  assert_equal(a.pcs,[2, 4, 5, 3, 6, 2, 4, 5, 6, 3, 6, 2, 5, 6, 0])
+  a = zparse "((1 2 3)+(2 3 4)){x<3?x:x*3}"
+  assert_equal(a.pcs,[2, 5, 1, 5, 1, 4, 1, 4, 0])
 
 
   with_random_seed 35531 do
 
-    a = zparse "q ((0..5){((1,6)x^(1,3))(2x)})$"
+    a = zparse "q ((0..5){((1,6)x**(1,3))(2x)})$"
     assert_equal(a.orig_pcs,[0,4,6,4,3,2,4,1,0,2,4,2,5,0,0])
 
-    a = zparse "q ((0..2){((1,6)x^(1,3))(2x)})&"
+    a = zparse "q ((0..2){((1,6)x**(1,3))(2x)})&"
     assert_equal(a.orig_pcs,[0,4,[3,2]])
 
-    a = zparse "q ((0 1 0 1){((1,6)x^(1,3))(2x)})!"
+    a = zparse "q ((0 1 0 1){((1,6)x**(1,3))(2x)})!"
     assert_equal(a.orig_pcs,[0,6])
 
     a = zparse "q (1..10){x%(1,5)==0?x+4:x-4}"

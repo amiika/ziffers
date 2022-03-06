@@ -1,21 +1,21 @@
 grammar GenerativeSyntax
 
   rule base
-    (ignore / ignore_params / assign_set / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / group / roman / array / random_decimal / decimal_sleep / pitch_classes / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
+    (ignore /  assign_set / control / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / decimal_sleep / group / roman / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
           if v.is_a?(Hash) then
             if v[:subset]
               v = resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length)
-              v.map {|h| h.to_s }.join(" ")
+              v.map {|h| h.to_z }.join(" ")
             elsif v[:cycle]
-              v[:cycle][Thread.current[:tshared][:loop_i]%v[:cycle].length].to_s
+              cycle = v[:cycle][Thread.current[:tshared][:loop_i]%v[:cycle].length].to_z
             else
-              v.to_s
+              v.to_z
             end
           elsif v.is_a?(Array)
-            v.flatten.reject {|e| e.to_s.empty? }.filter_map {|v| v.to_s if v}
+            v.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length).map {|h| h.to_z }.join(" ") : v.to_z) : v}
           else
            v.to_s
           end
@@ -26,7 +26,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? t:(transform)? o:(operation)* durs:(duration_set)? eval_f:(ternary)?
+    '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?' / '#') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* durs:(duration_set)? eval_f:(ternary)?
     {
     def value
 
@@ -38,24 +38,35 @@ grammar GenerativeSyntax
 
         set = Marshal.load(Marshal.dump(original_set))
 
-        set  = set.map {|v| v = v[:cycle][i%v[:cycle].length] if v.is_a?(Hash) and v[:cycle] ; v }.flatten
+        set  = set.map {|v| v = v[:cycle][i%v[:cycle].length] if v.is_a?(Hash) and v[:cycle] ; v }.flatten.compact
 
         set = ZiffArray.new(set)
 
-          if t.methods.include?(:value)
-            t.value.split("").each do |transform|
-              case transform
-              when "!"
-                set = set.compact.uniq
-              when "@"
-                set = set + set.compact.drop(1).reverse.drop(1)
-              when "$"
-                set = set.compact.map{|v| v[:pc].to_s.split("").map{|d| ZiffHash[{pc: d.to_i}] } }.flatten
-              when "&"
-                set = set.compact.map{|v| v[:hpcs] = v[:pc].to_s.split("").map{|i| ZiffHash[{pc: i.to_i }] } ; v.delete(:pc) ; v  }
-              end
+        # TODO: Early prototype of method calling
+        if a.methods.include?(:value)
+          method_call = a.value
+          if method_call[1]
+            set = set.method(method_call[0]).(*method_call[1])
+          else
+            set = set.method(method_call[0]).()
+          end
+        end
+
+        # TODO: Replace this with aliased array methods?
+        if t.methods.include?(:value)
+          t.value.split("").each do |transform|
+            case transform
+            when "!"
+              set = set.compact.uniq
+            when "@"
+              set = set + set.compact.drop(1).reverse.drop(1)
+            when "$"
+              set = set.compact.map{|v| v[:pc].to_s.split("").map{|d| ZiffHash[{pc: d.to_i}] } }.flatten
+            when "&"
+              set = set.compact.map{|v| v[:hpcs] = v[:pc].to_s.split("").map{|i| ZiffHash[{pc: i.to_i }] } ; v.delete(:pc) ; v  }
             end
           end
+        end
 
         if p and p.text_value != ""
           set = set.shuffle if p.text_value[0]=="~"
@@ -208,6 +219,15 @@ grammar GenerativeSyntax
       }
     end
 
+    rule array_method
+      '.' v:([a-z_]+) i:('(' r:([-0-9,]+) ')')?
+      {
+      def value
+        [v.text_value,(i.empty?) ? nil : i.r.text_value.split(",").map {|v| v.to_i}]
+      end
+      }
+    end
+
   rule transform
     [\!\$\@\&]+
     {
@@ -229,14 +249,21 @@ grammar GenerativeSyntax
   end
 
     rule use
-      k:([ABCDFGHIJKLMNOPQRSUWXYZO]+)
+      prefix:(prefix_list)? k:([ABCDFGHIJKLMNOPQRSUWXYZO]+)
       {
         def value
+        prefixes = prefix.value.flatten.inject{|a,b| a.merge(b){|_,x,y| x + y}} if prefix.methods.include?(:value)
+        prefixes = {} if !prefixes
+
           use_val = k.text_value
           if use_val.length==1 and Thread.current[:tshared][:use] and Thread.current[:tshared][:use][use_val]
             Thread.current[:tshared][:use][use_val]
           else
-            k.text_value
+
+            v = {char: k.text_value}
+            v[:prefix] = prefixes[:prefix] if prefixes[:prefix]
+            v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
+            ZiffHash[v]
           end
         end
       }
@@ -297,6 +324,7 @@ grammar GenerativeSyntax
          r = !p.text_value.empty? ? p.text_value.to_i : 2
          rep_value = l.value
          rep_value = rep_value.map {|v| (v.is_a?(Hash) and v[:subset]) ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length) : v }
+         # TODO: Check default sleep in some cases like: [: 2 0.25 3 :] ?
          r.times do |i|
           rep = rep_value.each_with_object([]) do |v,o|
             if v.is_a?(Hash) and v[:cycle]
@@ -307,8 +335,7 @@ grammar GenerativeSyntax
           end
           rep_result += rep
           end
-         rep_result = rep_result.flatten.map {|h| h.to_s }
-         rep_result
+         rep_result.flatten.compact
        end
      }
   end
@@ -328,7 +355,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (ignore / ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / control / bar / set)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / set)*
     {
     def value
       elements.map {|v| v.value }
@@ -337,18 +364,16 @@ grammar GenerativeSyntax
   end
 
   rule repeat_subset
-    (ignore / ranges / repeat / use / escaped_multi_octave / group / roman / cyclic / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / control)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar)*
     {
     def value
-    zlog "IN REPEAET"
-    zlog elements
-      elements.map {|v| zlog v.methods.include?(:exact_value) ; v.methods.include?(:exact_value) ? v.exact_value : v.value }
+      elements.map {|v| v.methods.include?(:exact_value) ? v.exact_value : v.value }
     end
     }
   end
 
   rule cyclic_subset
-    (ignore / ranges / repeat / use / escaped_multi_octave / group / roman  / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens  / control)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens  / bar)*
     {
     def value
       elements.map {|v| v.value }
@@ -357,7 +382,7 @@ grammar GenerativeSyntax
   end
 
   rule array_subset
-    (ignore / use / ranges / escaped_multi_octave / group / roman / decimal_sleep / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / control)*
+    (ignore / use / control / ranges / escaped_multi_octave / decimal_sleep / group / roman / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar)*
     {
     def value
       elements.map {|v| v.value }
@@ -366,7 +391,7 @@ grammar GenerativeSyntax
   end
 
   rule parens_subset
-    (ignore / use / ranges / escaped_multi_octave / group / roman / pitch_classes / multioctave / rest / s / random_between / parens / control)*
+    (ignore / use / control / ranges / escaped_multi_octave / group / roman / eval / pitch_classes / multioctave / rest / s / random_between / parens)*
     {
     def value
       elements.map {|v| v.value }
@@ -389,26 +414,44 @@ grammar GenerativeSyntax
     }
   end
 
-  rule method
-    ':' [a-zA-Z]+ ('<' [0-9\.\,]* '>')?
+  rule function_call
+    func:([a-z]* '{' [a-zA-Z]+) function_params? '}'
     {
       def value
-        text_value
+        func.text_value + (function_params.empty? ? "" : function_params.value)
+      end
+    }
+  end
+
+  rule function_params
+    '(' val:(decimal / integer / random_between / ',')* ')'
+    {
+      def value
+        val.elements.map {|v| v.methods.include?(:value) ? v.value : v.text_value }.join("")
       end
     }
   end
 
   rule control
-    [a-z]* [A-Z]* (escaped_decimal / escaped_text)
+    c:([A-Z]) v:(escaped_random / integer / escaped_decimal / escaped_text)
     {
       def value
-        text_value
+        c.text_value+v.value.to_s
+      end
+    }
+  end
+
+  rule escaped_random
+    '<' v:(random_between / random_decimal) '>'
+    {
+      def value
+        "<"+v.value.to_s+">"
       end
     }
   end
 
   rule escaped_decimal
-  '[' decimal ']'
+  '<' decimal '>'
   {
     def value
       text_value
@@ -417,21 +460,21 @@ grammar GenerativeSyntax
   end
 
   rule escaped_text
-   '<' e:([\sa-zA-Z0-9:-]*) '>'
+   '<' e:([\sa-zA-Z0-9:\-]*) '>'
    {
      def value
-      e.text_value
+      text_value
      end
     }
   end
 
   # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
-    ("!" / slide / arpeggio)
+    v:("!"  / slide / arpeggio / ignore_comment / ignore_params)
   # ([!\~&@|()#\^_%\n\-\/\*\+`´\,\'<>\.a-zA-Z0-9])
     {
       def value
-        text_value
+        (v.value.to_s || text_value)
       end
     }
   end
@@ -458,7 +501,25 @@ grammar GenerativeSyntax
   end
 
   rule ignore_params
-    '<=' (([a-zA-Z0-9])+ ':' s? ([a-zA-Z0-9:-])+ ','? s?)+ '=>'
+    '{' (([a-zA-Z0-9])+ ':' s? ([a-zA-Z0-9:-])+ ','? s?)+ '}'
+    {
+      def value
+        text_value
+      end
+    }
+  end
+
+  rule ignore_function
+    ':' [a-zA-Z]+ [a-zA-Z0-9_]* '('? [a-zA-Z0-9\:\,\s\.]* ')'?
+    {
+      def value
+        text_value
+      end
+    }
+  end
+
+  rule ignore_comment
+    '<!' [a-zA-Z0-9_\-\s\n\r\|#+\-*]+ '>'
     {
       def value
         text_value
@@ -580,12 +641,31 @@ grammar GenerativeSyntax
     }
   end
 
-  # Not in use
-  rule escaped_eval
-    '=' '('? e:(([a-zA-Z0-9] / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!')*) ')'?
+  rule multi_escape
+    '{' e:((random_decimal / random_between / decimal / integer / ' ')*) '}'
     {
       def value
-        eval(e.text_value)
+        e.elements.map {|v| v.text_value.strip.empty? ? v.text_value : "{"+(v.value || v.text_value).to_s+"}" }.join("")
+      end
+    }
+  end
+
+  rule escaped_eval
+    '{' e:((random_decimal / random_between / decimal / integer / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!' / '~')*) '}'
+    {
+      def value
+        v = e.elements.map {|v| v.methods.include?(:value) ? v.value : v.text_value }.join("")
+        eval(v)
+      end
+    }
+  end
+
+  rule eval
+    '={' e:((random_decimal / random_between / decimal / integer / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!' / '~')*) '}'
+    {
+      def value
+        v = e.elements.map {|v| v.methods.include?(:value) ? v.value : v.text_value }.join("")
+        eval(v)
       end
     }
   end
@@ -636,7 +716,7 @@ grammar GenerativeSyntax
   end
 
   rule min_max
-    v:(integer / integer_array / random_between / escaped_eval)
+    v:(integer / integer_array / random_between)
     {
       def value
         v.value
@@ -658,13 +738,13 @@ grammar GenerativeSyntax
   end
 
   rule random_between
-'(' m:(min_max) ',' x:(min_max) ')'
+  '(' m:(min_max) ',' x:(min_max) ')'
   {
     def value
       sonic_random(m.value,x.value)
     end
     def text_value
-      sonic_random(m.value,x.value).to_s
+      self.value.to_s
     end
   }
 end
@@ -760,16 +840,17 @@ end
     a:(integer / integer_array / random_between)? b:('x')
     {
       def value
-        a.methods.include?(:value) ? a.value.to_s+"*"+b.text_value : b.text_value
+        ret = a.methods.include?(:value) ? a.value.to_s+"*"+b.text_value : b.text_value
+        ret
       end
     }
   end
 
   rule operator
-    op:('*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / ')(')
+    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / ')(')
     {
       def value
-        op.text_value=="^" ? "**" : op.text_value==")(" ? ")*(" : text_value
+        op.text_value==")(" ? ")*(" : text_value
       end
     }
   end
@@ -789,7 +870,7 @@ end
   end
 
   rule integer_array
-    '[' first:(min_max) rest:(',' i:(min_max))* ']'
+    '[' first:(min_max) rest:(',' i:(min_max))+ ']'
     {
     def value
       if rest.empty?
@@ -803,16 +884,15 @@ end
   end
 
   rule pitch_classes
-    prefix:(escaped_prefix_sleep / prefix_octave / prefix_sleep / octave / escaped_octave / add / dynamics / staccato)* d:(normal_pitch_class / escaped_eval / random_pitch_class / random_between)
+    prefix:(prefix_list)? d:(normal_pitch_class / escaped_eval / random_pitch_class / random_between)
     {
       def value
-        zlog "PITCH CLASS"
-        prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
+        prefixes = prefix.value.flatten.inject{|a,b| a.merge(b){|_,x,y| x + y}} if prefix.methods.include?(:value)
         prefixes = {} if !prefixes
-        zlog prefixes
 
         dgr = d.value
-        v = {:pc=>dgr}
+        v = {:pc=>dgr, :key=>Thread.current[:topts][:key], :scale=>Thread.current[:topts][:scale]}
+
         v[:prefix] = prefixes[:prefix] if prefixes[:prefix]
         v[:subsleep] = Thread.current[:topts][:sleep] if Thread.current[:topts][:sleep]
 
@@ -822,6 +902,29 @@ end
         end
         ZiffHash[v]
      end
+    }
+  end
+
+  rule prefix_list
+    (prefix_array / escaped_prefix_sleep / prefix_octave / prefix_sleep / octave / escaped_octave / add / dynamics / staccato)*
+    {
+    def value
+      elements.map {|v| v.value }
+    end
+    }
+  end
+
+  rule prefix_array
+    '[' first:(prefix_list) rest:(',' i:(prefix_list))+ ']'
+    {
+    def value
+      if rest.empty?
+        first.value
+      else
+        r = rest.elements.map {|v| v.i.value }
+        r.append(first.value).pick.flatten
+      end
+    end
     }
   end
 
@@ -858,10 +961,10 @@ end
   end
 
   rule slide
-    '~' v:('<' [0-9]+ '.' [0-9]+ '>')?
+    '~' v:(escaped_random / escaped_decimal)?
     {
       def value
-        v.text_value
+        "~" + (v.methods.include?(:value) ? v.value.to_s : "")
      end
     }
   end

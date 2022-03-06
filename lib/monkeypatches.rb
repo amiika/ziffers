@@ -16,14 +16,6 @@ end
 
 Integer.include NoteHelper
 
-module ZiffersString
-  def to_z
-    zparse(self)
-  end
-end
-
-String.include ZiffersString
-
 class SonicPi::Scale
   def self.patch(scales)
     scales.each { |name, intervals|
