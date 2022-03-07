@@ -46,6 +46,12 @@ h0 q 0 _ 6 h 5 4 5 3 q 5 6 h ^0 4 ^ 0 0 1 1 w. _4 h 0 h. _ 3 q 3 h 1 q 2 3 h 4 5
 
 end
 
+def test_methods
+  a = zparse "[: q 0 :foo :bar(2) :3] 7"
+  assert_equal(a.vals(:method),[nil, "foo", "bar", nil, "foo", "bar", nil, "foo", "bar", nil])
+end
+
 test_play
+test_methods
 
 print "All tests OK"

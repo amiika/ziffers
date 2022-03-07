@@ -220,7 +220,7 @@ grammar GenerativeSyntax
     end
 
     rule array_method
-      '.' v:([a-z_]+) i:('(' r:([-0-9,]+) ')')?
+      '.' v:([a-z_]+) i:('(' r:([\-0-9,]+) ')')?
       {
       def value
         [v.text_value,(i.empty?) ? nil : i.r.text_value.split(",").map {|v| v.to_i}]
@@ -470,7 +470,7 @@ grammar GenerativeSyntax
 
   # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
-    v:("!"  / slide / arpeggio / ignore_comment / ignore_params)
+    v:("!"  / slide / arpeggio / ignore_function / ignore_comment / ignore_params)
   # ([!\~&@|()#\^_%\n\-\/\*\+`´\,\'<>\.a-zA-Z0-9])
     {
       def value
@@ -510,7 +510,7 @@ grammar GenerativeSyntax
   end
 
   rule ignore_function
-    ':' [a-zA-Z]+ [a-zA-Z0-9_]* '('? [a-zA-Z0-9\:\,\s\.]* ')'?
+    ':' [a-zA-Z]+ [a-zA-Z0-9_]* ('(' [a-zA-Z0-9\,\s\.]* ')')?
     {
       def value
         text_value
