@@ -1,10 +1,20 @@
 grammar Ziffers
 
   rule line
-    (s / comment / escaped_opts / continue / bar / multisleep / arpeggio / chords / pitch_classes / fixed_octave / numeric_octave / call / eval / rest / control / multiuse / use / slide / jumper / reset / skip)*
+    (s / comment / opt_list / continue / bar / multisleep / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / jumper / reset / skip)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.compact
+      end
+    }
+  end
+
+  rule opt_list
+    p:(escaped_opts / prefix_sleep)? '(' line ')'
+    {
+      def value
+        list_opts = p.value if !p.empty?
+        line.elements.collect {|v| val = v.value ; val ? (list_opts ? val.merge(list_opts) : val) : nil }.flatten.compact
       end
     }
   end
@@ -130,7 +140,7 @@ grammar Ziffers
   end
 
   rule method_call
-    ':' [a-zA-Z]+ [a-zA-Z0-9_]* ('(' [a-zA-Z0-9\,\s\.]* ')')?
+    ':' val:([a-zA-Z]+ [a-zA-Z0-9_]* ('(' [a-zA-Z0-9\,\s\.]* ')')?)
     {
       def value
         val.text_value
@@ -147,13 +157,34 @@ grammar Ziffers
     }
   end
 
-  rule escaped_opts
-    '{' s? opts:(key:([a-zA-Z0-9]+) ':' s? val:([a-zA-Z0-9:-]+) ','? s?)+ '}'
+  rule multi_escaped_opts
+    e:(escaped_opts)
     {
     def value
-      h = Hash[*opts.elements.map {|p| [p.key.text_value.to_sym,p.val.text_value.to_i] }.flatten]
+      h = e.value
       Thread.current[:topts] = Thread.current[:topts].merge(h)
       nil
+    end
+    }
+  end
+
+  rule escaped_opts
+    '{' s? opts:(key:([a-zA-Z0-9]+) ':' s? val:([a-zA-Z0-9\-\.]+) ','? s?)+ '}'
+    {
+    def value
+      h = Hash[*opts.elements.map {|p| [p.key.text_value.to_sym,cast_to_type(p.val.text_value)] }.flatten]
+      h
+    end
+    def cast_to_type val
+        begin
+          val.to_i if Integer(val)
+        rescue ArgumentError
+          begin
+           val.to_f if Float(val)
+          rescue ArgumentError
+           val.to_s
+          end
+      end
     end
     }
   end
@@ -308,7 +339,7 @@ grammar Ziffers
   end
 
   rule use
-    prefix:(prefix_sleep / escaped_prefix_sleep / octave / add / dynamics / staccato)* u:[ABCDFGHIJKLMNOPQRSUWXYZO]
+     prefix:(prefix_sleep / escaped_prefix_sleep / octave / add / dynamics / staccato)* u:[ABCDFGHIJKLMNOPQRSUWXYZO]
     {
     def value
       use_list = Thread.current[:tshared][:use] if Thread.current[:tshared] and Thread.current[:tshared].has_key?(:use)

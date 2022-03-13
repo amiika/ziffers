@@ -1,4 +1,3 @@
-
 require_relative "./lib/enumerables.rb"
 require_relative "./lib/monkeypatches.rb"
 require_relative "./lib/parser/zgrammar.rb"
@@ -170,15 +169,17 @@ module Ziffers
 
         parsed_use = defaults.select{|k,v| k.length<2 and /[[:upper:]]/.match(k)} # Parse capital letters from the opts
 
-        if parsed_use
+        if !parsed_use.empty?
           defaults[:use] = defaults[:use] ? defaults[:use].merge(parsed_use) : parsed_use
           defaults.except!(*parsed_use.keys)
         end
 
-        defaults[:use].each do |key,val|
-          if (val.is_a? String) or (val.is_a? Integer) then
-            n = n.gsub key.to_s, val.is_a?(Integer) ? "{#{val.to_s}}" : val
-            defaults[:use].delete(:key)
+        if defaults[:use]
+          defaults[:use].each do |key,val|
+            if (val.is_a? String) or (val.is_a? Integer) then
+              n = n.gsub key.to_s, val.is_a?(Integer) ? "{#{val.to_s}}" : val
+              defaults[:use].delete(:key)
+            end
           end
         end
 

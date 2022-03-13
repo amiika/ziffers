@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (ignore /  assign_set / control / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / decimal_sleep / group / roman / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / decimal_sleep / roman / group   / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
@@ -22,6 +22,29 @@ grammar GenerativeSyntax
         end
         e.reject {|e| e.to_s.empty? }.join(" ")
       end
+    }
+  end
+
+  rule enclosed_set
+    p:(ignore_params / set_sleep) s:(set)
+    {
+      def value
+        val = s.value
+        if val.is_a?(Array)
+          p.value+"("+val.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length).map {|h| h.to_z }.join(" ") : v.to_z) : v}.join(" ")+")"
+        else
+          p.value+(val.is_a?(Hash) ? val.to_z : v)
+        end
+      end
+    }
+  end
+
+  rule set_sleep
+    [a-z]+
+    {
+    def value
+      text_value
+    end
     }
   end
 
@@ -501,7 +524,7 @@ grammar GenerativeSyntax
   end
 
   rule ignore_params
-    '{' (([a-zA-Z0-9])+ ':' s? ([a-zA-Z0-9:-])+ ','? s?)+ '}'
+    '{' (([a-zA-Z0-9])+ ':' s? ([a-zA-Z0-9\-\.])+ ','? s?)+ '}'
     {
       def value
         text_value
@@ -594,7 +617,7 @@ grammar GenerativeSyntax
   end
 
   rule chord_name
-    '^' chord_name:([a-z-0-9+-]*)
+    '^' chord_name:([a-z0-9\+\-]+)
     {
       def value
         chord_name.text_value

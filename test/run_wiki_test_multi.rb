@@ -48,7 +48,7 @@ end
 
 def test_methods
   a = zparse "[: q 0 :foo :bar(2) :3] 7"
-  assert_equal(a.vals(:method),[nil, "foo", "bar", nil, "foo", "bar", nil, "foo", "bar", nil])
+  assert_equal(a.vals(:method),[nil, "foo", "bar(2)", nil, "foo", "bar(2)", nil, "foo", "bar(2)", nil])
 end
 
 test_play
