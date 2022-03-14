@@ -1,3 +1,4 @@
+
 require_relative "./lib/enumerables.rb"
 require_relative "./lib/monkeypatches.rb"
 require_relative "./lib/parser/zgrammar.rb"
@@ -118,7 +119,6 @@ module Ziffers
       n
     end
 
-
     # TODO: Document or remove?
     def zgroup(n, opts={}, shared={})
       if n.is_a?(Array)
@@ -176,7 +176,8 @@ module Ziffers
 
         if defaults[:use]
           defaults[:use].each do |key,val|
-            if (val.is_a? String) or (val.is_a? Integer) then
+            if (val.is_a? String) or (val.is_a? Integer) or (val.is_a?(Array) and (val[0].is_a?(Integer) or val[0].is_a?(String))) then
+              val = val[defaults[:loop_i]%val.length] if val.is_a?(Array)
               n = n.gsub key.to_s, val.is_a?(Integer) ? "{#{val.to_s}}" : val
               defaults[:use].delete(:key)
             end
@@ -259,6 +260,12 @@ module Ziffers
 
       loop_name = defaults[:loop_name]
 
+      loop_i = loop_name ? $zloop_states[loop_name][:loop_i] : loop_i
+      loop_n = melody.length*(loop_i+1)
+
+      defaults[:loop_i] = loop_i
+      defaults[:loop_n] = loop_i
+
       if !loop_name
         # Extract common options to defaults
 
@@ -297,9 +304,6 @@ module Ziffers
           defaults[:run] = [{with_bpm: defaults.delete(:bpm)}]
         end
       end
-
-      loop_i = loop_name ? $zloop_states[loop_name][:loop_i] : loop_i
-      loop_n = melody.length*(loop_i+1)
 
       loop do
 
@@ -1100,6 +1104,10 @@ module Ziffers
         melody = melody.reverse
       when :reflect then
         melody = melody.reflect
+      when :add then
+        melody = melody.plus(val.is_a?(Array) ? val[loop_i%val.length] : val)
+      when :multiply
+        melody = melody.multiply(val.is_a?(Array) ? val[loop_i%val.length] : val)
       when :subset then
         melody = (val.is_a? Numeric) ? ZiffArray.new(melody[val]) : melody[val]
       when :fuse then
