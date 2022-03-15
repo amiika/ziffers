@@ -128,7 +128,7 @@ grammar Parameters
   end
 
   rule hash_elements
-    space? items:(key:(string) ':' space? val:(symbol / parameter / decimal / random_decimal / range / integer_range / decimal_range / symbol / integer / random_integer / boolean / hash / array) ','? space?)+
+    space? items:(key:(string) ':' space? val:(symbol / parameter / decimal / random_decimal / range / integer_range / decimal_range / symbol / integer / random_integer / string / boolean / hash / array) ','? space?)+
     {
       def value
            Hash[*items.elements.map {|p| [p.key.value.to_sym, p.val.value] }.flatten(1)]
