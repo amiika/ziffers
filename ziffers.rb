@@ -260,12 +260,6 @@ module Ziffers
 
       loop_name = defaults[:loop_name]
 
-      loop_i = loop_name ? $zloop_states[loop_name][:loop_i] : loop_i
-      loop_n = melody.length*(loop_i+1)
-
-      defaults[:loop_i] = loop_i
-      defaults[:loop_n] = loop_i
-
       if !loop_name
         # Extract common options to defaults
 
@@ -295,6 +289,11 @@ module Ziffers
       else
           melody = normalize_melody(melody, opts, defaults)
       end
+
+      loop_i = loop_name ? $zloop_states[loop_name][:loop_i] : loop_i
+      loop_n = melody.length*(loop_i+1)
+      defaults[:loop_i] = loop_i
+      defaults[:loop_n] = loop_i
 
       if defaults[:bpm] then
         if defaults[:run]
@@ -748,6 +747,8 @@ module Ziffers
 
       defaults = defaults.merge(opts)
       opts = defaults.slice(*@@slice_opts_keys)
+
+      defaults[:sync] = :z1 if name!=:z1 and $zloop_states[:z1] and !defaults[:sync] # Automatic sync to :z1 if it exists
 
       clean_loop_states # Clean unused loop states
       $zloop_states.delete(name) if opts.delete(:reset)
