@@ -402,10 +402,10 @@ module Ziffers
               sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
               if arp_notes[:notes] then
                 arp_notes[:notes].each do |arp_note|
-                  play_midi_out arp_note+cn[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
+                  play_midi_out arp_note+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
                 end
               else
-                play_midi_out arp_notes[:note]+cn[:pitch], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
+                play_midi_out arp_notes[:note]+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
               end
             else
               synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), clean(arp_opts)
