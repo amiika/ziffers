@@ -87,6 +87,13 @@ def test_generative
     a = zparse "(1 3 4 6 7)?2" # Take random 2: "3 3"
     a = zparse "(: (1,4)..[5,6,7] :3)~<qeeq>" # Create random range between randomized values and add note lengths
 
+    # Assign
+
+    a = zparse "A=(1..3 {(1,3)+2}) q A A A"
+    assert_equal(a.pcs,[1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4])
+    a = zparse "A=(3 2 (1,5) 3) B=(? (1,3) 3) q A B A B"
+    assert_equal(a.pcs,[3, 2, 4, 3, 6, 3, 3, 3, 2, 4, 3, 6, 3, 3])
+
   end
 end
 
@@ -265,6 +272,21 @@ def test_transformations
   assert_equal(l.pcs,[0, 2, 1, 4, 1, 2, 0])
   m = a.fuse zparse("1 2 3")
   assert_equal(m.pcs,[1, 5, 2, 6, 3, 7, 4, 8, 1, 5, 2, 6, 3, 7, 4, 8, 2, 6, 3, 7, 4, 8, 5, 9, 2, 6, 3, 7, 4, 8, 5, 9, 3, 7, 4, 8, 5, 9, 6, 10, 3, 7, 4, 8, 5, 9, 6, 10])
+
+  ## Transpose
+
+  a = zparse("q 0 3 6 8").transpose(-3)
+  assert_equal(a.pcs,[4, 0, 3, 5])
+
+  ## Add
+
+  a = zparse("q 0 3 6 8").plus(-3)
+  assert_equal(a.pcs,[4, 0, 3, 5])
+
+  ## Multiply
+
+  a = zparse("q 0 3 6 8").multiply(2)
+  assert_equal(a.pcs,[0, 6, 5, 2])
 
 end
 

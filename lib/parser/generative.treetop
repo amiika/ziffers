@@ -265,7 +265,7 @@ grammar GenerativeSyntax
     {
       def value
         Thread.current[:tshared][:use] = {} if !Thread.current[:tshared][:use]
-        Thread.current[:tshared][:use][k.text_value] = set.value.join(" ")
+        Thread.current[:tshared][:use][k.text_value] = set.value.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length).map {|h| h.to_z }.join(" ") : v.to_z) : v}
         nil
       end
     }
@@ -279,10 +279,10 @@ grammar GenerativeSyntax
         prefixes = {} if !prefixes
 
           use_val = k.text_value
+
           if use_val.length==1 and Thread.current[:tshared][:use] and Thread.current[:tshared][:use][use_val]
             Thread.current[:tshared][:use][use_val]
           else
-
             v = {char: k.text_value}
             v[:prefix] = prefixes[:prefix] if prefixes[:prefix]
             v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
