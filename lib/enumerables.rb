@@ -243,76 +243,76 @@ module Ziffers
     end
   end
 
-# https://oeis.org/A225410
-def a225401
-Enumerator.new do |y|
-  a = 7
-  i = 0
-  y << 7 if i==0
-  while true do
-      b = (a + 3 * (9 * a ** 3 - 7)) % (10 ** (i + 2))
-      y << (b - a) / (10 ** (i + 1))
-      i+=1
-      a = b
+    # https://oeis.org/A225410
+    def a225401
+    Enumerator.new do |y|
+      a = 7
+      i = 0
+      y << 7 if i==0
+      while true do
+          b = (a + 3 * (9 * a ** 3 - 7)) % (10 ** (i + 2))
+          y << (b - a) / (10 ** (i + 1))
+          i+=1
+          a = b
+        end
+      end
     end
-  end
-end
 
 
-  # https://oeis.org/A225408
-  # 10-adic integer x=.....8457 satisfying x^3 = -7.
-  def a225408
-  Enumerator.new do |y|
-    a = 7
-    i = 0
-    y << 7 if i==0
-    while true do
-        b = (a + 7 * (a ** 3 + 7)) % (10 ** (i + 2))
-        y << (b - a) / (10 ** (i + 1))
-        i+=1
-        a = b
+    # https://oeis.org/A225408
+    # 10-adic integer x=.....8457 satisfying x^3 = -7.
+    def a225408
+    Enumerator.new do |y|
+      a = 7
+      i = 0
+      y << 7 if i==0
+      while true do
+          b = (a + 7 * (a ** 3 + 7)) % (10 ** (i + 2))
+          y << (b - a) / (10 ** (i + 1))
+          i+=1
+          a = b
+        end
+      end
+    end
+
+    # https://oeis.org/A225406
+    # Digits of the 10-adic integer 9^(1/3).
+    def a225406
+    Enumerator.new do |y|
+      a = 9
+      i = 0
+      y << 9 if i==0
+      while true do
+          b = (a + 3 * (a ** 3 - 9)) % (10 ** (i + 2))
+          y << (b - a) / (10 ** (i + 1))
+          i+=1
+          a = b
+        end
+      end
+    end
+
+    # https://oeis.org/A000695
+    def bruijn
+    Enumerator.new do |n|
+      x = 0
+      while true do
+        n << x
+        y = ~(x << 1)
+        x = (x - y) & y
       end
     end
   end
 
-  # https://oeis.org/A225406
-  # Digits of the 10-adic integer 9^(1/3).
-  def a225406
-  Enumerator.new do |y|
-    a = 9
-    i = 0
-    y << 9 if i==0
-    while true do
-        b = (a + 3 * (a ** 3 - 9)) % (10 ** (i + 2))
-        y << (b - a) / (10 ** (i + 1))
-        i+=1
-        a = b
+  # https://oeis.org/A059905
+  def bruijn_walk
+    Enumerator.new do |y|
+      n = 0
+      while true do
+          y << (0..n.bit_length/2).to_a.map { |i| (n >> 2 * i & 1) << i}.reduce(:+)
+          n+=1
+        end
       end
     end
-  end
-
-  # https://oeis.org/A000695
-  def bruijn
-  Enumerator.new do |n|
-    x = 0
-    while true do
-      n << x
-      y = ~(x << 1)
-      x = (x - y) & y
-    end
-  end
-end
-
-# https://oeis.org/A059905
-def sqr_walk
-  Enumerator.new do |y|
-    n = 0
-    while true do
-        y << (0..n.bit_length/2).to_a.map { |i| (n >> 2 * i & 1) << i}.reduce(:+)
-        n+=1
-      end
-    end
-  end
 
     # https://www.mathpages.com/home/kmath312/kmath312.htm
     def reverse_sum(n=17509097067,base=10)

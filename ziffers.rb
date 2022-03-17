@@ -149,8 +149,8 @@ module Ziffers
     def zparse(n, opts={}, shared={})
       raise "Melody is nil?" if !n
 
-      if n.is_a?(String)
-        print "I: "+n if @@debug
+      if n.is_a?(String) or n.is_a?(Integer)
+        print "I: "+n.to_s if @@debug
         defaults = shared.merge(opts)
         opts = defaults.slice(*@@slice_opts_keys)
 
@@ -167,33 +167,38 @@ module Ziffers
 
         opts = get_default_opts.merge(opts)
 
-        parsed_use = defaults.select{|k,v| k.length<2 and /[[:upper:]]/.match(k)} # Parse capital letters from the opts
+        if n.is_a?(String)
+          parsed_use = defaults.select{|k,v| k.length<2 and /[[:upper:]]/.match(k)} # Parse capital letters from the opts
 
-        if !parsed_use.empty?
-          defaults[:use] = defaults[:use] ? defaults[:use].merge(parsed_use) : parsed_use
-          defaults.except!(*parsed_use.keys)
-        end
+          if !parsed_use.empty?
+            defaults[:use] = defaults[:use] ? defaults[:use].merge(parsed_use) : parsed_use
+            defaults.except!(*parsed_use.keys)
+          end
 
-        if defaults[:use]
-          defaults[:use].each do |key,val|
-            if (val.is_a? String) or (val.is_a? Integer) or (val.is_a?(Array) and (val[0].is_a?(Integer) or val[0].is_a?(String))) then
-              val = val[defaults[:loop_i]%val.length] if val.is_a?(Array)
-              n = n.gsub key.to_s, val.is_a?(Integer) ? "{#{val.to_s}}" : val
-              defaults[:use].delete(:key)
+          if defaults[:use]
+            defaults[:use].each do |key,val|
+              if (val.is_a? String) or (val.is_a? Integer) or (val.is_a?(Array) and (val[0].is_a?(Integer) or val[0].is_a?(String))) then
+                val = val[defaults[:loop_i]%val.length] if val.is_a?(Array)
+                n = n.gsub key.to_s, val.is_a?(Integer) ? "{#{val.to_s}}" : val
+                defaults[:use].delete(:key)
+              end
             end
           end
+
+          n = zpreparse(n,defaults.delete(:parsekey)) if defaults[:parsekey]!=nil
+          n = expand_zspread(n) # Hack for spread
+
+
+          defaults[:rules] = defaults.delete(:replace) if defaults[:replace]
+          if defaults[:rules] and !shared[:lsystemloop] then
+            gen = defaults[:gen] ? defaults[:gen] : 1
+            n = lsystem(n,opts,defaults,gen,nil)[gen-1]
+          end
+          n = parse_generative n, opts, defaults
+          print "G: "+n if @@debug
         end
 
-        n = zpreparse(n,defaults.delete(:parsekey)) if defaults[:parsekey]!=nil
-        n = expand_zspread(n) # Hack for spread
-
-        defaults[:rules] = defaults.delete(:replace) if defaults[:replace]
-        if defaults[:rules] and !shared[:lsystemloop] then
-          gen = defaults[:gen] ? defaults[:gen] : 1
-          n = lsystem(n,opts,defaults,gen,nil)[gen-1]
-        end
-        n = parse_generative n, opts, defaults
-        print "G: "+n if @@debug
+        n = defaults[:parse_chords] ? n.to_s : n.to_s.split("").join(" ") if n.is_a?(Integer)
 
         n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9][0-9])/) {|m| "#{$1}{#{$2}}" } if defaults[:midi] or defaults[:cc] # Hack for midi
 
@@ -203,16 +208,6 @@ module Ziffers
       else
         normalize_melody n, opts, shared
       end
-    end
-
-    # DEPRECATED
-    # Sets ADSR envelope for given note
-    def set_ADSR(ziff,adsr)
-      note_length = (ziff[:sleep]==0 ? 1 : ziff[:sleep]*1.5)
-      ziff[:attack] = adsr[:attack] * note_length if adsr[:attack]!=nil
-      ziff[:decay] = adsr[:decay] * note_length if adsr[:decay]!=nil
-      ziff[:sustain] = adsr[:sustain] * note_length if adsr[:sustain]!=nil
-      ziff[:release] = adsr[:release] * note_length if adsr[:release]!=nil
     end
 
     def search_list(arr,query)
@@ -321,6 +316,7 @@ module Ziffers
         defaults[:loop_i] = loop_i
         melody = normalize_melody enum.next, opts, defaults
         loop_i = loop_i+1
+        cue loop_name
       end
     end
 
@@ -540,8 +536,8 @@ module Ziffers
         if defaults[:midi] or defaults[:cc] then
           opts[:note] = melody
         else
-          defaults[:parse_chords]=false if !defaults.has_key?(:parse_chords)
-          return zparse(melody.to_s,opts,defaults)
+          #defaults[:parse_chords]=false if !defaults.has_key?(:parse_chords)
+          return zparse(melody,opts,defaults)
         end
       elsif melody.is_a?(Array)
         defaults = defaults.merge(opts)
@@ -748,7 +744,7 @@ module Ziffers
       defaults = defaults.merge(opts)
       opts = defaults.slice(*@@slice_opts_keys)
 
-      defaults[:sync] = :z1 if name!=:z1 and $zloop_states[:z1] and !defaults[:sync] # Automatic sync to :z1 if it exists
+      defaults[:sync] = :z1 if $zloop_states and name!=:z1 and $zloop_states[:z1] and !defaults[:sync] # Automatic sync to :z1 if it exists
 
       clean_loop_states # Clean unused loop states
       $zloop_states.delete(name) if opts.delete(:reset)
