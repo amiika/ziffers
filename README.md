@@ -63,7 +63,9 @@ Here's is a cheatsheet you can copy to Sonic Pi editor:
 # Random selections: [q 1 2, q 3 e 4 6]
 # Repeat: [: 1 (2,6) 3 :4]
 # Cycles: [: <q,e> 1 :]
+# Lists: h 1 q(0 1 2 3) 2
 # List operations: (1 2 (3 4)+2)*2 ((1 2 3)+(0 9 13))-2 ((3 4 {10})*(2 9 3))%7
+# List assignation: A=(0 (1,6) 3) B=(3 ? 2) B A B B A
 # Random repeat: (: 1 (2,6) 3 :4)
 # Conditionals: 1 {%<0.5?3} 3 4 (: 1 2 {%<0.2?3:2} :3)
 # Functions: (0 1 2 3){x%3==0?x-2:x+2}

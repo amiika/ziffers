@@ -355,6 +355,7 @@ grammar Ziffers
 
           if v.is_a?(Hash)
             Thread.current[:topts][:run_each] = v.delete(:run) if v[:run] and !v[:sample] and !v[:note]
+            v[:run_each] = v.delete(:run) if v[:run] and v[:sample]
             v = apply_transformation(v, v[:apply] ? v[:apply] : {apply: v.except(:sample)})
           elsif v.is_a?(Symbol)
             v = {sample: v}
