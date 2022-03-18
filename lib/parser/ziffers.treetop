@@ -348,7 +348,8 @@ grammar Ziffers
           prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
           prefixes = {} if !prefixes
 
-          Thread.current[:topts][:run_each] = use_list.delete(:run) if use_list[:run]
+          Thread.current[:topts][:run_each] = use_list[:run] if use_list[:run]
+
           v = use_list.has_key?(u.text_value.to_sym) ? use_list[u.text_value.to_sym].dup : nil
 
           return nil if !v
