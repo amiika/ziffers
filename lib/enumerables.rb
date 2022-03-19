@@ -47,8 +47,11 @@ module Ziffers
         end
 
         if gen.is_a?(String)
+          if gen.count("a-zA-Z") > 0
+            gen = gen.unpack("B*")[0].split("").map{|n| n.to_i }
+          else
             gen = gen.split("").map{|n| n.to_i }
-            #gen = gen.unpack("B*")[0].split("").map{|n| n.to_i }
+          end
         elsif gen.is_a?(Integer)
           gen = gen.to_s(2).split("").map{|n| n.to_i }
         elsif gen.is_a?(SonicPi::Core::RingVector)

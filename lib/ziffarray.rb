@@ -407,6 +407,7 @@ module Ziffers
 
     def modify_rhythm(val, loop_n=0)
       new_arr = self.deep_clone
+      val = val.ring if val.is_a?(Array) and !!val[0] == val[0] # Boolean array to ring
       if val.is_a?(Array)
         pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
       elsif val.is_a?(SonicPi::Core::RingVector)
