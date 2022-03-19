@@ -82,11 +82,17 @@ grammar GenerativeSyntax
             when "!"
               set = set.compact.uniq
             when "@"
-              set = set + set.compact.drop(1).reverse.drop(1)
+              set = set + set.compact.drop(1).reverse.drop(1) if set.length>2
             when "$"
-              set = set.compact.map{|v| v[:pc].to_s.split("").map{|d| ZiffHash[{pc: d.to_i}] } }.flatten
+              set = set.compact.map{|v| (v[:hpcs] ? v[:hpcs].map{|h| h[:pc]} : v[:pc].to_s.split("")).map{|d| ZiffHash[{pc: d.to_i}] } }.flatten
             when "&"
-              set = set.compact.map{|v| v[:hpcs] = v[:pc].to_s.split("").map{|i| ZiffHash[{pc: i.to_i }] } ; v.delete(:pc) ; v  }
+              set = set.compact.map do |v|
+                if !v[:hpcs]
+                  v[:hpcs] = v[:pc].to_s.split("").map{|i| ZiffHash[{pc: i.to_i }] }
+                  v.delete(:pc)
+                end
+                v
+              end
             end
           end
         end

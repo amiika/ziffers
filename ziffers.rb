@@ -272,7 +272,11 @@ module Ziffers
       elsif melody.is_a? Enumerator then
         enum = melody
         begin
-            melody = enum.next
+              melody = enum.next
+            while !melody
+              melody = enum.next
+            end
+            Thread.current[:enum_has_values] = true if melody
           rescue StopIteration
             stop
         end
@@ -314,7 +318,26 @@ module Ziffers
         print "Cycle index: "+loop_i.to_s if @@debug and loop_i>0
         break if !enum
         defaults[:loop_i] = loop_i
-        melody = normalize_melody enum.next, opts, defaults
+
+        begin
+            melody = enum.next
+            while !melody
+              melody = enum.next
+            end
+            Thread.current[:enum_has_values] = true if melody
+          rescue StopIteration
+            if loop_name and Thread.current[:enum_has_values]
+              enum.rewind
+              melody = enum.next
+              while !melody
+                melody = enum.next
+              end
+            else
+              stop
+            end
+        end
+
+        melody = normalize_melody melody, opts, defaults
         loop_i = loop_i+1
         cue loop_name
       end
@@ -775,7 +798,7 @@ module Ziffers
         end
 
         if enumeration then
-          $zloop_states[name][:enumeration] = enumeration.cycle
+          $zloop_states[name][:enumeration] = enumeration
         end
 
       end

@@ -15,4 +15,4 @@ barrios = "| s 0 _4 #4 1 4 _4 0 _4 #4 1 4 _4  | s _6 _4 #4 1 4 _4 _6 _4 #4 1 4 _
 
 m = zparse barrios, synth: :kalimba
 
-zplay markov_chain m, 4
+zplay markov_analyzer m, 4

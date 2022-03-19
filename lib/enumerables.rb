@@ -25,21 +25,30 @@ module Ziffers
       return next_gen
     end
 
-    def boolean_automata(gen, rules=nil)
+    def boolean_cells(gen, rules=nil)
+      automata(gen, rules, nil, true)
+    end
+
+    def live_cells(gen, rules=nil)
+      automata(gen, rules)
+    end
+
+    def dead_cells(gen, rules=nil)
       automata(gen, rules, true)
     end
 
-    def automata(gen, rules=nil, booleans=nil)
+    def automata(gen, rules=nil, dead=nil, booleans=nil)
       Enumerator.new do |y|
 
-        rules = create_ruleset(rules ? rules : rrand_i(1,255))
+        if !rules or rules.is_a?(Integer)
+          rules = create_ruleset(rules ?  rules : rrand_i(1,255))
+        elsif !rules.is_a?(Hash)
+          raise "Automata rule must be number between 1-255"
+        end
 
         if gen.is_a?(String)
-          if gen == "#{gen.to_i}"
             gen = gen.split("").map{|n| n.to_i }
-          else
-            gen = gen.unpack("B*")[0].split("").map{|n| n.to_i }
-          end
+            #gen = gen.unpack("B*")[0].split("").map{|n| n.to_i }
         elsif gen.is_a?(Integer)
           gen = gen.to_s(2).split("").map{|n| n.to_i }
         elsif gen.is_a?(SonicPi::Core::RingVector)
@@ -55,10 +64,12 @@ module Ziffers
               right = i < gen.length - 1 ? i + 1 : 0
               pattern = "#{gen[left]}#{gen[i]}#{gen[right]}"
               next_gen[i] = rules[pattern]
-            if !booleans and next_gen[i] == 1
-              y << i
+            if booleans
+              y << (next_gen[i] == 1)
+            elsif next_gen[i] == 1
+              y << (dead ? nil : i)
             else
-              y << (next_gen[i]==1)
+              y << (dead ? i : nil)
             end
           end
           gen = next_gen
@@ -90,7 +101,10 @@ module Ziffers
       l
     end
 
-    def markov_integer(chain,nums=8,i=0)
+    def markov_generator(chain)
+      chain = chain.to_s.split("").map {|v| v.to_i(36) }
+      nums = chain.max+1
+      i = chain[-1]
       mm = to_pc_mm chain, nums
       Enumerator.new do |y|
         while true
@@ -101,18 +115,16 @@ module Ziffers
     end
 
     # Shorthand function to create the markov chain
-    def to_pc_mm(i, mm=8, init=false)
+    def to_pc_mm(degrees, mm=8, init=false)
       # Length of the markov matrix
       length = mm.is_a?(Integer) ? mm : mm.length
       # Init with random matrix if mm=integer
       mm = Array.new(length) { Array.new(length, init ? 1.0/length : 0.0) } if mm.is_a?(Integer)
       # Treat integer as a markov chain: 121 = 1->2, 2->1
-      degrees = i.to_s.split("")
       degrees.each_with_index do |d,i|
-        d = d.to_i(36)
         row = d % length
         # Treat int as 'ring': 12 = 1->2->1
-        next_d = degrees[(i+1)%degrees.length].to_i(36)
+        next_d = degrees[(i+1)%degrees.length]
         column = next_d % length
         mm[row][column] += 1.0
       end
@@ -491,7 +503,7 @@ module Ziffers
       end
     end
 
-    def markov_chain(source, order=1, start=nil)
+    def markov_analyzer(source, order=1, start=nil)
       Enumerator.new do |y|
         chain = Markov.new(source, order, start)
         while true
