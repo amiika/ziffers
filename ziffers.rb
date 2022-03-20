@@ -1115,7 +1115,7 @@ module Ziffers
       when :swap then
         melody = melody.swap *val
       when :rotate then
-        melody = melody.rotate(val)
+        melody = melody.rotate(val.is_a?(Array) ? val[loop_i%val.length] : val)
       when :deal then
         melody = melody.deal.flatten
       when :mirror then
