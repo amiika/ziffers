@@ -1075,10 +1075,7 @@ module Ziffers
         if item.is_a? Array then
           zmel.push ZiffHash[note_array_to_hash(item,opts)]
         elsif item.is_a? Numeric then
-            #opts = defaults.merge!(opts) Not working with plain arrays?
-            ziff = get_ziff(item, opts[:key], opts[:scale], opts[:octave] ? opts[:octave] : 0)
-            ziff.merge!(opts) { |key, important, default| important }
-            zmel.push(ZiffHash[ziff])
+          zmel.push(zparse(item,opts,defaults)[0])
         elsif item.is_a? Hash then
           zmel.push(ZiffHash[item])
         end
@@ -1207,11 +1204,11 @@ module Ziffers
         ziff[key] = val
       end
 
-      if val.is_a?(Array) and ![:scale,:run,:run_each,:apply].include?(key)
-        val = val.ring[loop_i*melody_size+note_i]
+      if val.is_a?(Array) and ![:harmonize,:scale,:run,:run_each,:apply].include?(key)
+        val = val.ring[loop_i]
         ziff[key] = val
       elsif val.is_a? SonicPi::Core::RingVector
-        val = val[loop_i*melody_size+note_i]
+        val = val[loop_i]
         ziff[key] = val
       end
 
