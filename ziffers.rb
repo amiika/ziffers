@@ -423,7 +423,7 @@ module Ziffers
               sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
               if arp_notes[:notes] then
                 arp_notes[:notes].each_with_index do |arp_note,i|
-                  ziff[:channel] = ziff[:chord_channel][i] if ziff[:chord_channel]
+                  ziff[:channel] = (ziff[:chord_channel].is_a?(Integer) ? ziff[:chord_channel] : ziff[:chord_channel][i]) if ziff[:chord_channel]
                   play_midi_out arp_note+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
                 end
               else
@@ -438,7 +438,7 @@ module Ziffers
           if ziff[:port]
             sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
             ziff[:notes].each_with_index do |cnote,i|
-              ziff[:channel] = ziff[:chord_channel][i] if ziff[:chord_channel]
+              ziff[:channel] = (ziff[:chord_channel].is_a?(Integer) ? ziff[:chord_channel] : ziff[:chord_channel][i]) if ziff[:chord_channel]
               play_midi_out(cnote, ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
             end
           else
