@@ -32,7 +32,7 @@ def test2
 end
 
 def test3
-
+  
   # Test list notation
 
   m3_1 = zparse "w 5 [[5 3][3 2 1 0]] 7 2"
@@ -232,10 +232,10 @@ def test_generative
   print a.pcs
   assert_equal(a.notes, [2,4,6,8])
 
-# Tired of fixing these. For some reason Sonic Pi opens these in different encoding
-#  a = zparse "q40 _40 ^40 `40 '40 ´40", midi: true
-#  print a.pcs
-#  assert_equal(a.notes, [40,40,40,40,40,40])
+  # Tired of fixing these. For some reason Sonic Pi opens these in different encoding
+  #  a = zparse "q40 _40 ^40 `40 '40 ´40", midi: true
+  #  print a.pcs
+  #  assert_equal(a.notes, [40,40,40,40,40,40])
 
   a = zparse "0..5"
   print a.pcs
@@ -330,8 +330,8 @@ end
 def test_transforms
   # TODO: Write more tests for transforms
   a = zparse "1..10", amp: tweak(:quint, 0.1,1.0,10)
-  assert_equal(tweak(:quint, 0.1,1.0,10),a.vals(:amp))
-  a = zparse "1..4", channel: [0,1,2,3]
+  assert_equal(tweak(:quint, 0.1,1.0,10),a.vals(:amp).ring)
+  a = zparse "1..4", channel: [0,1,2,3].ring
   assert_equal([0,1,2,3],a.vals(:channel))
 end
 

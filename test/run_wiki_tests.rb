@@ -31,7 +31,8 @@ def test_melody
   # Parameters
   a = zparse "1 2 3", release:0.25, sleep: 0.25
   assert_equal(a.durations,[0.25,0.25,0.25])
-  a = zparse "1 2 3", release: [0.25,0.5], sleep: [0.25,0.5]
+
+  a = zparse "1 2 3", release: [0.25,0.5].ring, sleep: [0.25,0.5].ring
   assert_equal(a.durations,[0.25,0.5,0.25])
 
   # Rests

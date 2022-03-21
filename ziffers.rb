@@ -32,7 +32,7 @@ module Ziffers
     include Ziffers::Common
     include Ziffers::Generators
 
-    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :cc, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :pitch, :run_each, :method]
+    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :chord_channel, :cc, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :pitch, :run_each, :method]
 
     @@debug = false
     @@set_keys = [:pc]
@@ -92,7 +92,7 @@ module Ziffers
     end
 
     def tweak(func,start,finish,duration,time=nil)
-      (1..duration).map { |t| time ? $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f,time.to_f) : $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f) }
+      (1..duration).map { |t| time ? $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f,time.to_f) : $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f) }.ring
     end
 
     def expand_zspread(n)
@@ -422,7 +422,8 @@ module Ziffers
             if ziff[:port] then
               sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
               if arp_notes[:notes] then
-                arp_notes[:notes].each do |arp_note|
+                arp_notes[:notes].each_with_index do |arp_note,i|
+                  ziff[:channel] = ziff[:chord_channel][i] if ziff[:chord_channel]
                   play_midi_out arp_note+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
                 end
               else
@@ -436,7 +437,8 @@ module Ziffers
         else
           if ziff[:port]
             sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
-            ziff[:notes].each do |cnote|
+            ziff[:notes].each_with_index do |cnote,i|
+              ziff[:channel] = ziff[:chord_channel][i] if ziff[:chord_channel]
               play_midi_out(cnote, ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
             end
           else
@@ -1204,11 +1206,11 @@ module Ziffers
         ziff[key] = val
       end
 
-      if val.is_a?(Array) and ![:harmonize,:scale,:run,:run_each,:apply].include?(key)
+      if val.is_a?(Array) and ![:chord_channel,:harmonize,:scale,:run,:run_each,:apply].include?(key)
         val = val.ring[loop_i]
         ziff[key] = val
       elsif val.is_a? SonicPi::Core::RingVector
-        val = val[loop_i]
+        val = val[loop_i*melody_size+note_i] # This if for tweak
         ziff[key] = val
       end
 
