@@ -306,7 +306,7 @@ module Ziffers
       loop do
 
         # Default opts for enums
-        defaults = $zloop_states[loop_name][:defaults] if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
+        defaults = defaults.merge($zloop_states[loop_name][:defaults]) if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
 
         if !opts[:port] and defaults[:run] then
           block_with_effects normalize_effects(defaults[:run]) do
@@ -317,6 +317,8 @@ module Ziffers
         end
         print "Cycle index: "+loop_i.to_s if @@debug and loop_i>0
         break if !enum
+
+        # Enumeration prosessing starts here
         defaults[:loop_i] = loop_i
 
         begin
@@ -803,7 +805,8 @@ module Ziffers
 
       end
 
-      $zloop_states[name][:defaults] = opts.merge(defaults)
+      # Defaults for enumerations in loops
+      $zloop_states[name][:defaults] = defaults
 
       live_loop name, defaults.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
 
