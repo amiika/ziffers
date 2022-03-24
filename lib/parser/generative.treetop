@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / decimal_sleep / roman / group   / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
@@ -589,8 +589,7 @@ grammar GenerativeSyntax
           root = degree roman, Thread.current[:topts][:key], Thread.current[:topts][:scale]
           shift = note_info(Thread.current[:topts][:key]).midi_note-60
           notes = chord(root, name, {num_octaves: !oct.text_value.empty? ? oct.text_value.to_i : 1}).notes
-          notes = chord_invert notes, inv.value if inv.methods.include?(:value)
-          pcs = notes.map {|n| midi_to_pc(n-shift,Thread.current[:topts][:key]) }
+          pcs = notes.map {|n| midi_to_pc(n-shift,Thread.current[:topts][:key], Thread.current[:topts][:scale]) }
           pcs
         else
           pc_scale = (scale 0, Thread.current[:topts][:scale], num_octaves: 7).notes.to_a
@@ -599,16 +598,19 @@ grammar GenerativeSyntax
           take_notes = take_notes * oct.text_value.to_i if !oct.text_value.empty?
           chrom_pcs = trichords.take(take_notes)
           pcs = chrom_pcs.map {|idx| pc_scale.index(idx) }
-          pcs = chord_invert pcs, inv.value if inv.methods.include?(:value)
-          pcs = pcs.map{|n| get_ziff(n,Thread.current[:topts][:key],Thread.current[:topts][:scale]) }
+          pcs = pcs.map {|p| get_ziff(p,Thread.current[:topts][:key], Thread.current[:topts][:scale]) }
         end
         v = {
           :roman=>roman,
-          :hpcs=>pcs
+          :hpcs=>pcs,
+          :key=>Thread.current[:topts][:key],
+          :scale=>Thread.current[:topts][:scale]
         }
         v.merge!(Thread.current[:topts])
         v[:subsleep] = Thread.current[:tchordsleep] if Thread.current[:tchordsleep]
-        ZiffHash[v]
+        parsed_chord = ZiffHash[v]
+        parsed_chord.inv_chord! inv.value if inv.methods.include?(:value)
+        parsed_chord
       end
     }
   end
@@ -645,15 +647,10 @@ grammar GenerativeSyntax
     {
      def value
      e = p.elements.collect {|v| v.value }
-      if !Thread.current[:tshared][:parse_chords]
-        pitch_class_list = []
-        e = chord_invert e, inv.value if inv.methods.include?(:value)
-        e.each do |d|
-          pitch_class_list.push(d[:pc])
-        end
-        v = {:hpcs=>e}
-        #v.merge!(Thread.current[:topts])
-        ZiffHash[v]
+      if Thread.current[:tshared][:parse_chords]==nil or Thread.current[:tshared][:parse_chords]
+        c = ZiffHash[{hpcs: e, key: e[0][:key], scale: e[0][:scale]}]
+        c.inv_chord! inv.value if inv.methods.include?(:value)
+        c
       else
         e
       end

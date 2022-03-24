@@ -10,20 +10,77 @@ module Ziffers
           self[:pc].hash
       end
 
+      # Pitch class number
       def pc
+        return self.pcs if self[:hpcs]
         self[:pc]
+      end
+
+      # Pitch class number with octave
+      def opc
+        return self.opcs if self[:hpcs]
+        self[:pc]+(self[:octave] ? self[:octave]*self[:scale_length] : 0)
       end
 
       def pcs
         self[:hpcs].map {|h| h[:pc] }
       end
 
+      def opcs
+        self[:hpcs].map {|h| h[:pc]+(h[:octave] ? h[:octave]*h[:scale_length] : 0) }
+      end
+
       def notes
         self[:notes] || [self[:note]]
       end
 
+      # Chord inversion
+      def inv_chord!(val)
+        (val.abs).times do |i|
+          arr = val<0 ? self[:hpcs].reverse : self[:hpcs]
+          arr[i%self[:hpcs].length][:octave] = 0 if !arr[i%self[:hpcs].length][:octave]
+          arr[i%self[:hpcs].length][:octave] += (val<0 ? -1 : 1)
+        end
+        self[:hpcs] = self[:hpcs].rotate(val)
+        self.update_note
+      end
+
+      # Degree with octave
       def dgr
-        self[:pc]+1
+        if self[:pc]
+          self.opc+1
+        elsif self[:hpcs]
+          self[:hpcs].map {|h| h.opc+1 }
+        else
+          nil
+        end
+      end
+
+      # Chromatic pitch class
+      def cpc
+        return self.pcs if self[:scale] == :chromatic
+        if self[:hpcs]
+          self[:hpcs].map {|h| get_note_from_dgr(h.pc,0,self[:scale]) }
+        else
+          get_note_from_dgr(self.pc,0,self[:scale])
+        end
+      end
+
+      # Chord intervals
+      def chord_intervals
+        if self.is_chord?
+          self.cpc.uniq.sort.each_cons(2).to_a.map {|v| v[1]-v[0] }
+        else
+          nil
+        end
+      end
+
+      def is_major_chord?
+        if self.is_chord?
+          [[4,3],[3,5],[5,4]].include?(self.chord_intervals)
+        else
+          nil
+        end
       end
 
       def tpc
@@ -175,7 +232,7 @@ module Ziffers
           notes = []
           self[:hpcs].each do |d|
             pc = d[:pc]
-            notes.push(get_note_from_dgr(pc, self[:key], self[:scale], (self[:octave] || 0)))
+            notes.push(get_note_from_dgr(pc, d[:key], d[:scale], (d[:octave] || 0)))
           end
           self[:pcs] = self[:hpcs].map {|h| h[:pc] }
           self[:notes] = notes

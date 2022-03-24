@@ -90,7 +90,7 @@ module Ziffers
     end
 
     # Pitch class interval
-    def pc_int(a,b,mod=12) 6-2%12
+    def pc_int(a,b,mod=12)
       r = (b-a)%mod
       r+=mod if r<0
       r
@@ -121,7 +121,8 @@ module Ziffers
       (pitch * 7 + 26 - (11 + acc)) % 12 + (11 + acc)
     end
 
-    def midi_to_pc(cnc, key)
+    # Midi to names pitch class
+    def midi_to_pc(cnc, key, zscale)
       sharps = ["0", "#0", "1", "#1", "2", "3", "#3", "4", "#4", "5", "#5", "6"]
       flats = ["0", "b1", "1", "b2", "2", "3", "b4", "4", "b5", "5", "b6", "6"]
       tpc = midi_to_tpc cnc, key
@@ -134,7 +135,7 @@ module Ziffers
       else
         npc = sharps[pc]
       end
-      v = {octave: oct, pc: (npc.length>1 ? npc[1] : npc).to_i}
+      v = {octave: oct, pc: (npc.length>1 ? npc[1] : npc).to_i, key: key, scale: zscale}
       v[:add] = npc[0] if npc.length>1
       ZiffHash[v]
     end
@@ -147,13 +148,6 @@ module Ziffers
     # Pitch class from note
     def note_pc(note)
       note % 12
-    end
-
-    def pc_to_npc(pc,key,scale)
-      key_names = [:C,:Cs,:D,:Eb,:E,:F,:Fs,:Gb,:G,:A,:Ab,:Bb,:B]
-      key_name = get_key_name(key)
-      key_number = key_names.index(key_name)
-
     end
 
     # Octave from note

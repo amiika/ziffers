@@ -218,9 +218,24 @@ module Ziffers
     end
 
     def pitch_classes
-      self.map{|x| x[:pc] or (x[:hpcs] and x[:hpcs].map{|p| p[:pc]})}
+      self.map{|x| x.pc }
     end
 
+    def opcs
+      self.map{|x| x.opc }
+    end
+
+    # Natural degrees
+    def degrees
+      self.map{|x| x.dgr or (x[:hpcs] and x[:hpcs].map{|p| p.dgr })}
+    end
+
+    # Chromatic pitch classes
+    def cpcs
+      self.map{|x| x.cpc or (x[:hpcs] and x[:hpcs].map{|p| p.cpc })}
+    end
+
+    # Original degrees (Saved before parsing)
     def orig_pcs
       self.map{|x| x[:pc_orig] or (x[:hpcs] and x[:hpcs].map{|p| p[:pc_orig]}) }
     end
@@ -337,6 +352,10 @@ module Ziffers
       pcs.map.with_index {|v,i|
         pc_int(v, pcs[(i+1)%pcs.length])
       }
+    end
+
+    def chord_intervals
+      self.map {|v| v.chord_intervals }
     end
 
     # OIS - ordered pitch-class intervallic structure
