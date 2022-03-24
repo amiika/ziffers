@@ -139,5 +139,58 @@ module Ziffers
     nodes.times.collect { |i| [i * divisions] + interpolations.map { |x| (i * divisions) + x }}.flatten
   end
 
+  # Tonnetz moves
+  def get_move(move,triad)
+  moves = {
+    "l": [[1,-1],[5,1]],
+    "p": [[3,-1],[3,1]],
+    "r": [[5,2],[1,-2]]
+  }
+  if triad.is_major_chord?
+    moves[move.to_sym][0]
+  else
+    moves[move.to_sym][1]
+  end
+end
+
+# Apply tonnetz moves
+def apply_moves(moves,triad)
+  move_set = moves.split(" ")
+  new_triads = []
+  move_set.each do |t_moves|
+    triad_moves = t_moves.split("")
+    new_triad = triad.deep_clone
+    triad_moves.each do |move|
+      if move!="o"
+      t_move = get_move(move,new_triad)
+      dgrs = new_triad.get_chord_degrees
+      x = dgrs.index(t_move[0])
+      new_triad.notes[x] = new_triad.notes[x]+t_move[1]
+      new_triad[:notes] = new_triad.notes.sort
+      end
+    end
+    new_triads << new_triad
+  end
+  new_triads
+end
+
+def cardinal_move(move)
+  mapping = {
+    "s"=>"p",
+    "e"=>"l",
+    "w"=>"r",
+    "SE"=>"lrp",
+    "es"=>"lr",
+    "se"=>"pr",
+    "SW"=>"rlp",
+    "sw"=>"pl",
+    "ws"=>"rl",
+    "n"=>"lpr",
+    "ne"=>"lp",
+    "nw"=>"rp"
+  }
+  mapping[move]
+end
+
 end
 end

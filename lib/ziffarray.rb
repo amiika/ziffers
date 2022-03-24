@@ -144,6 +144,10 @@ module Ziffers
       ZiffArray.new(mirrored.each_slice(val).map{|part| part+part.reverse[1..]}.flatten)
     end
 
+    def tonnetz(val)
+      ZiffArray.new(self.map {|h| h[:hpcs] ? (apply_moves val, h) : h}.flatten)
+    end
+
     def reflect
       reflected = self.deep_clone
       part_b = reflected.reverse

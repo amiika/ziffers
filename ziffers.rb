@@ -22,7 +22,7 @@ load "~/ziffers/lib/defaults.rb"
 load "~/ziffers/lib/pc_sets.rb"
 '''
 
-print "Ziffers 2.0 alpha"
+print "Ziffers 2.0 beta"
 
 module Ziffers
 
@@ -1112,6 +1112,8 @@ module Ziffers
         end
       end
       case key
+      when :tonnetz then
+        melody = melody.tonnetz val
       when :retrograde then
         melody = melody.retrograde val
       when :swap then

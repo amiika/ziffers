@@ -75,6 +75,26 @@ module Ziffers
         end
       end
 
+      def get_chord_degrees
+        intervals_to_chord_degrees = {
+          # Major intervals
+          [4,3]=> [1,3,5],
+          [7,-3]=> [1,3,5],
+          [8,-5]=> [3,1,5],
+          [5,4]=> [5,1,3],
+          [3,5]=> [3,5,1],
+          [9,-4]=> [5,3,1],
+          # Minor intervals
+          [3,4]=> [1,3,5],
+          [7,-4]=> [1,3,5],
+          [9,-5]=> [3,1,5],
+          [5,3]=> [5,1,3],
+          [4,5]=> [3,5,1],
+          [8,-3]=> [5,3,1]
+          }
+          intervals_to_chord_degrees[self.chord_intervals]
+      end
+
       def is_major_chord?
         if self.is_chord?
           [[4,3],[3,5],[5,4]].include?(self.chord_intervals)
