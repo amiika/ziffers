@@ -397,7 +397,7 @@ module Ziffers
         $zloop_states[defaults[:loop_name]][:parsed_melody] = melody
         if @@debug then
           print "Stored:"
-          print zparams melody, :pc
+          print melody.pcs
         end
       end
     end

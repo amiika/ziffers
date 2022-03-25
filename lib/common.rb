@@ -51,7 +51,7 @@ module Ziffers
       dgr = scaleLength if dgr == 0
       note_value = (degree(dgr,zkey,zscale)+(oct*used_scale[-1])+addition)
       note_value = (note_value.to_s+"."+remainder).to_f if remainder
-      return ZiffHash[{:note=>note_value>0 ? note_value>231 ? 230 : note_value : 1, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength}]
+      return ZiffHash[{:note=>note_value>0 ? note_value>231 ? 230 : note_value : 1, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength, :add=>addition}]
     end
 
     # Scales degrees to scale, for example -1=7 and 8=1
@@ -135,8 +135,8 @@ module Ziffers
       else
         npc = sharps[pc]
       end
-      v = {octave: oct, pc: (npc.length>1 ? npc[1] : npc).to_i, key: key, scale: zscale}
-      v[:add] = npc[0] if npc.length>1
+      v = {octave: oct, pc: (npc.length>1 ? npc[1] : npc).to_i, key: key, scale: zscale, note: cnc}
+      v[:add] = (npc[0]=="#" ? 1 : -1) if npc.length>1
       ZiffHash[v]
     end
 

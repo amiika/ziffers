@@ -141,17 +141,17 @@ module Ziffers
 
   # Tonnetz moves
   def get_move(move,triad)
-  moves = {
-    "l": [[1,-1],[5,1]],
-    "p": [[3,-1],[3,1]],
-    "r": [[5,2],[1,-2]]
-  }
-  if triad.is_major_chord?
-    moves[move.to_sym][0]
-  else
-    moves[move.to_sym][1]
+    moves = {
+      "l": [[1,-1],[5,1]],
+      "p": [[3,-1],[3,1]],
+      "r": [[5,2],[1,-2]]
+    }
+    if triad.is_major_chord?
+      moves[move.to_sym][0]
+    else
+      moves[move.to_sym][1]
+    end
   end
-end
 
 # Apply tonnetz moves
 def apply_moves(moves,triad)
@@ -162,13 +162,23 @@ def apply_moves(moves,triad)
     new_triad = triad.deep_clone
     triad_moves.each do |move|
       if move!="o"
-      t_move = get_move(move,new_triad)
-      dgrs = new_triad.get_chord_degrees
-      x = dgrs.index(t_move[0])
-      new_triad.notes[x] = new_triad.notes[x]+t_move[1]
-      new_triad[:notes] = new_triad.notes.sort
+        t_move = get_move(move,new_triad)
+        dgrs = new_triad.get_chord_degrees
+        x = dgrs.index(t_move[0])
+
+        new_note = new_triad[:hpcs][x][:note]+t_move[1]
+        temp_h = midi_to_pc(new_note,new_triad[:hpcs][x][:key],new_triad[:hpcs][x][:scale])
+        new_triad[:hpcs][x][:note] = new_note
+        new_triad[:hpcs][x][:pc] = temp_h[:pc]
+        new_triad[:hpcs][x][:octave] = temp_h[:octave]
+        new_triad[:hpcs][x][:add] = temp_h[:add]
+
+        new_triad[:hpcs] = new_triad[:hpcs].sort_by {|h| h.cpc }
+        new_triad[:notes] = new_triad[:hpcs].map {|h| h[:note] }
+        new_triad[:pcs] = new_triad[:hpcs].map {|h| h[:pc] }
       end
     end
+
     new_triads << new_triad
   end
   new_triads

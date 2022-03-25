@@ -229,6 +229,10 @@ module Ziffers
       self.map{|x| x.opc }
     end
 
+    def cpcs
+      self.map{|x| x.cpc }
+    end
+
     # Natural degrees
     def degrees
       self.map{|x| x.dgr or (x[:hpcs] and x[:hpcs].map{|p| p.dgr })}

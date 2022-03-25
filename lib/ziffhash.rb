@@ -60,7 +60,7 @@ module Ziffers
       def cpc
         return self.pcs if self[:scale] == :chromatic
         if self[:hpcs]
-          self[:hpcs].map {|h| get_note_from_dgr(h.pc,0,self[:scale]) }
+          self[:hpcs].map {|h| get_note_from_dgr(h.pc,0,self[:scale]) + (h[:add]?h[:add]:0)}
         else
           get_note_from_dgr(self.pc,0,self[:scale])
         end
@@ -155,8 +155,11 @@ module Ziffers
         if self[:pc]
           pc = ((self[:pc].to_i>9 or self[:pc].to_i<-9 or self[:pc].is_a?(Float))  ? "{#{self[:pc].to_s}}" : self[:pc].to_s)
         end
+        if self[:add]
+          add = self[:add]>0 ? "#"*self[:add] : "b"*self[:add].abs  if self[:add].is_a?(Integer) and self[:add]!=0
+        end
         zs =  (self[:prefix] || "") +
-              (self[:add] || "") +
+              (add || "") +
               (self[:staccato] || "") +
               (self[:dynamics] || "") +
               (octave_value || "") +
@@ -244,7 +247,7 @@ module Ziffers
         ziff
       end
 
-      # TODO: Add ignore_octave parameter?
+      # Update notes based on pitch class values
       def update_note
         if self[:pc]
           self.merge!(get_ziff(self[:pc], self[:key], self[:scale], (self[:octave] || 0)))
@@ -256,6 +259,20 @@ module Ziffers
           end
           self[:pcs] = self[:hpcs].map {|h| h[:pc] }
           self[:notes] = notes
+        end
+      end
+
+      # Update pcs based on note values
+      def update_pcs
+        if self[:pc]
+          self[:pc] = midi_to_pc(self[:note],self[:key],self[:scale])
+        elsif self[:hpcs]
+          new_pcs = []
+          self[:hpcs].each do |d|
+            new_pcs << midi_to_pc(d[:note],d[:key],d[:scale])
+          end
+          self[:hpcs]= new_pcs
+          self[:pcs] = new_pcs.map {|h| h[:pc] }
         end
       end
 
