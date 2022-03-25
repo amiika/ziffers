@@ -157,31 +157,35 @@ module Ziffers
 def apply_moves(moves,triad)
   move_set = moves.split(" ")
   new_triads = []
-  move_set.each do |t_moves|
-    triad_moves = t_moves.split("")
-    new_triad = triad.deep_clone
-    triad_moves.each do |move|
-      if move!="o"
-        t_move = get_move(move,new_triad)
-        dgrs = new_triad.get_chord_degrees
-        x = dgrs.index(t_move[0])
-
-        new_note = new_triad[:hpcs][x][:note]+t_move[1]
-        temp_h = midi_to_pc(new_note,new_triad[:hpcs][x][:key],new_triad[:hpcs][x][:scale])
-        new_triad[:hpcs][x][:note] = new_note
-        new_triad[:hpcs][x][:pc] = temp_h[:pc]
-        new_triad[:hpcs][x][:octave] = temp_h[:octave]
-        new_triad[:hpcs][x][:add] = temp_h[:add]
-
-        new_triad[:hpcs] = new_triad[:hpcs].sort_by {|h| h.cpc }
-        new_triad[:notes] = new_triad[:hpcs].map {|h| h[:note] }
-        new_triad[:pcs] = new_triad[:hpcs].map {|h| h[:pc] }
+  test_dgrs = triad.get_chord_degrees
+  if test_dgrs # If this fails chord is not suitable triad?
+    move_set.each do |t_moves|
+      triad_moves = t_moves.split("")
+      new_triad = triad.deep_clone
+      triad_moves.each do |move|
+        if move!="o"
+          t_move = get_move(move,new_triad)
+          dgrs = new_triad.get_chord_degrees
+          x = dgrs.index(t_move[0])
+          # Create new triad
+          new_note = new_triad[:hpcs][x][:note]+t_move[1]
+          temp_h = midi_to_pc(new_note,new_triad[:hpcs][x][:key],new_triad[:hpcs][x][:scale])
+          new_triad[:hpcs][x][:note] = new_note
+          new_triad[:hpcs][x][:pc] = temp_h[:pc]
+          new_triad[:hpcs][x][:octave] = temp_h[:octave]
+          new_triad[:hpcs][x][:add] = temp_h[:add]
+          # Sort new triad to find new root
+          new_triad[:hpcs] = new_triad[:hpcs].sort_by {|h| h.cpc }
+          new_triad[:notes] = new_triad[:hpcs].map {|h| h[:note] }
+          new_triad[:pcs] = new_triad[:hpcs].map {|h| h[:pc] }
+        end
       end
+      new_triads << new_triad
     end
-
-    new_triads << new_triad
+    new_triads
+  else
+    [triad]
   end
-  new_triads
 end
 
 def cardinal_move(move)
