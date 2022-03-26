@@ -44,7 +44,7 @@ or create lists and do list operations using randomization and crazy recursive n
 ```
 z1 "q (0 1 (3,7) 3)~<*>(4 [6,4,[5,4,2,7]] (0,(5,8)) (1,6))", synth: :kalimba
 ```
-and much more ... See [Ziffers wiki](https://github.com/amiika/ziffers/wiki) for how to make your own.
+and much more ... See [Cheatsheet](https://github.com/amiika/ziffers/Cheatsheet.pdf) or [Ziffers wiki](https://github.com/amiika/ziffers/wiki) for how to make your own.
 
 Here's is a cheatsheet you can copy to Sonic Pi editor:
 ```
