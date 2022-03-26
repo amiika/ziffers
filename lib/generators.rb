@@ -157,6 +157,7 @@ module Ziffers
 def apply_moves(moves,triad)
   move_set = moves.split(" ")
   new_triads = []
+  triad[:hpcs] = triad[:hpcs].sort_by {|h| h.cpc } # Sort triad by chromatic pitches
   test_dgrs = triad.get_chord_degrees
   if test_dgrs # If this fails chord is not suitable triad?
     move_set.each do |t_moves|
