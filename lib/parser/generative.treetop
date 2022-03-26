@@ -499,11 +499,19 @@ grammar GenerativeSyntax
 
   # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
-    v:("!"  / slide / arpeggio / ignore_function / ignore_comment / ignore_params)
-  # ([!\~&@|()#\^_%\n\-\/\*\+`´\,\'<>\.a-zA-Z0-9])
+    v:(reset  / slide / arpeggio / ignore_function / ignore_comment / ignore_params)
     {
       def value
-        (v.value.to_s || text_value)
+        v.value.to_s
+      end
+    }
+  end
+
+  rule reset
+    "!"
+    {
+      def value
+        text_value
       end
     }
   end

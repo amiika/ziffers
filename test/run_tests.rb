@@ -157,6 +157,9 @@ def test_samples
   
   assert_equal(a.samples, [[:drum_cymbal_closed, :bd_tek], :drum_cymbal_closed, [:bd_tek, :drum_cymbal_closed, :drum_snare_soft], :drum_cymbal_closed, [:drum_cymbal_closed, :bd_tek], :drum_cymbal_closed, [:bd_tek, :drum_cymbal_closed, :drum_snare_soft], :drum_cymbal_closed, [:bd_tek, :drum_cymbal_closed], :bd_tek, [:drum_snare_soft, :drum_cymbal_closed], :drum_cymbal_closed])
   
+  a = zparse "q 0 1 F 2 3 4 2 ! 3 1 3 2 1", use: {"F": {run:[{with_fx: :echo}]}}
+  assert_equal(a.pcs,[0, 1, nil, 2, 3, 4, 2, 3, 1, 3, 2, 1]) # Plain effects appears as nil
+  
 end
 
 def test_ois

@@ -379,12 +379,10 @@ grammar Ziffers
           end
 
           v[:pitch] = v[:pitch] ? v[:pitch]+Thread.current[:topts][:add] : Thread.current[:topts][:add] if prefixes[:add]
-
           v[:pitch_stretch] = 1.0/prefixes[:staccato] if prefixes[:staccato]
-
           v[:char] = u.text_value
 
-          !(v[:sample] or v[:note] or v[:cue]) ? v : ZiffHash[v]
+          ZiffHash[v]
         else
           nil
         end
