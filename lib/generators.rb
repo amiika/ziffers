@@ -163,7 +163,7 @@ def apply_moves(moves,triad)
       triad_moves = t_moves.split("")
       new_triad = triad.deep_clone
       triad_moves.each do |move|
-        if move!="o"
+        if ["p","l","r"].include?(move) # Ignore all other moves
           t_move = get_move(move,new_triad)
           dgrs = new_triad.get_chord_degrees
           x = dgrs.index(t_move[0])
