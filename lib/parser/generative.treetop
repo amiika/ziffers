@@ -49,7 +49,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?' / '#') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* durs:(duration_set)? eval_f:(ternary)?
+    durs:(duration_set)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?' / '#') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* eval_f:(ternary)?
     {
     def value
 
@@ -207,7 +207,7 @@ grammar GenerativeSyntax
 
     durations = durs.value if durs.methods.include?(:value)
     if durations and durations.is_a?(Array)
-      set = set.flatten.map.with_index{|v,i| v[:subsleep] = durations[i%durations.length] if v.is_a?(Hash) ; v  }
+      set = set.flatten.map.with_index{|v,i| v[:sleep] = durations[i%durations.length] if v.is_a?(Hash) ; v  }
       set
     else
       set
@@ -302,7 +302,7 @@ grammar GenerativeSyntax
     '<' durs:(sleep / s)* '>'
     {
     def value
-      durs.elements.map {|v| v.value }
+      durs.elements.map {|v| v.value }.compact
     end
     }
   end

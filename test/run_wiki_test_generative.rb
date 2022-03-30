@@ -130,7 +130,7 @@ def test_generative
     assert_equal(a.pcs.length,2)
     a = zparse "(1 3 4 6 7)?2" # Take random 2: "3 3"
     assert_equal(a.pcs.length,2)
-    a = zparse "(: (1,4)..[5,6,7] :3)~<qeeq>" # Create random range between randomized values and add note lengths
+    a = zparse "<q e e q>(: (1,4)..[5,6,7] :3)~" # Create random range between randomized values and add note lengths
 
     # Assign
     a = zparse "A=(1..3 {(1,3)+2}) q A A A"
