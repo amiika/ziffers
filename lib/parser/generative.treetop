@@ -191,10 +191,10 @@ grammar GenerativeSyntax
           set = set.compact.map do |v|
             if v.is_a?(Hash)
               if v[:pc]
-                eval_func(v,tfunc)
+                v[:pc] = eval_func(v[:pc],tfunc)
               elsif v[:hpcs]
                 v[:hpcs] = v[:hpcs].map do |h|
-                  eval_func(h,tfunc)
+                  h[:pc] = eval_func(h[:pc],tfunc)
                 end
                 v
               end
@@ -216,16 +216,15 @@ grammar GenerativeSyntax
     end
     def eval_func(v,tfunc)
       if tfunc.is_a?(Array)
-        cond = eval tfunc[0].gsub("x",v[:pc].to_s)
+        cond = eval tfunc[0].gsub("x",v.to_s)
         if cond
-          v[:pc] = eval tfunc[1].gsub("x",v[:pc].to_s)
+          eval_func v, tfunc[1]
         else
-          v[:pc] = eval tfunc[2].gsub("x",v[:pc].to_s) if tfunc[2]
+          eval_func v, tfunc[2]
         end
       else
-        v[:pc] = eval tfunc.gsub("x",v[:pc].to_s)
+        eval tfunc.gsub("x",v.to_s)
       end
-      v
     end
     }
   end
@@ -790,22 +789,29 @@ rule conditional_assingment
       eval_cond conditional_set.value
     end
     def eval_cond(tfunc)
-      cond = eval tfunc[0]
-      if cond
-        tfunc[1]
+      if tfunc.is_a?(Hash)
+        cond = eval tfunc[:condition]
+        if cond
+          eval_cond tfunc[:if]
+        else
+          eval_cond tfunc[:else]
+        end
       else
-        tfunc[2]
+        tfunc
       end
     end
   }
 end
 
 rule conditional_set
-  cond:(condition) '?' first:(set / set_items) ':'? second:(set / set_items)?
+  cond:(condition) s? '?' s? first:(conditional_assingment / set / set_items) s? ':'? s? second:(conditional_assingment / set / set_items)?
   {
     def value
-      a = [(cond.methods.include?(:value) ? cond.value : nil), (first.methods.include?(:value) ? first.value : nil), (second.methods.include?(:value) ? second.value : nil)]
-      a
+      {
+      :condition => (cond.methods.include?(:value) ? cond.value : nil),
+      :if => (first.methods.include?(:value) ? first.value : nil),
+      :else => (second.methods.include?(:value) ? second.value : nil)
+      }
     end
   }
 end
@@ -820,7 +826,7 @@ end
   end
 
   rule conditional
-    cond:(condition) '?' first:(clause) ':'? second:(clause)?
+    cond:(condition) s? '?' s? first:(ternary / clause) s? ':'? s? second:(ternary / clause)?
     {
       def value
         a = [(cond.methods.include?(:value) ? cond.value : nil), (first.methods.include?(:value) ? first.value : nil), (second.methods.include?(:value) ? second.value : nil)]

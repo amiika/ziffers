@@ -1113,7 +1113,7 @@ module Ziffers
       end
       case key
       when :tonnetz then
-        melody = melody.tonnetz val
+        melody = melody.tonnetz(val.is_a?(Array) ? val[loop_i%val.length] : val)
       when :retrograde then
         melody = melody.retrograde val
       when :swap then
