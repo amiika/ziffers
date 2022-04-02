@@ -32,7 +32,7 @@ module Ziffers
     include Ziffers::Common
     include Ziffers::Generators
 
-    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :chord_channel, :cc, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :pitch, :run_each, :method]
+    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :chord_channel, :cc, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :beat_stretch,:pitch_stretch, :pitch, :rpitch, :window_size, :pitch_dis, :time_dis, :run_each, :method, :beat_stretch, :pitch_stretch, :start, :finish, :onset, :split, :amp_slide, :pan_slide, :pre_amp,:on,:slice,:num_slices,:norm,:lpf,:lpf_init_level,:lpf_attack_level,:lpf_decay_level,:lpf_sustain_level,:lpf_release_level,:lpf_attack,:lpf_decay,:lpf_sustain,:lpf_release,:lpf_min,:lpf_env_curve,:hpf,:hpf_init_level,:hpf_attack_level,:hpf_decay_level,:hpf_sustain_level,:hpf_release_level,:hpf_attack,:hpf_decay,:hpf_sustain,:hpf_release,:hpf_env_curve,:hpf_max,:rpitch,:pitch,:window_size,:pitch_dis,:time_dis,:compress,:threshold,:slope_below,:slope_above,:clamp_time,:relax_time,:slide]
 
     @@debug = false
     @@set_keys = [:pc]
@@ -221,6 +221,10 @@ module Ziffers
 
     def clean(ziff)
       ziff.slice(*[:note,:notes,:note_slide,:amp,:amp_slide,:pan,:pan_slide,:attack,:decay,:sustain,:release,:attack_level,:decay_level,:sustain_level,:env_curve,:slide,:pitch,:rate,:on,:cutoff,:res,:env_curve,:vibrato_rate,:vibrato_depth,:vibrato_delay,:vibrato_onset,:width,:freq_band,:room,:reverb_time,:ring,:detune1,:detune2,:noise,:dpulse_width,:pulse_width,:divisor,:norm,:clickiness,:mod_phase,:mod_range,:mod_pulse_width,:mod_phase_offset,:mod_invert_wave,:mod_wave,:detune,:stereo_width,:hard,:vel,:coef,:pluck_delay,:noise_amp,:max_delay_time,:lfo_width,:lfo_rate,:seed,:disable_wave,:range,:invert_wave,:wave,:phase_offset,:phase])
+    end
+
+    def clean_sample(ziff)
+      ziff.slice(*[:rate,:beat_stretch,:pitch_stretch,:attack,:sustain,:release,:start,:finish,:pan,:pan_slide,:amp,:amp_slide,:pre_amp,:onset,:on,:slice,:num_slices,:norm,:lpf,:lpf_init_level,:lpf_attack_level,:lpf_decay_level,:lpf_sustain_level,:lpf_release_level,:lpf_attack,:lpf_decay,:lpf_sustain,:lpf_release,:lpf_min,:lpf_env_curve,:hpf,:hpf_init_level,:hpf_attack_level,:hpf_decay_level,:hpf_sustain_level,:hpf_release_level,:hpf_attack,:hpf_decay,:hpf_sustain,:hpf_release,:hpf_env_curve,:hpf_max,:rpitch,:pitch,:window_size,:pitch_dis,:time_dis,:compress,:threshold,:slope_below,:slope_above,:clamp_time,:relax_time,:slide])
     end
 
     def play_midi_out(md, opts)
@@ -455,8 +459,11 @@ module Ziffers
           play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
         end
       else
-        if ziff[:sample] or ziff[:samples] or ziff[:method] then
-          if defaults[:rate_based] && ziff[:note]!=nil then
+        if ziff[:split] or ziff[:sample] or ziff[:samples] or ziff[:method] then
+          if ziff[:split] and ziff[:pc]
+            ziff[:sample] = ziff[:split]
+            ziff[:onset] = ziff[:pc]
+          elsif defaults[:rate_based] && ziff[:note]!=nil then
             ziff[:rate] = pitch_to_ratio(ziff[:note]-note(ziff[:key]))
           elsif ziff[:pc]!=nil then
             ziff[:pitch] = (scale 0, ziff[:scale], num_octaves: 2)[ziff[:pc]]+(ziff[:octave])*12-0.001
@@ -472,12 +479,12 @@ module Ziffers
                 normalize_ziff_methods(s,index,loop_i)
               else
                 normalize_ziff_methods(s,index,loop_i)
-                sample (s[:sample_dir] ? [s[:sample_dir], s[:sample]] : s[:sample]), clean(s)
+                sample (s[:sample_dir] ? [s[:sample_dir], s[:sample]] : s[:sample]), clean_sample(s)
               end
             end
           else # Sample
             normalize_ziff_methods(ziff,index,loop_i)
-            c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
+            c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean_sample(ziff)
           end
         elsif ziff[:note] or ziff[:notes]
           if ziff[:synth] then
@@ -495,7 +502,7 @@ module Ziffers
           if !first[:sample]
             c = play clean(first)
           else
-            c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean(ziff)
+            c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean_sample(ziff)
           end
 
           slide_sleep = ziff[:sleep]/ziff[:slide][:notes].length
