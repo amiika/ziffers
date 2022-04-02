@@ -270,7 +270,7 @@ grammar GenerativeSyntax
     {
       def value
         Thread.current[:tshared][:use] = {} if !Thread.current[:tshared][:use]
-        Thread.current[:tshared][:use][k.text_value] = set.value.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length).map {|h| h.to_z }.join(" ") : v.to_z) : v}
+        Thread.current[:tshared][:use][k.text_value] = set.value.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length) : v) : v}
         nil
       end
     }
