@@ -95,30 +95,6 @@ module Ziffers
       (1..duration).map { |t| time ? $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f,time.to_f) : $easing[func].call(t.to_f,start.to_f,(finish-start).to_f, duration.to_f) }.ring
     end
 
-    def expand_zspread(n)
-      n = n.gsub(/\((.+)\)\<(\d+),(\d+),?(\d+)?,?(.+)?\>(\(.+\))?/) do
-        a = $1.split(";")
-        b = $6.tr("()","").split(";") if $6
-        zspread((a.length>1 ? a : a[0]), $2.to_i, $3.to_i, ($4 ? $4.to_i : 0), ($5 ? $5 : " "),(b ? (b.length>1 ? b : b[0]) : "r"))
-      end
-    end
-
-    # DEPRECATED
-    # Replaces characters with strings or values picked from an array using loop cycle % array length
-    def replace_use_params(n,shared)
-      if shared[:use] then
-        loop_i = shared[:loop_name] ? $zloop_states[shared[:loop_name]][:loop_i] : 0
-        shared[:use].each do |key,val|
-          if val.kind_of?(Array) then
-            n = n.gsub(key.to_s,val[loop_i % val.size].to_s)
-          elsif val.kind_of?(String) then
-            n = n.gsub(key.to_s,val.to_s)
-          end
-        end
-      end
-      n
-    end
-
     # TODO: Document or remove?
     def zgroup(n, opts={}, shared={})
       if n.is_a?(Array)
@@ -186,8 +162,6 @@ module Ziffers
           end
 
           n = zpreparse(n,defaults.delete(:parsekey)) if defaults[:parsekey]!=nil
-          n = expand_zspread(n) # Hack for spread
-
 
           defaults[:rules] = defaults.delete(:replace) if defaults[:replace]
           if defaults[:rules] and !shared[:lsystemloop] then
@@ -991,34 +965,6 @@ module Ziffers
 
     def merge_rate(ziff, opts)
       ziff.merge(opts) {|_,a,b| (a.is_a? Numeric) ? a * b : b }
-    end
-
-    # TODO: Create rule for this that handles cycles
-    def zspread ziff, x, y, rotate=0, join=" ", offbeat="r"
-      cycleZ = ziff.kind_of?(Array)
-      cycleO = offbeat.kind_of?(Array)
-      ci = -1
-      si = -1
-      arr = spread(x,y)
-      .to_a
-      .rotate(-rotate)
-      .each_with_index
-      .map do |n,i|
-        if n
-          if cycleZ
-            ziff[(ci+=1)%ziff.length]
-          else
-            ziff
-          end
-        else
-          if cycleO
-            offbeat[(si+=1)%offbeat.length]
-          else
-            offbeat
-          end
-        end
-      end
-      arr.join(join)
     end
 
     def lgen(ax,rules,gen)

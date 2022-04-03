@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / set / conditional_assingment / ranges / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / set / conditional_assingment / ranges / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
@@ -210,7 +210,7 @@ grammar GenerativeSyntax
       set = set.flatten.map.with_index{|v,i| v[:sleep] = durations[i%durations.length] if v.is_a?(Hash) ; v  }
       set
     else
-      set
+      set.flatten(1) # Flatten only 1st level, second level used in euclid to separate lists
     end
 
     end
@@ -229,20 +229,27 @@ grammar GenerativeSyntax
     }
   end
 
-  # TODO: Not in use yet - Works - but only for single sets
     rule euclid
-      onbeat:(set) '<' s:([1-9]+) ',' e:([1-9]+) ','? r:([1-9]+)? '>' offbeat:(set)?
+      '(' onbeat:(set_items) ')<' s:(min_max) ',' e:(min_max) ','? r:(min_max)? '>' opt:('(' offbeat:(set_items) ')')?
       {
       def value
-        result = bin_euclid(s.text_value.to_i,e.text_value.to_i)
+        on_i = 0
+        off_i = 0
+        onbeat_list = onbeat.value.compact
+        offbeat_list = opt.offbeat.value.compact if !opt.empty? and !opt.offbeat.empty? and opt.offbeat.methods.include?(:value)
+        result = bin_euclid(s.value,e.value)
         .map do |n|
           if n==1
-            onbeat.value
+            vals = onbeat_list[on_i%onbeat_list.length]
+            on_i+=1
+            vals
           else
-            offbeat.methods.include?(:value) ? offbeat.value : "r "
+            vals = offbeat_list ? offbeat_list[off_i%offbeat_list.length] : "r"
+            off_i+=1
+            vals
           end
         end
-        r.empty? ? result : result.rotate(r.text_value.to_i)
+        (!r.empty? and r.methods.include?(:value)) ? result.rotate(-r.value) : result
       end
       }
     end
@@ -383,7 +390,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / set)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / set)*
     {
     def value
       elements.map {|v| v.value }

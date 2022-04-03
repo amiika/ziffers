@@ -90,6 +90,8 @@ module Ziffers
         rhythm[index.to_i] = 1
         index += ratio
       end
+      # In Sonic Pi's spread algorithm booleans seem to rotated if there are consecutive true values
+      rhythm = (rhythm[0]==1 and rhythm[1]==1) ? rhythm.rotate(-2) : rhythm
       return rhythm
     end
 
