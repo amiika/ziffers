@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / set / conditional_assingment / ranges / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / random_percent)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / set / conditional_assingment / ranges / relative_duration / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
@@ -726,6 +726,15 @@ grammar GenerativeSyntax
           sonic_random_float(0,1,3)
         end
       }
+  end
+
+  rule relative_duration
+    v:(min_max)? '%'
+    {
+      def value
+        (v and v.methods.include?(:value)) ? "#{v.value}%" : "%"
+      end
+    }
   end
 
   rule random_decimal

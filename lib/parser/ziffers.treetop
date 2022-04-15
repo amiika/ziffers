@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / comment / opt_list / continue / bar / multisleep / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / jumper / reset / skip)*
+    (s / comment / opt_list / continue / bar / relative_duration / multisleep / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / jumper / reset / skip)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.compact
@@ -40,11 +40,23 @@ grammar Ziffers
     }
   end
 
+  rule relative_duration
+    d:(integer)? '%'
+    {
+    def value
+      Thread.current[:topts][:relative_duration_value] = (d.value.to_f/100).round(2) if d and d.methods.include?(:value)
+      Thread.current[:topts][:relative_duration] = true
+      nil
+    end
+    }
+  end
+
   rule multisleep
     sleep s
     {
     def value
       Thread.current[:topts][:sleep] = sleep.value
+      Thread.current[:topts][:relative_duration] = false
       nil
     end
     }
@@ -248,7 +260,12 @@ grammar Ziffers
 
         v[:release] = v[:release]/(prefixes[:staccato]+1) if prefixes[:staccato]
 
-        v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
+        if prefixes[:sleep]
+          v[:sleep] = prefixes[:sleep]
+          v.delete(:relative_duration)
+        end
+
+        Thread.current[:topts].delete(:relative_duration_value)
 
         v = ZiffHash[v]
         if !Thread.current[:tshared][:normalized] # If directly from zparse
@@ -366,8 +383,17 @@ grammar Ziffers
 
           v.merge!(Thread.current[:topts]) { |key, important, default| important }
 
-          v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
-          v[:sleep] = 0.0 if v.has_key?(:cue)
+          if prefixes[:sleep]
+            v[:sleep] = prefixes[:sleep]
+            v.delete(:relative_duration)
+          end
+
+          if v.has_key?(:cue)
+            v[:sleep] = 0.0
+            v.delete(:relative_duration)
+          end
+
+          Thread.current[:topts].delete(:relative_duration_value)
 
           v[:amp] = v[:amp] ? v[:amp]+(v[:amp]/2)*prefixes[:dynamics] : (prefixes[:dynamics]<0 ? 1.0/-(prefixes[:dynamics]-1) : 1.0+0.5*prefixes[:dynamics])  if prefixes[:dynamics]
 
@@ -539,6 +565,8 @@ end
           Thread.current[:topts][:octave] = 0
           Thread.current[:topts][:sleep] = Thread.current[:topts_orig][:sleep] ? Thread.current[:topts_orig][:sleep] : 1.0
           Thread.current[:topts][:measure]  = !Thread.current[:topts][:measure] ? 0 : Thread.current[:topts][:measure] += 1
+          Thread.current[:topts][:relative_duration] = false if Thread.current[:topts][:relative_duration]
+          Thread.current[:topts].delete(:relative_duration_value)
           nil
         end
       }

@@ -134,9 +134,9 @@ def test_generative
 
     # Assign
     a = zparse "A=(1..3 {(1,3)+2}) q A A A"
-    assert_equal(a.pcs,[1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4])
+    assert_equal(a.pcs,[1, 2, 3, 5, 1, 2, 3, 5, 1, 2, 3, 5])
     a = zparse "A=(3 2 (1,5) 3) B=(? (1,3) 3) q A B A B"
-    assert_equal(a.pcs,[3, 2, 4, 3, 6, 3, 3, 3, 2, 4, 3, 6, 3, 3])
+    assert_equal(a.pcs,[3, 2, 4, 3, 5, 3, 3, 3, 2, 4, 3, 5, 3, 3])
 
   end
 end

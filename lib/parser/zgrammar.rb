@@ -120,6 +120,40 @@ module Ziffers
       # Note to self: Do not call result.value more than once to avoid endless debugging.
       raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
       ziffers = ZiffArray.new(result.value)
+
+      # Calculate random durations relatively for each measure
+      if Thread.current[:topts].has_key?(:relative_duration)
+        measures = ziffers.measures
+        measures.map do |m|
+          used = m.inject({duration: 0, count: 0}) do |sum,h|
+            if h[:relative_duration]
+              sum[:count] = sum[:count]+1
+            else
+              sum[:duration] = sum[:duration]+h[:sleep]
+            end
+            sum
+          end
+          duration_left = m.duration-used[:duration]
+          m.map do |h|
+            if h[:relative_duration]
+              if h[:relative_duration_value] and used[:count]>1
+                h[:sleep] = ([h[:relative_duration_value],1.0].min * duration_left).round(2)
+                duration_left = duration_left-h[:sleep]
+                used[:count] = used[:count]-1
+              elsif used[:count]>1
+                h[:sleep] = (sonic_random_float(0.01,duration_left,2) * duration_left).round(2)
+                duration_left = duration_left-h[:sleep]
+                used[:count] = used[:count]-1
+              else
+                h[:sleep] = duration_left.round(2)
+              end
+            end
+            h
+          end
+        end
+        ziffers = ZiffArray.new(measures.flatten)
+      end
+
       apply_array_transformations ziffers, opts, shared
     end
 
