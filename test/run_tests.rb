@@ -80,6 +80,10 @@ def test4
   t5_s = chord_invert (chord :c, :major), -6
   assert_equal(t5.notes[0],t5_s.to_a)
 
+  t6 = zparse "@(q 0 012) i^7 v iv "
+  assert_equal(t6[1][:arpeggio][0][:note],60)
+  assert_equal(t6[1][:arpeggio][1][:notes],[60,62,64])
+
 end
 
 def test5
