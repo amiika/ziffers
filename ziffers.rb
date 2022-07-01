@@ -440,6 +440,7 @@ module Ziffers
           play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
         end
       else
+        check_cc ziff
         if ziff[:split] or ziff[:sample] or ziff[:samples] or ziff[:method] then
           if ziff[:split] and ziff[:pc]
             ziff[:sample] = ziff[:split]
@@ -1232,6 +1233,32 @@ module Ziffers
       end
     end
     return ziff
+  end
+
+  # Send MIDI and CC off to all channels
+  def zoff
+    midi_local_control_off
+    midi_all_notes_off
+  end
+
+  # Sends midi stop to all channels
+  def zstop
+    midi_stop
+  end
+
+  # Kills all running live_loop threads and stops midi notes from playing
+  def zkill
+    
+    threads = @named_subthreads.map do |name, thread|
+      thread if name.to_s.start_with?('live_loop')
+    end.compact
+    
+    threads.each do |t|
+      t.thread.kill
+    end
+
+    zoff 
+    zstop
   end
 
   def z0(ziff="//", opts={})  zloop(:z0,ziff,opts) end
