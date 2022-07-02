@@ -70,7 +70,6 @@ module Ziffers
         
         arr = @@pitch_mappings[key] if key.is_a?(Symbol) and @@pitch_mappings[key]
         arr = key if key.is_a?(Array)
-
         if arr
           midi_hz = midi_to_hz midi_note
           cc_pitch = arr.each_with_index.min_by{|hz,cc| (midi_hz-hz).abs}

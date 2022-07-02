@@ -242,7 +242,7 @@ grammar Ziffers
         prefixes = {} if !prefixes
 
         # TODO: Create new parser for midi and cc
-        if (Thread.current[:topts][:midi] || Thread.current[:topts][:cc])
+        if (Thread.current[:topts][:midi] || Thread.current[:topts][:parse_cc])
           v = {note: dgr, pc: note_pc(dgr), octave: note_oct(dgr), scale: :chromatic }
         else
           if prefixes[:fixed_octave]

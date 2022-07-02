@@ -396,7 +396,7 @@ module Ziffers
               arp_chord = cn[:pcs].map{|d| {note: ziff[:notes][d%ziff[:notes].length], pc: ziff[:pcs][d%ziff[:pcs].length]} }
               arp_notes = {notes: arp_chord}
             else
-              arp_notes = {note: ziff[:notes][cn[:pc]%ziff[:notes].length], pc: ziff[:pcs][cn[:pc]%ziff[:pcs].length] }
+              arp_notes = {note: ziff[:notes][cn[:pc]%ziff[:notes].length], pc: ziff[:pcs][cn[:pc]%ziff[:pcs].length], index: cn[:pc]%ziff[:pcs].length }
             end
             arp_opts = cn.merge(arp_notes).except(:pcs, :pc)
             if ziff[:port] then
@@ -408,6 +408,7 @@ module Ziffers
                   play_midi_out arp_note[:note]+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
                 end
               else
+                ziff[:channel] = ziff[:chord_channel][arp_notes.delete(:index)] if ziff[:chord_channel]
                 check_cc arp_notes.merge(ziff.slice(:cc, :mapping, :port, :channel, :value))
                 play_midi_out arp_notes[:note]+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
               end
@@ -432,6 +433,7 @@ module Ziffers
       elsif ziff[:method]
           normalize_ziff_methods(ziff,index,loop_i)
       elsif ziff[:port] and ziff[:note] then
+        ziff[:channel] = ziff[:chord_channel][0] if !ziff[:channel] and ziff[:chord_channel]
         if ziff[:parse_cc]
           midi_cc ziff[:parse_cc], ziff[:note], port: ziff[:port], channel: ziff[:channel]
         else
