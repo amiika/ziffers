@@ -34,6 +34,15 @@ module Ziffers
 
     @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :chord_channel, :parse_cc, :cc, :value, :mapping, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :beat_stretch,:pitch_stretch, :pitch, :rpitch, :window_size, :pitch_dis, :time_dis, :run_each, :method, :beat_stretch, :pitch_stretch, :start, :finish, :onset, :split, :amp_slide, :pan_slide, :pre_amp,:on,:slice,:num_slices,:norm,:lpf,:lpf_init_level,:lpf_attack_level,:lpf_decay_level,:lpf_sustain_level,:lpf_release_level,:lpf_attack,:lpf_decay,:lpf_sustain,:lpf_release,:lpf_min,:lpf_env_curve,:hpf,:hpf_init_level,:hpf_attack_level,:hpf_decay_level,:hpf_sustain_level,:hpf_release_level,:hpf_attack,:hpf_decay,:hpf_sustain,:hpf_release,:hpf_env_curve,:hpf_max,:rpitch,:pitch,:window_size,:pitch_dis,:time_dis,:compress,:threshold,:slope_below,:slope_above,:clamp_time,:relax_time,:slide]
 
+    @@opts_shorthands = {:c=>:channel, :p=>:port, :k=>:key, :s=>:scale}
+
+    def replace_shorthands opts
+      @@opts_shorthands.each do |short_key,long_key|
+        opts[long_key] = opts.delete short_key if opts[short_key]
+      end
+      opts
+    end
+
     @@debug = false
     @@set_keys = [:pc]
 
@@ -124,6 +133,9 @@ module Ziffers
 
     def zparse(n, opts={}, shared={})
       raise "Melody is nil?" if !n
+
+      opts = replace_shorthands opts
+      shared = replace_shorthands shared
 
       if n.is_a?(String) or n.is_a?(Integer)
         print "I: "+n.to_s if @@debug
@@ -240,7 +252,7 @@ module Ziffers
        opts = defaults.slice(*@@slice_opts_keys)
 
         # TODO: Add global parameter for this
-        use_sched_ahead_time defaults[:sched_ahead] ? defaults[:sched_ahead] : 1
+        use_sched_ahead_time defaults[:sched_ahead] ? defaults[:sched_ahead] : 0.5
         use_arg_bpm_scaling defaults[:use_arg_bpm_scaling] ? defaults[:use_arg_bpm_scaling] : false
       end
 
@@ -335,7 +347,7 @@ module Ziffers
           next
         end
 
-        
+
         ziff = apply_transformation(ziff, defaults, loop_i, index, melody.length)
 
         if ziff[:method] then
@@ -384,6 +396,7 @@ module Ziffers
 
     def play_ziff(ziff,defaults={},index,loop_i)
       cue ziff[:cue] if ziff[:cue]
+      ziff[:port] = @@default_port if ziff[:channel] and !ziff[:port] and @@default_port
       if ziff[:send] then
         send(ziff[:send],ziff)
       elsif ziff[:skip] then
@@ -776,7 +789,7 @@ module Ziffers
       defaults = defaults.merge(opts)
       opts = defaults.slice(*@@slice_opts_keys)
 
-      defaults[:sync] = :z1 if $zloop_states and name!=:z1 and $zloop_states[:z1] and !defaults[:sync] # Automatic sync to :z1 if it exists
+      defaults[:sync] = :z0 if $zloop_states and name!=:z0 and $zloop_states[:z0] and !defaults[:sync] # Automatic sync to :z0 if it exists
 
       clean_loop_states # Clean unused loop states
       $zloop_states.delete(name) if opts.delete(:reset)
@@ -822,7 +835,7 @@ module Ziffers
           stop
         end
 
-        use_sched_ahead_time (defaults[:sched_ahead] ? defaults[:sched_ahead] : 1)
+        use_sched_ahead_time (defaults[:sched_ahead] ? defaults[:sched_ahead] : 0.5)
         use_arg_bpm_scaling defaults[:use_arg_bpm_scaling] ? defaults[:use_arg_bpm_scaling] : false
         eval_loop_opts(opts,$zloop_states[name])
         sync defaults[:wait] if defaults[:wait]
@@ -1250,16 +1263,16 @@ module Ziffers
 
   # Kills all running live_loop threads and stops midi notes from playing
   def zkill
-    
+
     threads = @named_subthreads.map do |name, thread|
       thread if name.to_s.start_with?('live_loop')
     end.compact
-    
+
     threads.each do |t|
       t.thread.kill
     end
 
-    zoff 
+    zoff
     zstop
   end
 

@@ -464,7 +464,7 @@ grammar Ziffers
      def value
      control_chars = {
        'A': :amp,
-       'C': :attack,
+       'T': :attack,
        'P': :pan,
        'D': :decay,
        'S': :sustain,
@@ -474,7 +474,7 @@ grammar Ziffers
        'I': :pitch,
        'K': :key,
        'L': :scale,
-       'O': :channel
+       'C': :channel
      }
       control_type = control_chars[d.text_value.to_sym]
       Thread.current[:topts][control_type] = c.value if c.methods.include?(:value)

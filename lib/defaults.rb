@@ -19,9 +19,15 @@ module Ziffers
       @@default_opts.merge!(opts)
     end
 
+    def port(port_string)
+      @@default_port = port_string
+    end
+
     def merge_synth_defaults
       @@default_opts.merge!(Hash[current_synth_defaults.to_a])
     end
+
+    @@default_port = nil
 
     @@default_opts = {
       :key => :c,
@@ -67,7 +73,7 @@ module Ziffers
       }
 
       def midi_to_cc_pitch(key, midi_note)
-        
+
         arr = @@pitch_mappings[key] if key.is_a?(Symbol) and @@pitch_mappings[key]
         arr = key if key.is_a?(Array)
         if arr
