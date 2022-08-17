@@ -161,7 +161,7 @@ module Ziffers
       shared = shared.filter {|k,v| !v.is_a?(Proc) }
       opts = opts.filter {|k,v| !v.is_a?(Proc) }
       Thread.current[:default_durs] = @@default_durs
-      Thread.current[:tshared] = deep_clone(shared.except(:rules,:use))
+      Thread.current[:tshared] = deep_clone(shared.except(:rules,:use,:multi))
       Thread.current[:tchordsleep] = opts[:chord_sleep]
       Thread.current[:topts] = deep_clone(opts)
 

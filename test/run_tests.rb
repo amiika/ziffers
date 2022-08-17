@@ -239,11 +239,11 @@ def test_generative
   a = zparse "[: <q;e> 0 2 :]"
   assert_equal(a.durations,[0.25,0.25,0.125,0.125])
 
-  a = zparse "e ( 10..15+2 )", cc: 20
+  a = zparse "e ( 10..15+2 )", parse_cc: 20
   print a.notes
   assert_equal(a.notes, [10,12,14])
 
-  a = zparse "e ( 2..4*2 )", cc: 20
+  a = zparse "e ( 2..4*2 )", parse_cc: 20
   print a.pcs
   assert_equal(a.notes, [2,4,6,8])
 

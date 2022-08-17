@@ -241,10 +241,19 @@ grammar Ziffers
         prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
         prefixes = {} if !prefixes
 
-        # TODO: Create new parser for midi and cc
+        # Midi and channel parse hacks
         if (Thread.current[:topts][:midi] || Thread.current[:topts][:parse_cc])
           v = {note: dgr, pc: note_pc(dgr), octave: note_oct(dgr), scale: :chromatic }
-        else
+        elsif Thread.current[:tshared][:multi]
+          v = {pc: dgr, scale: :chromatic, channel: (dgr==0 ? dgr+1 : dgr)}
+          if Thread.current[:tshared][:multi].is_a? Array
+            v[:note] = Thread.current[:tshared][:multi][(dgr-1)%Thread.current[:tshared][:multi].length] || 60
+          elsif Thread.current[:tshared][:multi].is_a? Hash
+            v[:note] = (Thread.current[:tshared][:multi][dgr] || 60)
+          else
+            v[:note] = 60 # Default in multi channel mode
+          end
+        else # Normal parsing
           if prefixes[:fixed_octave]
             oct = prefixes[:fixed_octave]
           else
@@ -464,7 +473,7 @@ grammar Ziffers
      def value
      control_chars = {
        'A': :amp,
-       'T': :attack,
+       'B': :attack,
        'P': :pan,
        'D': :decay,
        'S': :sustain,

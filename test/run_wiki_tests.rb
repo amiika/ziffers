@@ -115,7 +115,7 @@ def test_melody
   assert_equal(a.vals(:pan),[1, 1, 1, -1, -1, -1])
   a = zparse "q A<0.1> 0 1 2 A<2.0> 0 1 2"
   assert_equal(a.vals(:amp),[0.1, 0.1, 0.1, 2.0, 2.0, 2.0])
-  a = zparse "q C<0.1> 0 1 2 C<2.0> 0 1 2"
+  a = zparse "q B<0.1> 0 1 2 B<2.0> 0 1 2"
   assert_equal(a.vals(:attack),[0.1, 0.1, 0.1, 2.0, 2.0, 2.0])
   a = zparse "q 0 3 5 L<minor> 0 3 5 "
   assert_equal(a.vals(:scale),[:major, :major, :major, "minor", "minor", "minor"])

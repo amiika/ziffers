@@ -32,7 +32,7 @@ module Ziffers
     include Ziffers::Common
     include Ziffers::Generators
 
-    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :chord_channel, :parse_cc, :cc, :value, :mapping, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :beat_stretch,:pitch_stretch, :pitch, :rpitch, :window_size, :pitch_dis, :time_dis, :run_each, :method, :beat_stretch, :pitch_stretch, :start, :finish, :onset, :split, :amp_slide, :pan_slide, :pre_amp,:on,:slice,:num_slices,:norm,:lpf,:lpf_init_level,:lpf_attack_level,:lpf_decay_level,:lpf_sustain_level,:lpf_release_level,:lpf_attack,:lpf_decay,:lpf_sustain,:lpf_release,:lpf_min,:lpf_env_curve,:hpf,:hpf_init_level,:hpf_attack_level,:hpf_decay_level,:hpf_sustain_level,:hpf_release_level,:hpf_attack,:hpf_decay,:hpf_sustain,:hpf_release,:hpf_env_curve,:hpf_max,:rpitch,:pitch,:window_size,:pitch_dis,:time_dis,:compress,:threshold,:slope_below,:slope_above,:clamp_time,:relax_time,:slide]
+    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :vel, :vel_f, :chord_channel, :parse_cc, :cc, :value, :mapping, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :beat_stretch,:pitch_stretch, :pitch, :rpitch, :window_size, :pitch_dis, :time_dis, :run_each, :method, :beat_stretch, :pitch_stretch, :start, :finish, :onset, :split, :amp_slide, :pan_slide, :pre_amp,:on,:slice,:num_slices,:norm,:lpf,:lpf_init_level,:lpf_attack_level,:lpf_decay_level,:lpf_sustain_level,:lpf_release_level,:lpf_attack,:lpf_decay,:lpf_sustain,:lpf_release,:lpf_min,:lpf_env_curve,:hpf,:hpf_init_level,:hpf_attack_level,:hpf_decay_level,:hpf_sustain_level,:hpf_release_level,:hpf_attack,:hpf_decay,:hpf_sustain,:hpf_release,:hpf_env_curve,:hpf_max,:rpitch,:pitch,:window_size,:pitch_dis,:time_dis,:compress,:threshold,:slope_below,:slope_above,:clamp_time,:relax_time,:slide]
 
     @@opts_shorthands = {:c=>:channel, :p=>:port, :k=>:key, :s=>:scale}
 
@@ -1198,7 +1198,7 @@ module Ziffers
         ziff[key] = val
       end
 
-      if val.is_a?(Array) and ![:chord_channel,:harmonize,:scale,:run,:run_each,:apply,:mapping].include?(key)
+      if val.is_a?(Array) and ![:chord_channel,:harmonize,:scale,:run,:run_each,:apply,:mapping,:multi].include?(key)
         val = val.ring[loop_i]
         ziff[key] = val
       elsif val.is_a? SonicPi::Core::RingVector
