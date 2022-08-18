@@ -1276,6 +1276,62 @@ module Ziffers
     zstop
   end
 
+  # Automate learn and play synth knobs
+  def automate(knob: 1, port_in:, port_out:, channel: 1, length: 5, **opts)
+
+    set :cc_time, 0
+    set :cc_last_time, 0
+    set ("cc_list_"+knob.to_s).to_sym, []
+
+    print "START CC Recording!"
+
+    live_loop knob.to_s+"_timer" do
+      use_real_time
+      stop if opts[:stop]
+      cur_time = get(:cc_time)
+      if cur_time>=length
+        set :cc_time, 0
+        set :cc_last_time, 0
+        print "STOP CC Recording"
+        stop
+      end
+
+      set :cc_time, cur_time + 0.05
+      sleep 0.05
+    end
+
+    live_loop knob.to_s+"_record_cc" do
+      use_real_time
+      stop if opts[:stop]
+      cur_time = get(:cc_time)
+      stop if cur_time>=length
+
+      cc, val = sync "/midi:"+port_in+":"+channel.to_s+"/control_change"
+      ccs = get(("cc_list_"+knob.to_s).to_sym)
+
+      last_time = get :cc_last_time
+      set :cc_last_time, cur_time
+
+      difference = cur_time-last_time
+
+      ccs = ccs+[[cc,val,difference<=0 ? 0.05 : difference ]]
+      set ("cc_list_"+knob.to_s).to_sym, ccs
+    end
+
+    live_loop knob.to_s+"_send_cc", delay: length do
+      stop if opts[:stop]
+      cc_list = get(("cc_list_"+knob.to_s).to_sym)
+      cc_val = cc_list.ring.tick
+      if cc_val then
+        midi_cc cc_val[0], cc_val[1], channel: channel, port: port_out
+        sleep cc_val[2]
+      else
+        sleep 0.1
+      end
+    end
+
+  end
+
   def z0(ziff="//", opts={})  zloop(:z0,ziff,opts) end
     def z1(ziff="//", opts={})  zloop(:z1,ziff,opts) end
       def z2(ziff="//", opts={})  zloop(:z2,ziff,opts) end
