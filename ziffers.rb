@@ -1276,30 +1276,39 @@ module Ziffers
     zstop
   end
 
-  # Automate learn and play synth knobs
+  # Automate CC messages with Midi learning and playback
   def automate(knob: 1, port_in:, port_out:, channel: 1, length: 5, **opts)
 
     set :cc_time, 0
     set :cc_last_time, 0
+    set (knob.to_s+"_recording").to_sym, false
     set ("cc_list_"+knob.to_s).to_sym, []
 
-    print "START CC Recording!"
-
+    # Timer loop for counting beats
     live_loop knob.to_s+"_timer" do
       use_real_time
       stop if opts[:stop]
       cur_time = get(:cc_time)
+
       if cur_time>=length
+        # Restart counters and stop
         set :cc_time, 0
         set :cc_last_time, 0
-        print "STOP CC Recording"
+        set (knob.to_s+"_recording").to_sym, false
+        ccs = get(("cc_list_"+knob.to_s).to_sym)
+        print "RECORDED CC:"
+        print ccs
         stop
       end
-
-      set :cc_time, cur_time + 0.05
+      # Wait for first event before starting the counter
+      if get((knob.to_s+"_recording").to_sym)
+        print "REC "+knob.to_s+": "+cur_time.to_s
+        set :cc_time, cur_time + 0.05
+      end
       sleep 0.05
     end
 
+    # Midi learn loop for recording CCs
     live_loop knob.to_s+"_record_cc" do
       use_real_time
       stop if opts[:stop]
@@ -1309,22 +1318,34 @@ module Ziffers
       cc, val = sync "/midi:"+port_in+":"+channel.to_s+"/control_change"
       ccs = get(("cc_list_"+knob.to_s).to_sym)
 
+      # Start recording with first event
+      if ccs.length==0
+        cur_time = 0
+        set :cc_time, 0
+        set (knob.to_s+"_recording").to_sym, true
+      end
+
       last_time = get :cc_last_time
       set :cc_last_time, cur_time
-
       difference = cur_time-last_time
-
       ccs = ccs+[[cc,val,difference<=0 ? 0.05 : difference ]]
       set ("cc_list_"+knob.to_s).to_sym, ccs
+      sleep 0.05
     end
 
+    # CC playback loop
     live_loop knob.to_s+"_send_cc", delay: length do
       stop if opts[:stop]
-      cc_list = get(("cc_list_"+knob.to_s).to_sym)
-      cc_val = cc_list.ring.tick
-      if cc_val then
-        midi_cc cc_val[0], cc_val[1], channel: channel, port: port_out
-        sleep cc_val[2]
+      recording = get((knob.to_s+"_recording").to_sym)
+      if !recording # Wait until recording stops
+        cc_list = get(("cc_list_"+knob.to_s).to_sym)
+        cc_val = cc_list.ring.tick
+        if cc_val then
+          midi_cc cc_val[0], cc_val[1], channel: channel, port: port_out
+          sleep cc_val[2]
+        else
+          sleep 0.1
+        end
       else
         sleep 0.1
       end
