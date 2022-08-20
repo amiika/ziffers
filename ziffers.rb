@@ -1276,78 +1276,98 @@ module Ziffers
     zstop
   end
 
-  # Automate CC messages with Midi learning and playback
-  def automate(knob: 1, port_in:, port_out:, channel: 1, length: 5, **opts)
+  # Learn method for MIDI CC or SYSEX messages. Listens to given sync port and sends backs the recorded result.
+  def learn(**opts)
 
-    set :cc_time, 0
-    set :cc_last_time, 0
-    set (knob.to_s+"_recording").to_sym, false
-    set ("cc_list_"+knob.to_s).to_sym, []
+    knob = opts[:knob]
+    raise "No knob name given!" if !knob
+    knob = knob.to_s
+    sync_path = opts[:sync]
+    raise "No sync path given!" if !sync_path
+    port = opts[:port]
+    raise "No port given!" if !port
+    loop = opts[:loop] # Sync to this if given
+    channel = opts[:channel] || 1
+    length = opts[:length] || 4
+    halt = opts[:stop] || false
+    resolution = opts[:resolution] || 0.05 # Default sleep and recording "resolution"
+
+    set :event_time, 0
+    set :event_last_time, 0
+    set (knob+"_recording").to_sym, false
+    set (knob+"_event_list").to_sym, []
 
     # Timer loop for counting beats
-    live_loop knob.to_s+"_timer" do
+    live_loop knob+"_timer" do
       use_real_time
-      stop if opts[:stop]
-      cur_time = get(:cc_time)
-
+      stop if halt
+      cur_time = get(:event_time)
       if cur_time>=length
         # Restart counters and stop
-        set :cc_time, 0
-        set :cc_last_time, 0
-        set (knob.to_s+"_recording").to_sym, false
-        ccs = get(("cc_list_"+knob.to_s).to_sym)
-        print "RECORDED CC:"
-        print ccs
+        set :event_time, 0
+        set :event_last_time, 0
+        set (knob+"_recording").to_sym, false
+        events = get((knob+"_event_list").to_sym)
+        print "Recorded events:"
+        print events
         stop
       end
-      # Wait for first event before starting the counter
-      if get((knob.to_s+"_recording").to_sym)
-        print "REC "+knob.to_s+": "+cur_time.to_s
-        set :cc_time, cur_time + 0.05
+      # Wait for first event before starting counter
+      if get((knob+"_recording").to_sym)
+        print "REC "+knob+": "+cur_time.to_s
+        set :event_time, cur_time + resolution
       end
-      sleep 0.05
+      sleep resolution
     end
 
-    # Midi learn loop for recording CCs
-    live_loop knob.to_s+"_record_cc" do
+    # Midi learn loop for recording events (CC or SYSEX)
+    live_loop knob+"_recorder" do
       use_real_time
-      stop if opts[:stop]
-      cur_time = get(:cc_time)
+      stop if halt
+      cur_time = get(:event_time)
       stop if cur_time>=length
 
-      cc, val = sync "/midi:"+port_in+":"+channel.to_s+"/control_change"
-      ccs = get(("cc_list_"+knob.to_s).to_sym)
+      sync_data = sync sync_path
+      events = get((knob+"_event_list").to_sym)
 
       # Start recording with first event
-      if ccs.length==0
+      if events.length==0
         cur_time = 0
-        set :cc_time, 0
-        set (knob.to_s+"_recording").to_sym, true
+        set :event_time, 0
+        set (knob+"_recording").to_sym, true
       end
 
-      last_time = get :cc_last_time
-      set :cc_last_time, cur_time
+      last_time = get :event_last_time
+      set :event_last_time, cur_time
       difference = cur_time-last_time
-      ccs = ccs+[[cc,val,difference<=0 ? 0.05 : difference ]]
-      set ("cc_list_"+knob.to_s).to_sym, ccs
-      sleep 0.05
+      events = events+[[sync_data,difference<=0 ? resolution : difference ]]
+      set (knob+"_event_list").to_sym, events
+      sleep resolution
     end
 
-    # CC playback loop
-    live_loop knob.to_s+"_send_cc", delay: length do
-      stop if opts[:stop]
-      recording = get((knob.to_s+"_recording").to_sym)
+    # Event playback loop
+    live_loop knob+"_playback", delay: length do
+      sync loop if loop
+      use_real_time
+      stop if halt
+      recording = get((knob+"_recording").to_sym)
       if !recording # Wait until recording stops
-        cc_list = get(("cc_list_"+knob.to_s).to_sym)
-        cc_val = cc_list.ring.tick
-        if cc_val then
-          midi_cc cc_val[0], cc_val[1], channel: channel, port: port_out
-          sleep cc_val[2]
+        event_list = get((knob+"_event_list").to_sym)
+        event = event_list.ring.tick
+        if event then
+          if sync_path.end_with? "/control_change"
+            midi_cc *event[0], channel: channel, port: port
+          elsif sync_path.end_with? "/sysex"
+            midi_sysex *event[0], port: port
+          else
+            raise "Invalid sync path: "+sync_path
+          end
+          sleep event[1]
         else
-          sleep 0.1
+          sleep resolution
         end
       else
-        sleep 0.1
+        sleep resolution
       end
     end
 
