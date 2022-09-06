@@ -43,9 +43,9 @@ def test_melody
   a = zparse "q 0 3 2 5 3 6", key: 59.34, scale: [0.3,0.12,1.234,2.2], synth: :kalimba
   assert_equal(a.pcs,[0,3,2,1,3,2])
   a = zparse "q (: {(0.1,2.9)} {(3.1,6.9)} :4)", key: :D, scale: :minor, synth: :kalimba # Microtonal melody within given key and scale
-  assert_equal(a.notes,[65.2001708984375, 70.88888549804688, 64.39976806640625, 69.02147216796875, 62.4030029296875, 70.15238037109376, 65.40191650390625, 70.18311157226563])
+  assert_equal(a.notes,[65.6005126953125, 71.77777099609375, 64.7995361328125, 69.10736083984375, 62.4030029296875, 70.9142822265625, 66.20574951171875, 71.09866943359376])
   a = zparse "q {1.1 2.3 3.4}" # Multiple escaped microtonal pitches
-  assert_equal(a.notes,[62.1, 64.3, 65.4])
+  assert_equal(a.notes,[62.2, 64.9, 66.6])
 
   # Octave change
   a = zparse "q 0 1 2 ^ 0 ^^ 1 2 _ 0 1 2 __ 0 1 2" # Octaves changed for following notes

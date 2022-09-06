@@ -7,51 +7,49 @@ module Ziffers
         @@degree_based = degrees
       end
 
-    # Gets note from degree. Degree can also be negative or overflow to next octave
-    def get_note_from_dgr(dgr, zkey, zscale, zoct=nil)
-      if dgr.is_a?(Float)
-        split_dgr = dgr.to_s.split(".")
-        remainder = split_dgr[1]
-        dgr = split_dgr[0].to_i
-      end
-      return {:note=>:r} if dgr==0 and @@degree_based
-      used_scale = scale(0,zscale)
-      scaleLength = used_scale.length-1
-      dgr = dgr + zoct*scaleLength if zoct
-      dgr+=1 if dgr>=0 if !@@degree_based
-      if dgr>=scaleLength || dgr<0 then
-        oct = (dgr-1)/scaleLength*used_scale[-1] # Usually used_scale[-1] == 12, but not in microtonal scales
-        dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
-        note_value = degree((dgr==0 ? scaleLength : dgr),zkey,zscale)+oct
-        note_value = (note_value.to_s+"."+remainder).to_f if remainder
-        return note_value
-      end
-      note_value = degree(dgr,zkey,zscale)
-      note_value = (note_value.to_s+"."+remainder).to_f if remainder
-      return note_value
+    def get_note_from_dgr(dgr, zkey, zscale,oct=0)
+      ziff = get_ziff(dgr,zkey,zscale,oct)
+      ziff[:note]
     end
 
     # Get ziff object from degree. Same as get_note_from_dgr but returns hash object
-    def get_ziff(dgr, zkey=:C, zscale=:major, oct=0, addition=0)
+    def get_ziff(dgr, zkey=:C, zscale=:major, oct=0, addition=0, semitones=1)
       pc_orig = dgr
       if dgr.is_a?(Float)
-        split_dgr = dgr.to_s.split(".")
+        split_dgr = dgr.divmod 1
         remainder = split_dgr[1]
-        dgr = split_dgr[0].to_i
+        dgr = split_dgr[0]
       end
       return {:note=>:r} if dgr==0 and @@degree_based
       used_scale = scale(0,zscale)
       scaleLength = used_scale.length-1
-      #dgr = dgr + zoct*scaleLength if zoct!=0
-      dgr+=1 if dgr>=0 if !@@degree_based
+      dgr+=1 if dgr>=0 and !@@degree_based
       if dgr>=scaleLength || dgr<0 then
         oct += (dgr-1)/scaleLength
         dgr = dgr<0 ? (scaleLength+1)-(dgr.abs%scaleLength) : dgr%scaleLength
       end
       dgr = scaleLength if dgr == 0
       note_value = (degree(dgr,zkey,zscale)+(oct*used_scale[-1])+addition)
-      note_value = (note_value.to_s+"."+remainder).to_f if remainder
-      return ZiffHash[{:note=>note_value>0 ? note_value>231 ? 230 : note_value : 1, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength, :add=>addition}]
+
+      if remainder
+        rounded_pc = (pc_orig+(!@@degree_based ? 1.0 : 0.0)).round
+        orig_value = (degree(rounded_pc,zkey,zscale)+(oct*used_scale[-1])+addition)
+        note_value = note_value.to_f + (rounded_pc==dgr ? rounded_pc*remainder : ((orig_value-note_value)*remainder))
+      end
+
+      if note_value.kind_of?(Float) and note_value.modulo(1)!=0.0
+        start_value = note_value > note_value.round ? note_value : note_value.round
+        end_value = note_value > note_value.round ? note_value.round : note_value
+        bend_diff = midi_to_hz(start_value) / midi_to_hz(end_value)
+        bend_target = 1200 * Math.log2(bend_diff)
+        # http://hyperphysics.phy-astr.gsu.edu/hbase/Music/cents.html
+        # https://www.cs.cmu.edu/~rbd/doc/cmt/part7.html
+        midi_bend_value = 8192 + (8191 * (bend_target/(100*semitones))).to_i
+      end
+
+      ziff = ZiffHash[{:note=>note_value>0 ? note_value>231 ? 230 : note_value : 1, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength, :add=>addition}]
+      ziff[:delta_midi] = midi_bend_value if midi_bend_value
+      return ziff
     end
 
     # Scales degrees to scale, for example -1=7 and 8=1

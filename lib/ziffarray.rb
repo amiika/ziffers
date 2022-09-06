@@ -13,6 +13,34 @@ module Ziffers
     include Ziffers::Generators
     include Ziffers::Defaults
 
+    # Endless list implementation
+    def [](index,to=nil)
+      return nil if !index
+      if index.kind_of?(Range)
+        to = index.end ? index.end : size-1
+        index = index.begin ? index.begin : size-1
+        if to<index
+          from = index
+          index = to
+          to = from
+          reverse = true
+        end
+        to = to-index
+      end
+
+      if to
+        list = []
+        while list.length<=to do
+          list << super(index % size)
+          index+=1
+        end
+        list = list.reverse if reverse
+        ZiffArray.new(list)
+      else
+        super(index % size)
+      end
+    end
+
     def deep_clone
       ZiffHash[Marshal.load(Marshal.dump(self))]
     end

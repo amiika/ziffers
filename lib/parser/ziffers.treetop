@@ -261,7 +261,7 @@ grammar Ziffers
             oct = oct + Thread.current[:topts][:octave] if Thread.current[:topts][:octave]
           end
           addition = prefixes[:add] ? prefixes[:add] : 0
-          v = get_ziff dgr, Thread.current[:topts][:key], Thread.current[:topts][:scale], oct, addition
+          v = get_ziff dgr, Thread.current[:topts][:key], Thread.current[:topts][:scale], oct, addition, (Thread.current[:tshared][:semitones] ? Thread.current[:tshared][:semitones] : 1)
         end
 
         v.merge!(Thread.current[:topts]) { |key, important, default| important }

@@ -32,7 +32,7 @@ module Ziffers
     include Ziffers::Common
     include Ziffers::Generators
 
-    @@slice_opts_keys = [:scale, :key, :synth, :amp, :sleep, :port, :channel, :vel, :vel_f, :chord_channel, :parse_cc, :cc, :value, :mapping, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :beat_stretch,:pitch_stretch, :pitch, :rpitch, :window_size, :pitch_dis, :time_dis, :run_each, :method, :beat_stretch, :pitch_stretch, :start, :finish, :onset, :split, :amp_slide, :pan_slide, :pre_amp,:on,:slice,:num_slices,:norm,:lpf,:lpf_init_level,:lpf_attack_level,:lpf_decay_level,:lpf_sustain_level,:lpf_release_level,:lpf_attack,:lpf_decay,:lpf_sustain,:lpf_release,:lpf_min,:lpf_env_curve,:hpf,:hpf_init_level,:hpf_attack_level,:hpf_decay_level,:hpf_sustain_level,:hpf_release_level,:hpf_attack,:hpf_decay,:hpf_sustain,:hpf_release,:hpf_env_curve,:hpf_max,:rpitch,:pitch,:window_size,:pitch_dis,:time_dis,:compress,:threshold,:slope_below,:slope_above,:clamp_time,:relax_time,:slide]
+    @@slice_opts_keys = [:delta_midi, :scale, :key, :synth, :amp, :sleep, :port, :channel, :vel, :vel_f, :chord_channel, :parse_cc, :cc, :value, :mapping, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :beat_stretch,:pitch_stretch, :pitch, :rpitch, :window_size, :pitch_dis, :time_dis, :run_each, :method, :beat_stretch, :pitch_stretch, :start, :finish, :onset, :split, :amp_slide, :pan_slide, :pre_amp,:on,:slice,:num_slices,:norm,:lpf,:lpf_init_level,:lpf_attack_level,:lpf_decay_level,:lpf_sustain_level,:lpf_release_level,:lpf_attack,:lpf_decay,:lpf_sustain,:lpf_release,:lpf_min,:lpf_env_curve,:hpf,:hpf_init_level,:hpf_attack_level,:hpf_decay_level,:hpf_sustain_level,:hpf_release_level,:hpf_attack,:hpf_decay,:hpf_sustain,:hpf_release,:hpf_env_curve,:hpf_max,:rpitch,:pitch,:window_size,:pitch_dis,:time_dis,:compress,:threshold,:slope_below,:slope_above,:clamp_time,:relax_time,:slide]
 
     @@opts_shorthands = {:c=>:channel, :p=>:port, :k=>:key, :s=>:scale}
 
@@ -214,6 +214,9 @@ module Ziffers
     end
 
     def play_midi_out(md, opts)
+      # Todo: Experiment more with midi_sound_off
+      # midi_sound_off channel: opts[:channel]
+      midi_pitch_bend delta_midi: (opts[:delta_midi] ? opts[:delta_midi] : 8192), **opts.slice(:delta_midi, :channel, :port)
       midi md, opts
     end
 
@@ -382,7 +385,9 @@ module Ziffers
           play_ziff(ziff,defaults,index,loop_i)
         end
 
-        sleep ziff[:sleep] if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
+        if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
+          sleep ziff[:sleep]
+        end
       end
       # Save loop state
       if defaults[:store] and defaults[:loop_name] then
@@ -413,17 +418,17 @@ module Ziffers
             end
             arp_opts = cn.merge(arp_notes).except(:pcs, :pc)
             if ziff[:port] then
-              sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
+              sustain = ziff[:chord_release] ? ziff[:chord_release] : (ziff[:sustain] ? ziff[:sustain] : ziff[:sleep])
               if arp_notes[:notes] then
                 arp_notes[:notes].each_with_index do |arp_note,i|
                   ziff[:channel] = (ziff[:chord_channel].is_a?(Integer) ? ziff[:chord_channel] : ziff[:chord_channel][i]) if ziff[:chord_channel]
                   check_cc arp_note.merge(ziff.slice(:cc, :mapping, :port, :channel, :value))
-                  play_midi_out arp_note[:note]+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
+                  play_midi_out arp_note[:note]+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f,:delta_midi).merge({sustain: sustain}).merge(cn.slice(:port,:channel,:vel,:vel_f,:delta_midi))
                 end
               else
                 ziff[:channel] = ziff[:chord_channel][arp_notes.delete(:index)] if ziff[:chord_channel]
                 check_cc arp_notes.merge(ziff.slice(:cc, :mapping, :port, :channel, :value))
-                play_midi_out arp_notes[:note]+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain})
+                play_midi_out arp_notes[:note]+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f,:delta_midi).merge({sustain: sustain}).merge(cn.slice(:port,:channel,:vel,:vel_f,:delta_midi))
               end
             else
               arp_opts[:notes] = arp_opts[:notes].map {|h| h[:note] } if arp_opts[:notes]
@@ -433,11 +438,11 @@ module Ziffers
           end
         else
           if ziff[:port]
-            sustain = ziff[:chord_release] ? ziff[:chord_release] : 1
+            sustain = ziff[:chord_release] ? ziff[:chord_release] : (ziff[:sustain] ? ziff[:sustain] : ziff[:sleep])
             ziff[:hpcs].each_with_index do |pc_note,i|
               ziff[:channel] = (ziff[:chord_channel].is_a?(Integer) ? ziff[:chord_channel] : ziff[:chord_channel][i]) if ziff[:chord_channel]
               check_cc pc_note
-              play_midi_out(pc_note[:note], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
+              play_midi_out(pc_note[:note], ziff.slice(:port,:channel,:vel,:vel_f,:delta_midi).merge({sustain: sustain}).merge(pc_note.slice(:port,:channel,:vel,:vel_f,:delta_midi)))
             end
           else
             synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), clean(ziff)
@@ -451,8 +456,8 @@ module Ziffers
           midi_cc ziff[:parse_cc], ziff[:note], port: ziff[:port], channel: ziff[:channel]
         else
           check_cc ziff
-          sustain = ziff[:sustain]!=nil ? ziff[:sustain] : ziff[:release]
-          play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f).merge({sustain: sustain}))
+          sustain = ziff[:sustain] ? ziff[:sustain] : ziff[:sleep]
+          play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f,:delta_midi).merge({sustain: sustain}))
         end
       else
         check_cc ziff

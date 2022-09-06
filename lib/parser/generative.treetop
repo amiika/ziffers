@@ -49,7 +49,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    durs:(duration_set)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?' / '#') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* eval_f:(ternary)?
+    durs:(duration_set)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?' / '#') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* eval_f:(ternary)? select_range:(set_range)?
     {
     def value
 
@@ -208,10 +208,20 @@ grammar GenerativeSyntax
     durations = durs.value if durs.methods.include?(:value)
     if durations and durations.is_a?(Array)
       set = set.flatten.map.with_index{|v,i| v[:sleep] = durations[i%durations.length] if v.is_a?(Hash) ; v  }
-      set
     else
-      set.flatten(1) # Flatten only 1st level, second level used in euclid to separate lists
+      set = set.flatten(1) # Flatten only 1st level, second level used in euclid to separate lists
     end
+
+    if select_range.methods.include?(:value)
+      selection_range = select_range.value
+      if selection_range.kind_of?(Array)
+        set = ZiffArray[*set][*selection_range]
+      else
+        set = ZiffArray[*set][selection_range]
+      end
+    end
+
+    set
 
     end
     def eval_func(v,tfunc)
@@ -786,6 +796,35 @@ grammar GenerativeSyntax
    }
   end
 
+  rule set_range
+    range:(set_ranges / set_index)
+    {
+      def value
+        range.value
+      end
+    }
+  end
+
+  rule set_ranges
+  '[' a:(min_max)? '..' b:(min_max)? ']'
+    {
+    def value
+      Range.new((a.methods.include?(:value) ? a.value.to_i : nil),(b.methods.include?(:value) ? b.value.to_i : nil))
+    end
+    }
+  end
+
+  rule set_index
+    '[' a:(min_max) ','? b:(min_max)? ']'
+    {
+      def value
+        r = [a.value]
+        r << b.value if b.methods.include?(:value)
+        r
+      end
+    }
+  end
+
   rule random_between
   '(' m:(min_max) ',' x:(min_max) ')'
   {
@@ -893,6 +932,7 @@ end
   end
 
   rule mult_term
+    # TODO: Add i (index) as alternative value for x
     a:(integer / integer_array / random_between)? b:('x')
     {
       def value
