@@ -100,6 +100,10 @@ chords = {
   # https://en.wikipedia.org/wiki/Augmented_major_seventh_chord
   'maj7+5'=> [0, 4, 8, 11],
   '6+5'=> [0, 4, 8, 9],
+  # Missing majot 7 suspended chords
+  'maj7'=> [0, 2, 4, 6], # Same as ^major7
+  'maj7sus2'=> [0, 4, 6],
+  'maj7sus4'=> [0, 2, 6],
   # Missing altered chords: https://en.wikipedia.org/wiki/Altered_chord
   '7-5-3'=>[0, 3, 6, 10],
   '7+5+9'=>[0, 4, 8, 10, 14],

@@ -21,6 +21,7 @@ module Ziffers
     @@rparser = GenerativeSyntaxParser.new
     @@lparser = ParametersParser.new
     @@repeatparser = RepeatsParser.new
+    @@thread_parsers = {} # Build separate parser for each thread
 
     def resolve_subsets(subs,divSleep)
       new_list = subs.each_with_object([]) do |z,n|
@@ -110,15 +111,29 @@ module Ziffers
       Thread.current[:topts_orig] = Marshal.load(Marshal.dump(opts))
       Thread.current[:default_durs] = @@default_durs
 
-      result = @@zparser.parse(text)
-
-      if !result
-        puts @@zparser.failure_reason
-        puts @@zparser.failure_line
-        puts @@zparser.failure_column
+      loop_name = shared[:loop_name]
+      if loop_name
+        @@thread_parsers[loop_name] = {} if !@@thread_parsers[loop_name]
+        @@thread_parsers[loop_name][:parser] = ZiffersParser.new if !@@thread_parsers[loop_name][:parser]
+        zparser = @@thread_parsers[loop_name][:parser]
+        result = zparser.parse(text)
+      else
+        zparser = @@zparser
+        result = zparser.parse(text)
       end
+
       # Note to self: Do not call result.value more than once to avoid endless debugging.
-      raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
+      if !result
+        zlog "PARSE CRASH DEBUG: "
+        zlog zparser.failure_reason
+        zlog zparser.failure_line
+        zlog zparser.failure_column
+        zlog text
+        zlog opts
+        zlog shared
+        raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason)
+      end
+
       ziffers = ZiffArray.new(result.value)
 
       # Calculate random durations relatively for each measure
@@ -165,14 +180,27 @@ module Ziffers
       Thread.current[:tchordsleep] = opts[:chord_sleep]
       Thread.current[:topts] = deep_clone(opts)
 
-      result = @@rparser.parse(text)
+      loop_name = shared[:loop_name]
+      if loop_name
+        @@thread_parsers[loop_name] = {} if !@@thread_parsers[loop_name]
+        @@thread_parsers[loop_name][:gen_parser] = GenerativeSyntaxParser.new if !@@thread_parsers[loop_name][:gen_parser]
+        rparser = @@thread_parsers[loop_name][:gen_parser]
+        result = rparser.parse(text)
+      else
+        rparser = @@rparser
+        result = rparser.parse(text)
+      end
 
       if !result
-        puts @@rparser.failure_reason
-        puts @@rparser.failure_line
-        puts @@rparser.failure_column
+        zlog "GENERATIVE CRASH DEBUG: "
+        zlog rparser.failure_reason
+        zlog rparser.failure_line
+        zlog rparser.failure_column
+        zlog text
+        zlog opts
+        zlog shared
+        raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason)
       end
-      raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
       result.value
     end
 
@@ -184,12 +212,15 @@ module Ziffers
       return nil if !text
       Thread.current[:ziffers_param_opts] = opts
 
-      result = @@lparser.parse(text)
+      lparser =  @@lparser
+      result = lparser.parse(text)
 
       if !result
-        puts @@lparser.failure_reason
-        puts @@lparser.failure_line
-        puts @@lparser.failure_column
+        zlog "PARAMS CRASH DEBUG: "
+        puts lparser.failure_reason
+        puts lparser.failure_line
+        puts lparser.failure_column
+        zlog text
       end
       raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
       result.value
@@ -199,12 +230,15 @@ module Ziffers
     def unroll_repeats(text)
       return nil if !text
 
-      result = @@repeatparser.parse(text)
+      repeatparser = @@repeatparser
+      result = repeatparser.parse(text)
 
       if !result
-        puts @@repeatparser.failure_reason
-        puts @@repeatparser.failure_line
-        puts @@repeatparser.failure_column
+        zlog "REPEATS CRASH DEBUG: "
+        zlog repeatparser.failure_reason
+        zlog repeatparser.failure_line
+        zlog repeatparser.failure_column
+        zlog text
       end
       raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
       result.value

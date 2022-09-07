@@ -609,13 +609,14 @@ grammar GenerativeSyntax
        name = Thread.current[:tshared][:chord_name].to_sym if Thread.current[:tshared][:chord_name]
        name = cd.value.to_sym if cd.methods.include?(:value)
        roman = roman_number.text_value.to_sym
+       name = :major if Thread.current[:topts][:scale]==:chromatic and !name # Ugly fix for chromatic scale
         if name
           root = degree roman, Thread.current[:topts][:key], Thread.current[:topts][:scale]
           shift = note_info(Thread.current[:topts][:key]).midi_note-60
           notes = chord(root, name, {num_octaves: !oct.text_value.empty? ? oct.text_value.to_i : 1}).notes
           pcs = notes.map {|n| midi_to_pc(n-shift,Thread.current[:topts][:key], Thread.current[:topts][:scale]) }
           pcs
-        else
+        else # TODO: This is not working for some scales ... but not really sure if this is even fixable.
           pc_scale = (scale 0, Thread.current[:topts][:scale], num_octaves: 7).notes.to_a
           trichords = (Scale.from_roman(roman)-1).step(pc_scale.size-1,2).map {|i| pc_scale[i]} # Select every 2nd
           take_notes = (rd.methods.include?(:value) ? rd.value : 3)

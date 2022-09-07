@@ -126,6 +126,7 @@ module Ziffers
       tpc = midi_to_tpc cnc, key
       pc = note_pc(cnc) # - acc?
       oct = (note_oct (cnc)) - 5
+      return ZiffHash[{octave: oct, pc: pc, key: key, scale: zscale, note: cnc}] if zscale==:chromatic
       if (tpc >= 6 && tpc <= 12 && flats[pc].length == 2)
         npc = flats[pc]
       elsif (tpc >= 20 && tpc <= 26 && flats[pc].length == 2)
