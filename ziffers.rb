@@ -1039,6 +1039,7 @@ module Ziffers
                 end
               else # If not using lambda
                 rep = g.length>1 ? v.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : v.gsub("$",m)
+                # parse_generative used here to eval ziffers syntax or pure math {$+4}
                 rep = parse_generative(rep,opts,defaults) if (defaults[:stable]==nil or (defaults[:stable]!=nil and defaults[:stable]==false))
               end
               "{<{#{rep}}>}" # Escape
@@ -1159,7 +1160,7 @@ module Ziffers
       when :pick
         melody = melody.pick(val)
       when :stretch
-        melody = melody.stretch
+        melody = melody.stretch val
       when :operation
         if defaults[:set]
           melody = melody.set_operation, val, defaults[:set]

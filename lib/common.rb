@@ -47,7 +47,7 @@ module Ziffers
         midi_bend_value = 8192 + (8191 * (bend_target/(100*semitones))).to_i
       end
 
-      ziff = ZiffHash[{:note=>note_value>0 ? note_value>231 ? 230 : note_value : 1, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength, :add=>addition}]
+      ziff = ZiffHash[{:note=>note_value>0 ? (note_value>231 ? 230 : note_value) : 0, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength, :add=>addition}]
       ziff[:delta_midi] = midi_bend_value if midi_bend_value
       return ziff
     end
