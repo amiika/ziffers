@@ -557,7 +557,7 @@ grammar GenerativeSyntax
   end
 
   rule arpeggio
-    '@(' ([a-z] / [0-9ET] / s )+ ')'
+    '@(' ([a-z] / [0-9ET#^_] / s )+ ')'
     {
       def value
         text_value

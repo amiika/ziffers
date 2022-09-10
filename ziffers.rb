@@ -410,11 +410,14 @@ module Ziffers
         if ziff[:arpeggio] then
           ziff[:arpeggio].each do |cn|
             cn[:amp] = ziff[:amp] if !cn[:amp] and ziff[:amp]
-            if cn[:pcs] then
-              arp_chord = cn[:pcs].map{|d| {note: ziff[:notes][d%ziff[:notes].length], pc: ziff[:pcs][d%ziff[:pcs].length]} }
+            if cn[:hpcs] then
+              arp_chord = cn[:hpcs].map{|d| h = ZiffHash[{note: ziff[:notes][d[:pc]%ziff[:notes].length], pc: ziff[:pcs][d[:pc]%ziff[:pcs].length]}]; h[:add] = d[:add] if d[:add]; h[:octave] = d[:octave] if d[:octave]; h.update_note; h   }
               arp_notes = {notes: arp_chord}
             else
-              arp_notes = {note: ziff[:notes][cn[:pc]%ziff[:notes].length], pc: ziff[:pcs][cn[:pc]%ziff[:pcs].length], index: cn[:pc]%ziff[:pcs].length }
+              arp_notes = ziff[:hpcs][cn[:pc]%ziff[:notes].length].dup
+              arp_notes[:add] = cn[:add]+(arp_notes[:add] || 0) if cn[:add]
+              arp_notes[:octave] = cn[:octave]+(arp_notes[:octave] || 0) if cn[:octave]
+              arp_notes.update_note
             end
             arp_opts = cn.merge(arp_notes).except(:pcs, :pc)
             if ziff[:port] then

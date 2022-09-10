@@ -250,12 +250,12 @@ module Ziffers
       # Update notes based on pitch class values
       def update_note
         if self[:pc]
-          self.merge!(get_ziff(self[:pc], self[:key], self[:scale], (self[:octave] || 0)))
+          self.merge!(get_ziff(self[:pc], self[:key], self[:scale], (self[:octave] || 0),(self[:add] || 0)))
         elsif self[:hpcs]
           notes = []
           self[:hpcs].each do |d|
             pc = d[:pc]
-            notes.push(get_note_from_dgr(pc, d[:key], d[:scale], (d[:octave] || 0)))
+            notes.push(get_note_from_dgr(pc, d[:key], d[:scale], (d[:octave] || 0)) + (self[:add] || 0))
           end
           self[:pcs] = self[:hpcs].map {|h| h[:pc] }
           self[:notes] = notes
