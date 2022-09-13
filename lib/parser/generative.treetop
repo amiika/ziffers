@@ -402,7 +402,7 @@ grammar GenerativeSyntax
               o.push(v)
             end
           end
-          rep_result += rep
+          rep_result += rep+["|"] # Break for octaves
           end
          rep_result.flatten.compact
        end
@@ -436,7 +436,7 @@ grammar GenerativeSyntax
     (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar)*
     {
     def value
-      elements.map {|v| v.methods.include?(:exact_value) ? v.exact_value : v.value }
+      elements.map {|v| v.value }
     end
     }
   end

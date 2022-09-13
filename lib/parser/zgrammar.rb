@@ -110,6 +110,7 @@ module Ziffers
       opts = opts.filter {|k,v| !v.is_a?(Proc) }
       Thread.current[:topts_orig] = Marshal.load(Marshal.dump(opts))
       Thread.current[:default_durs] = @@default_durs
+      Thread.current[:topts][:measure] = 0
 
       loop_name = shared[:loop_name]
       if loop_name
@@ -139,7 +140,8 @@ module Ziffers
       # Calculate random durations relatively for each measure
       if Thread.current[:topts].has_key?(:relative_duration)
         measures = ziffers.measures
-        measures.map do |m|
+
+        measures.each do |m|
           used = m.inject({duration: 0, count: 0}) do |sum,h|
             if h[:relative_duration]
               sum[:count] = sum[:count]+1
@@ -148,24 +150,24 @@ module Ziffers
             end
             sum
           end
-          duration_left = m.duration-used[:duration]
-          m.map do |h|
+          duration_left = (Thread.current[:tshared][:measure_length] || 1.0)-used[:duration]
+          m.each do |h|
             if h[:relative_duration]
               if h[:relative_duration_value] and used[:count]>1
-                h[:sleep] = ([h[:relative_duration_value],1.0].min * duration_left).round(2)
+                h[:sleep] = ([h[:relative_duration_value],1.0].min * duration_left).round(3)
                 duration_left = duration_left-h[:sleep]
                 used[:count] = used[:count]-1
               elsif used[:count]>1
-                h[:sleep] = (sonic_random_float(0.01,duration_left,2) * duration_left).round(2)
+                h[:sleep] = (sonic_random_float(0.01,duration_left,2) * duration_left).round(3)
                 duration_left = duration_left-h[:sleep]
                 used[:count] = used[:count]-1
               else
-                h[:sleep] = duration_left.round(2)
+                h[:sleep] = duration_left.round(3)
               end
             end
-            h
           end
         end
+
         ziffers = ZiffArray.new(measures.flatten)
       end
 

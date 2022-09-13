@@ -21,7 +21,7 @@ def test_melody
   assert_equal(a.durations,[0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 1.0, 0.25, 0.25, 0.25, 0.25, 1.0])
   a = zparse "w [1 2 3 4] h [1 2 3 4] q [1 2 3 4] w [1 2[3 4]] h [ 1 [ 2 [ 3 [ 4 ]]]]"
   assert_equal(a.durations,[0.25, 0.25, 0.25, 0.25, 0.125, 0.125, 0.125, 0.125, 0.0625, 0.0625, 0.0625, 0.0625, 0.3333333333333333, 0.3333333333333333, 0.16666666666666666, 0.16666666666666666, 0.25, 0.125, 0.0625, 0.0625])
-
+  
   # Triplets
   a = zparse "q 2 6 a 1 3 2 q 5 1 a 4 3 2"
   assert_equal(a.durations,[0.25, 0.25, 0.167, 0.167, 0.167, 0.25, 0.25, 0.167, 0.167, 0.167])
@@ -86,7 +86,7 @@ def test_melody
   a = zparse "| q _ 0 1 | 2 3 | 5 6 | 7 8 |"
   assert_equal(a.measures.length,4)
   assert_equal(a.measures[2].pcs,[5,6])
-  assert_equal(a.hash_measures.keys,[0,1,2,3])
+  assert_equal(a.hash_measures.keys,[1,2,3,4])
   assert_equal(a.group_measures(2).length,2)
 
   measures = a.measures
@@ -107,7 +107,7 @@ def test_melody
 
   a = zparse "[: q 0 e0 e0 0 1 | q 2 0 0 2 | < q 1 -1 -1 1 | q 2 0 h0  | ; | q.4 e3 q 2 1  | q 2 0 h0 > :] "\
     "[: q 4 e4 e4 3 2 | q 1 -1 -1 1 | < q 3 e3 e3 2 1 | q 2 0 0 2 | ; | q 3 e3 e3 2 1 | q 2 0 h0 > :]", key: :g, scale: :minor
-  assert_equal(a.measures.length,15)
+  assert_equal(a.measures.length,16)
 
   # Control characters
 

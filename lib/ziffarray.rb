@@ -53,6 +53,10 @@ module Ziffers
       self.hash_measures.values.map {|v| ZiffArray.new(v)}
     end
 
+    def measure_durations
+      self.measures.map {|l| l.sum {|h| h[:sleep] ? h[:sleep] : 0 }}
+    end
+
     def group_measures(i)
       self.measures.each_slice(i).collect do |s|
         s.map {|z| ZiffArray.new(z) }

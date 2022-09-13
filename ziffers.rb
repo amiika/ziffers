@@ -411,7 +411,7 @@ module Ziffers
           ziff[:arpeggio].each do |cn|
             cn[:amp] = ziff[:amp] if !cn[:amp] and ziff[:amp]
             if cn[:hpcs] then
-              arp_chord = cn[:hpcs].map{|d| h = ZiffHash[{note: ziff[:notes][d[:pc]%ziff[:notes].length], pc: ziff[:pcs][d[:pc]%ziff[:pcs].length]}]; h[:add] = d[:add] if d[:add]; h[:octave] = d[:octave] if d[:octave]; h.update_note; h   }
+              arp_chord = cn[:hpcs].map{|d| h = ZiffHash[{note: ziff[:notes][d[:pc]%ziff[:notes].length], pc: ziff[:pcs][d[:pc]%ziff[:pcs].length], key: ziff[:key], scale: ziff[:scale]}]; h[:add] = d[:add] if d[:add]; h[:octave] = d[:octave] if d[:octave]; h.update_note; h   }
               arp_notes = {notes: arp_chord}
             else
               arp_notes = ziff[:hpcs][cn[:pc]%ziff[:notes].length].dup
