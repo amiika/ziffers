@@ -216,7 +216,7 @@ module Ziffers
     def play_midi_out(md, opts)
       # Todo: Experiment more with midi_sound_off
       # midi_sound_off channel: opts[:channel]
-      midi_pitch_bend delta_midi: (opts[:delta_midi] ? opts[:delta_midi] : 8192), **opts.slice(:delta_midi, :channel, :port)
+      midi_pitch_bend **opts.slice(:delta_midi, :channel, :port) if opts[:delta_midi]
       midi md, opts
     end
 
@@ -387,6 +387,7 @@ module Ziffers
 
         if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
           sleep ziff[:sleep]
+          midi_pitch_bend delta_midi: 8192, **ziff.slice(:port,:channel,:vel,:vel_f) if ziff[:delta_midi] and (melody[index+1] and !melody[index+1][:delta_midi])
         end
       end
       # Save loop state
@@ -407,16 +408,22 @@ module Ziffers
       elsif ziff[:skip] then
         print "Skipping note"
       elsif ziff[:notes] then
+
+        # TODO: Deprecated arpeggio. Remove in future version?
         if ziff[:arpeggio] then
           ziff[:arpeggio].each do |cn|
-            cn[:amp] = ziff[:amp] if !cn[:amp] and ziff[:amp]
             if cn[:hpcs] then
-              arp_chord = cn[:hpcs].map{|d| h = ZiffHash[{note: ziff[:notes][d[:pc]%ziff[:notes].length], pc: ziff[:pcs][d[:pc]%ziff[:pcs].length], key: ziff[:key], scale: ziff[:scale]}]; h[:add] = d[:add] if d[:add]; h[:octave] = d[:octave] if d[:octave]; h.update_note; h   }
+              arp_chord = cn[:hpcs].map do |d|
+                  h = ZiffHash[ziff[:hpcs][d[:pc]%ziff[:hpcs].length].dup]
+                  h = h.merge(d.slice(:amp))
+                  h[:add] += d[:add] if d[:add]
+                  h[:octave] += d[:octave] if d[:octave]
+                  h.update_note
+              end
               arp_notes = {notes: arp_chord}
             else
-              arp_notes = ziff[:hpcs][cn[:pc]%ziff[:notes].length].dup
-              arp_notes[:add] = cn[:add]+(arp_notes[:add] || 0) if cn[:add]
-              arp_notes[:octave] = cn[:octave]+(arp_notes[:octave] || 0) if cn[:octave]
+              arp_notes = ziff[:hpcs][cn[:pc]%ziff[:hpcs].length].dup
+              arp_notes = arp_notes.merge(cn.slice(:octave,:add,:amp))
               arp_notes.update_note
             end
             arp_opts = cn.merge(arp_notes).except(:pcs, :pc)
@@ -424,9 +431,9 @@ module Ziffers
               sustain = ziff[:chord_release] ? ziff[:chord_release] : (ziff[:sustain] ? ziff[:sustain] : ziff[:sleep])
               if arp_notes[:notes] then
                 arp_notes[:notes].each_with_index do |arp_note,i|
-                  ziff[:channel] = (ziff[:chord_channel].is_a?(Integer) ? ziff[:chord_channel] : ziff[:chord_channel][i]) if ziff[:chord_channel]
+                  ziff[:channel] = (arp_note[:chord_channel].is_a?(Integer) ? arp_note[:chord_channel] : arp_note[:chord_channel][i]) if arp_note[:chord_channel]
                   check_cc arp_note.merge(ziff.slice(:cc, :mapping, :port, :channel, :value))
-                  play_midi_out arp_note[:note]+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f,:delta_midi).merge({sustain: sustain}).merge(cn.slice(:port,:channel,:vel,:vel_f,:delta_midi))
+                  play_midi_out arp_note[:note]+(cn[:pitch]?cn[:pitch]:0), ziff.slice(:port,:channel,:vel,:vel_f,:delta_midi).merge({sustain: sustain}).merge(arp_note.slice(:port,:channel,:vel,:vel_f,:delta_midi))
                 end
               else
                 ziff[:channel] = ziff[:chord_channel][arp_notes.delete(:index)] if ziff[:chord_channel]
@@ -438,7 +445,9 @@ module Ziffers
               synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), clean(arp_opts)
             end
             sleep cn[:sleep]
+            midi_pitch_bend delta_midi: 8192, **cn.slice(:port,:channel,:vel,:vel_f) if cn[:delta_midi]
           end
+          ## TODO: Deprecated arpeggio ends to else
         else
           if ziff[:port]
             sustain = ziff[:chord_release] ? ziff[:chord_release] : (ziff[:sustain] ? ziff[:sustain] : ziff[:sleep])
@@ -1120,7 +1129,7 @@ module Ziffers
       when :rotate then
         melody = melody.rotate(val.is_a?(Array) ? val[loop_i%val.length] : val)
       when :deal then
-        melody = melody.deal.flatten
+        melody = ZiffArray.new(melody.deal(val).flatten)
       when :mirror then
         melody = melody.mirror
       when :reverse then

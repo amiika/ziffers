@@ -49,7 +49,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    durs:(duration_set)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?' / '#') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* eval_f:(ternary)? select_range:(set_range)?
+    durs:(duration_set)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* eval_f:(ternary)? select_range:(set_range)?
     {
     def value
 
@@ -81,8 +81,6 @@ grammar GenerativeSyntax
             case transform
             when "!"
               set = set.compact.uniq
-            when "@"
-              set = set + set.compact.drop(1).reverse.drop(1) if set.length>2
             when "$"
               set = set.compact.map{|v| (v[:hpcs] ? v[:hpcs].map{|h| h[:pc]} : v[:pc].to_s.split("")).map{|d| ZiffHash[{pc: d.to_i}] } }.flatten
             when "&"
@@ -181,6 +179,10 @@ grammar GenerativeSyntax
                 set = set&op_values if op_values
               when '<|>'
                 set = set|op_values if op_values
+              when '@'
+                set = set.gen_arp(op_values)
+              when '#'
+                set = set.gen_select(op_values)
               end
             end
           end
@@ -285,16 +287,16 @@ grammar GenerativeSyntax
     end
 
     rule array_method
-      '.' v:([a-z_]+) i:('(' r:([\-0-9,]+) ')')?
+      '.' v:([a-z_]+) i:('(' r:(min_max_list) ')')?
       {
       def value
-        [v.text_value,(i.empty?) ? nil : i.r.text_value.split(",").map {|v| v.to_i}]
+        [v.text_value,(i.empty?) ? nil : i.r.value]
       end
       }
     end
 
   rule transform
-    [\!\$\@\&]+
+    [\!\$\&]+
     {
     def value
       text_value
@@ -359,7 +361,7 @@ grammar GenerativeSyntax
   end
 
   rule operation
-    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '<@>' / '<>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)?
+    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)?
     {
     def operator
       op.text_value
@@ -805,6 +807,20 @@ grammar GenerativeSyntax
       def value
         v.value
       end
+    }
+  end
+
+  rule min_max_list
+    first:(min_max) rest:(',' i:(min_max))*
+    {
+    def value
+      if rest.empty?
+        first.value
+      else
+        r = rest.elements.map {|v| v.i.value }
+        [r].append([first.value].flatten).flatten
+      end
+    end
     }
   end
 

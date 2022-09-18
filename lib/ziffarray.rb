@@ -176,6 +176,8 @@ module Ziffers
       ZiffArray.new(mirrored.each_slice(val).map{|part| part+part.reverse[1..]}.flatten)
     end
 
+    alias m mirror
+
     def tonnetz(val)
       ZiffArray.new(self.map {|h| h[:hpcs] ? (apply_moves val, h) : h}.flatten)
     end
@@ -197,6 +199,8 @@ module Ziffers
       return ZiffArray.new((reflected+part_b))
     end
 
+    alias r reflect
+
     def swap(n,x=1)
       melody = self.deep_clone
       n = n % melody.length if n>=melody.length
@@ -209,9 +213,13 @@ module Ziffers
       (self.deep_clone.map{|z| [z]*val }).flatten
     end
 
+    alias s stretch
+
     def deal(val=2)
-      self.group_by.with_index {|z,i| i % val }.values.map {|arr| ZiffArray.new(arr) }
+      self.group_by.with_index {|z,i| i % val }.values.map {|arr| ZiffArray.new(arr.reverse) }
     end
+
+    alias d deal
 
     def deep_clone
       Marshal.load(Marshal.dump(self))
@@ -416,6 +424,53 @@ module Ziffers
       end
     end
 
+    # Vertical arpeggio generator for generative syntax
+    def gen_arp(opts)
+      v = self.map.with_index do |ziff,i|
+        if ziff.is_a?(String)
+          ziff
+        elsif ziff[:hpcs]
+          opts.map do |cn|
+            if cn.is_a?(String)
+              cn
+            elsif cn[:hpcs]
+              arp_chord = cn[:hpcs].map{|d| h = ZiffHash[ziff[:hpcs][d[:pc]%ziff[:hpcs].length].dup] ; h = h.merge(d.slice(:prefix,:octave,:add,:amp,:sleep)) ; h.update_note ; h }
+              ziff_dup = ziff.dup
+              ziff_dup[:hpcs] = arp_chord
+              ZiffHash[ziff_dup]
+            else
+              ziff_dup = ziff[:hpcs][cn[:pc]%ziff[:hpcs].length].dup
+              ziff_dup = ziff_dup.merge(cn.slice(:prefix,:octave,:add,:amp,:sleep))
+              h = ZiffHash[ziff_dup]
+              h.update_note
+              h
+            end
+          end
+        else
+          ziff
+        end
+      end
+      ZiffArray.new(v.flatten)
+    end
+
+    # Horizontal arpeggio generator for generative syntax
+    def gen_select(opts)
+        select = self.filter {|v| v.is_a? Hash }
+        v = opts.map do |cn|
+            if cn.is_a?(String)
+              cn
+            elsif cn[:hpcs]
+              new_chord = cn[:hpcs].map{|d| h = select[d[:pc]%select.length] ; h = h.merge(d.slice(:prefix, :octave,:add,:amp)) ; h }
+              ZiffHash[{hpcs: new_chord}]
+            else
+              ziff_dup = select[cn[:pc]%select.length].dup
+              ziff_dup = ziff_dup.merge(cn.slice(:prefix,:octave,:add,:amp))
+              ZiffHash[ziff_dup]
+            end
+          end
+      ZiffArray.new(v.flatten)
+    end
+
     def cycles
       tempar = self.to_pc_set
       arar = []
@@ -436,12 +491,14 @@ module Ziffers
     end
 
     def durations
-        self.map{|x,i| x.duration }
+      self.map{|x,i| x.duration }
     end
 
-    def rotate(v)
+    def rotate(v=1)
       ZiffArray.new(super)
     end
+
+    alias rot rotate
 
     def merge_lengths(arr, loop_n=0)
       ZiffArray.new(self.map.with_index{|x,i| x.change_duration arr[(i+loop_n)%arr.length]})

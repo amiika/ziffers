@@ -76,7 +76,7 @@ def test_generative
     a = zparse "(0 1 1 2)!" # ! Unique set: 0 1 2
     assert_equal(a.pcs,[0,1,2])
 
-    a = zparse "(1 2 3 4)@" # @ Reflect set. Nice for loops
+    a = zparse "(1 2 3 4).r" # Reflect set. Nice for loops
     assert_equal(a.pcs,[1, 2, 3, 4, 3, 2])
     a = zparse "q ((-3..4){(3x+2)(3x^3)})$" # $ Splits generated integers 1432 -> 1 4 3 2
     assert_equal(a.pcs,[1, 4, 2, 1, 2, 6, 0, 4, 0, 1, 1, 0, 2, 1, 0])
