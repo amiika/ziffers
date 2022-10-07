@@ -52,6 +52,21 @@ module Ziffers
       v
     end
 
+    @@modes = {
+      :a=>:aeolian,
+      :b=>:locrian,
+      :c=>:ionian,
+      :d=>:dorian,
+      :e=>:phrygian,
+      :f=>:lydian,
+      :g=>:mixolydian,
+    }
+    @@modes.default = :ionian
+
+    def mode_to_scale(letter)
+      @@modes[letter.to_sym]
+    end
+
     def sonic_range(s,e,step=nil,mult=nil,reflect=false)
       ms = (s>e) ? e : s # 1..7
       me = (e<s) ? s : e # 7..1
@@ -178,7 +193,7 @@ module Ziffers
       shared = shared.filter {|k,v| !v.is_a?(Proc) }
       opts = opts.filter {|k,v| !v.is_a?(Proc) }
       Thread.current[:default_durs] = @@default_durs
-      Thread.current[:tshared] = deep_clone(shared.except(:rules,:use,:multi))
+      Thread.current[:tshared] = deep_clone(shared.except(:rules,:run,:use,:multi))
       Thread.current[:tchordsleep] = opts[:chord_sleep]
       Thread.current[:topts] = deep_clone(opts)
 

@@ -209,8 +209,8 @@ module Ziffers
       melody
     end
 
-    def stretch(val=1)
-      (self.deep_clone.map{|z| [z]*val }).flatten
+    def stretch(val=2)
+      ZiffArray.new((self.deep_clone.map{|z| [z]*val }).flatten)
     end
 
     alias s stretch

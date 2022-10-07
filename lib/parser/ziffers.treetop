@@ -234,7 +234,7 @@ grammar Ziffers
   end
 
   rule pitch_classes
-    prefix:(escaped_prefix_sleep / prefix_sleep / octave / escaped_octave / add / dynamics / staccato)* some_pitch_class:(normal_pitch_class / eval)
+    prefix:(escaped_prefix_sleep / prefix_sleep / octave / escaped_octave / add / dynamics / staccato / prefix_scale)* some_pitch_class:(normal_pitch_class / eval)
     {
       def value
         dgr = some_pitch_class.value
@@ -261,7 +261,7 @@ grammar Ziffers
             oct = oct + Thread.current[:topts][:octave] if Thread.current[:topts][:octave]
           end
           addition = prefixes[:add] ? prefixes[:add] : 0
-          v = get_ziff dgr, Thread.current[:topts][:key], Thread.current[:topts][:scale], oct, addition, (Thread.current[:tshared][:semitones] ? Thread.current[:tshared][:semitones] : 1)
+          v = get_ziff dgr, Thread.current[:topts][:key], (prefixes[:prefix_scale] ? prefixes[:prefix_scale].to_sym :  Thread.current[:topts][:scale]), oct, addition, (Thread.current[:tshared][:semitones] ? Thread.current[:tshared][:semitones] : 1)
         end
 
         v.merge!(Thread.current[:topts]) { |key, important, default| important }
@@ -294,6 +294,15 @@ grammar Ziffers
         sum = sum * (2.0-(1.0/(2*d.text_value.length))) if !d.text_value.empty?
         {sleep: sum}
      end
+    }
+  end
+
+  rule prefix_scale
+    '<' e:([a-z]+) '>'
+    {
+      def value
+          {prefix_scale: e.text_value.length==1 ? mode_to_scale(e.text_value) : e.text_value}
+      end
     }
   end
 

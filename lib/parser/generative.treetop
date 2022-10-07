@@ -629,33 +629,38 @@ grammar GenerativeSyntax
   end
 
   rule roman
-    roman_number rd:(roman_pick)? cd:(chord_name)? '*'? oct:([0-9])? inv:(inverse)?
+    roman_number mode:([abcdefg])? rd:(roman_pick)? cd:(chord_name)? '*'? oct:([0-9])? inv:(inverse)?
     {
       def value
        name = Thread.current[:tshared][:chord_name].to_sym if Thread.current[:tshared][:chord_name]
        name = cd.value.to_sym if cd.methods.include?(:value)
        roman = roman_number.text_value.to_sym
-       name = :major if Thread.current[:topts][:scale]==:chromatic and !name # Ugly fix for chromatic scale
+       if !mode.empty?
+        cur_scale = mode_to_scale mode.text_value
+       else
+        cur_scale = Thread.current[:topts][:scale]
+        name = :major if cur_scale==:chromatic and !name # Ugly fix for chromatic scale
+       end
         if name
-          root = degree roman, Thread.current[:topts][:key], Thread.current[:topts][:scale]
+          root = degree roman, Thread.current[:topts][:key], cur_scale
           shift = note_info(Thread.current[:topts][:key]).midi_note-60
           notes = chord(root, name, {num_octaves: !oct.text_value.empty? ? oct.text_value.to_i : 1}).notes
-          pcs = notes.map {|n| midi_to_pc(n-shift,Thread.current[:topts][:key], Thread.current[:topts][:scale]) }
+          pcs = notes.map {|n| h = midi_to_pc(n-shift,Thread.current[:topts][:key], cur_scale); h[:prefix] = "<"+mode.text_value+">" if !mode.empty?; h }
           pcs
         else # TODO: This is not working for some scales ... but not really sure if this is even fixable.
-          pc_scale = (scale 0, Thread.current[:topts][:scale], num_octaves: 7).notes.to_a
+          pc_scale = (scale 0, cur_scale, num_octaves: 7).notes.to_a
           trichords = (Scale.from_roman(roman)-1).step(pc_scale.size-1,2).map {|i| pc_scale[i]} # Select every 2nd
           take_notes = (rd.methods.include?(:value) ? rd.value : 3)
           take_notes = take_notes * oct.text_value.to_i if !oct.text_value.empty?
           chrom_pcs = trichords.take(take_notes)
           pcs = chrom_pcs.map {|idx| pc_scale.index(idx) }
-          pcs = pcs.map {|p| get_ziff(p,Thread.current[:topts][:key], Thread.current[:topts][:scale]) }
+          pcs = pcs.map {|p| h = get_ziff(p,Thread.current[:topts][:key], cur_scale); h[:prefix] = "<"+mode.text_value+">" if !mode.empty?; h }
         end
         v = {
           :roman=>roman,
           :hpcs=>pcs,
           :key=>Thread.current[:topts][:key],
-          :scale=>Thread.current[:topts][:scale]
+          :scale=>cur_scale
         }
         v.merge!(Thread.current[:topts])
         v[:subsleep] = Thread.current[:tchordsleep] if Thread.current[:tchordsleep]
@@ -1044,11 +1049,20 @@ end
   end
 
   rule prefix_list
-    (prefix_array / escaped_prefix_sleep / prefix_octave / prefix_sleep / octave / escaped_octave / add / dynamics / staccato)*
+    (prefix_array / escaped_prefix_sleep / prefix_octave / prefix_sleep / octave / escaped_octave / add / dynamics / staccato / prefix_scale)*
     {
     def value
       elements.map {|v| v.value }
     end
+    }
+  end
+
+  rule prefix_scale
+    '<' ([a-z])+ '>'
+    {
+      def value
+          {prefix: text_value}
+      end
     }
   end
 

@@ -387,7 +387,7 @@ module Ziffers
 
         if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
           sleep ziff[:sleep]
-          midi_pitch_bend delta_midi: 8192, **ziff.slice(:port,:channel,:vel,:vel_f) if ziff[:delta_midi] and (melody[index+1] and !melody[index+1][:delta_midi])
+          midi_pitch_bend delta_midi: 8192, **ziff.slice(:port,:channel,:vel,:vel_f) if ziff[:port] and ziff[:delta_midi] and (melody[index+1] and !melody[index+1][:delta_midi])
         end
       end
       # Save loop state
