@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / set / conditional_assingment / ranges / relative_duration / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / zip_ring / set / conditional_assingment / ranges / relative_duration / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
@@ -49,7 +49,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    durs:(duration_set)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* eval_f:(ternary)? select_range:(set_range)?
+    set_scale:(prefix_scale)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* eval_f:(ternary)? select_range:(set_range)?
     {
     def value
 
@@ -103,7 +103,7 @@ grammar GenerativeSyntax
         if !o.empty? then
           o.elements.each do |op|
             if op.methods.include?(:value) then
-              op_values = ZiffArray.new(op.value.flatten) if op.value.is_a?(Array)
+              op_values = ZiffArray.new(op.value.flatten.compact) if op.value.is_a?(Array)
               case op.operator
               when '**', '*', '/', '+', '-', '^', '%', '|', '&', '<<', '>>'
                 if op.value.kind_of?(Array)
@@ -149,8 +149,7 @@ grammar GenerativeSyntax
                     end
 
                 end
-              when '<>'
-                set = set.zip(op_values).flatten if op_values
+
               when '<+>'
                 set = set.product(op_values).flatten if op_values
               when '<->'
@@ -207,25 +206,25 @@ grammar GenerativeSyntax
         set
       end
 
-    durations = durs.value if durs.methods.include?(:value)
-    if durations and durations.is_a?(Array)
-      set = set.flatten.map.with_index{|v,i| v[:sleep] = durations[i%durations.length] if v.is_a?(Hash) ; v  }
-    else
-      set = set.flatten(1) # Flatten only 1st level, second level used in euclid to separate lists
-    end
-
-    if select_range.methods.include?(:value)
-      selection_range = select_range.value
-      if selection_range.kind_of?(Array)
-        set = ZiffArray[*set][*selection_range]
+      scale_prefix = set_scale.value if set_scale.methods.include?(:value)
+      if scale_prefix
+        set = set.flatten.map {|v| v[:prefix] = (v[:prefix] || "")+scale_prefix[:prefix] if v.is_a?(Hash) ; v  }
       else
-        set = ZiffArray[*set][selection_range]
+        set = set.flatten(1) # Flatten only 1st level, second level used in euclid to separate lists
       end
+
+      if select_range.methods.include?(:value)
+        selection_range = select_range.value
+        if selection_range.kind_of?(Array)
+          set = ZiffArray[*set][*selection_range]
+        else
+          set = ZiffArray[*set][selection_range]
+        end
+      end
+
+      set
     end
 
-    set
-
-    end
     def eval_func(v,tfunc)
       if tfunc.is_a?(Array)
         cond = eval tfunc[0].gsub("x",v.to_s)
@@ -241,6 +240,17 @@ grammar GenerativeSyntax
     }
   end
 
+  rule zip_ring
+    first:(set) '<>' second:(set)
+    {
+      def value
+        first_set = ZiffArray.new(first.value.compact)
+        second_set = ZiffArray.new(second.value.compact)
+        first_set.zip_ring(second_set).flatten
+      end
+    }
+  end
+
     rule euclid
       '(' onbeat:(set_items) rb:(')<' / ')>') onrand:'~'? s:(min_max) ',' e:(min_max) ','? r:(min_max)? offrand:'~'? lb:('>' / '<') opt:('(' offbeat:(set_items) ')')?
       {
@@ -251,7 +261,7 @@ grammar GenerativeSyntax
         onbeat_list = onbeat_list.select {|h| h.kind_of?(Hash) or h.kind_of?(Array) } if rb.text_value==')<' # If as ring
         if !opt.empty?
           offbeat_list = opt.offbeat.value.compact if !opt.offbeat.empty? and opt.offbeat.methods.include?(:value)
-          offbeat_list = offbeat_list.select {|h| h.kind_of?(Hash) } if lb.text_value=='>' # If as ring
+          offbeat_list = offbeat_list.select {|h| h.kind_of?(Hash) || h.kind_of?(Array)  } if lb.text_value=='>' # If as ring
         end
         result = bin_euclid(s.value,e.value)
         .map do |n|
@@ -336,15 +346,6 @@ grammar GenerativeSyntax
       }
     end
 
-  rule duration_set
-    '<' durs:(sleep / s)* '>'
-    {
-    def value
-      durs.elements.map {|v| v.value }.compact
-    end
-    }
-  end
-
   rule rest
     s:(sleep)? 'r'
     {
@@ -361,7 +362,7 @@ grammar GenerativeSyntax
   end
 
   rule operation
-    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)?
+    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)?
     {
     def operator
       op.text_value
@@ -412,21 +413,21 @@ grammar GenerativeSyntax
   end
 
   rule array
-    '[' first:(array_subset) rest:(',' i:array_subset)+ ']'
+    '[' first:(set_items) rest:(',' i:set_items)+ ']'
     {
     def value
       if rest.empty?
         first.value
       else
         r = rest.elements.map {|v| v.i.value }
-        r.append(first.value).pick.flatten
+        r.prepend(first.value).pick.compact
       end
     end
     }
   end
 
   rule set_items
-    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / set)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }
@@ -445,15 +446,6 @@ grammar GenerativeSyntax
 
   rule cyclic_subset
     (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens  / bar)*
-    {
-    def value
-      elements.map {|v| v.value }
-    end
-    }
-  end
-
-  rule array_subset
-    (ignore / use / control / ranges / escaped_multi_octave / decimal_sleep / group / roman / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar)*
     {
     def value
       elements.map {|v| v.value }

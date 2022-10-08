@@ -230,7 +230,7 @@ module Ziffers
           if ziff[:hpcs]
             ziff[:hpcs].each_with_index do |h, index|
               val = inv ? i-h[:pc] : h[:pc]+i
-              ziff[:octave] = -ziff[:octave] if inv
+              ziff[:octave] = -ziff[:octave] if inv and ziff[:octave]
               h[:octave] += val/n if val>=n or val<0
               val = val % n
               h[:pc] = val
@@ -239,7 +239,7 @@ module Ziffers
           elsif ziff[:pc]
             originalDegree = ziff[:pc]
             val = inv ? i-originalDegree : originalDegree+i
-            ziff[:octave] = -ziff[:octave] if inv
+            ziff[:octave] = -ziff[:octave] if inv and ziff[:octave]
             ziff[:octave] += val/n if val>=n or val<0
             val = val % n
             ziff[:pc] = val

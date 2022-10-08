@@ -109,6 +109,8 @@ module Ziffers
       ZiffArray.new(self.map {|n| n.inverse start })
     end
 
+    alias i inverse
+
     def duration
       self.durations.inject(0){|sum,x| sum+x }
     end
@@ -447,6 +449,7 @@ module Ziffers
             end
           end
         else
+          # ziff[:prefix] = opts[i%opts.length] if opts[i%opts.length].is_a?(String)
           ziff
         end
       end
@@ -456,18 +459,26 @@ module Ziffers
     # Horizontal arpeggio generator for generative syntax
     def gen_select(opts)
         select = self.filter {|v| v.is_a? Hash }
-        v = opts.map do |cn|
+        v = opts.map.with_index do |cn, i|
             if cn.is_a?(String)
               cn
             elsif cn[:hpcs]
-              new_chord = cn[:hpcs].map{|d| h = select[d[:pc]%select.length] ; h = h.merge(d.slice(:prefix, :octave,:add,:amp)) ; h }
+              new_chord = cn[:hpcs].map{|d| h = select[d[:pc]%select.length] ; h = h.merge(d.slice(:prefix,:octave,:add,:amp,:sleep)) ; h }
               ZiffHash[{hpcs: new_chord}]
             else
               ziff_dup = select[cn[:pc]%select.length].dup
-              ziff_dup = ziff_dup.merge(cn.slice(:prefix,:octave,:add,:amp))
+              ziff_dup = ziff_dup.merge(cn.slice(:prefix,:octave,:add,:amp,:sleep))
               ZiffHash[ziff_dup]
             end
           end
+      ZiffArray.new(v.flatten)
+    end
+
+    def zip_ring(opts)
+      max_length = [self.length,opts.length].max
+      v = max_length.times.collect do |i|
+        [self[i%self.length]].push(opts[i%opts.length])
+      end
       ZiffArray.new(v.flatten)
     end
 

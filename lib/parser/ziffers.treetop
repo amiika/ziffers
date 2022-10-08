@@ -52,7 +52,7 @@ grammar Ziffers
   end
 
   rule multisleep
-    sleep s
+    sleep ![0-9a-zA-Z_\^#<]
     {
     def value
       Thread.current[:topts][:sleep] = sleep.value
@@ -123,7 +123,11 @@ grammar Ziffers
       v = {:notes=>note_list, :pcs=>pitch_class_list, :hpcs=>e, :octaves=>octave_list}
       v.merge!(Thread.current[:topts])
       v[:amp] = e[0][:amp] if e[0][:amp]
-      v[:sleep] = Thread.current[:tchordsleep] if Thread.current[:tchordsleep]
+      if Thread.current[:tchordsleep]
+        v[:sleep] = Thread.current[:tchordsleep]
+      else
+        v[:sleep] = e[0][:sleep] if e[0][:sleep]
+      end
       v[:arpeggio] = Thread.current[:tarp] if Thread.current[:tarp]
       v = ZiffHash[v]
       if !Thread.current[:tshared][:normalized]
@@ -238,7 +242,13 @@ grammar Ziffers
     {
       def value
         dgr = some_pitch_class.value
-        prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
+
+        prefixes = prefix.elements.map {|v| v.value}
+        # Filter scales
+        prefix_scales, prefixes = prefixes.partition {|v| v[:prefix_scale] }
+        pc_scale = prefix_scales[0][:prefix_scale] if prefix_scales and prefix_scales[0]
+        # Sum other prefixes
+        prefixes = prefixes.inject{|a,b| a.merge(b){|_,x,y| x + y}}
         prefixes = {} if !prefixes
 
         # Midi and channel parse hacks
@@ -261,7 +271,7 @@ grammar Ziffers
             oct = oct + Thread.current[:topts][:octave] if Thread.current[:topts][:octave]
           end
           addition = prefixes[:add] ? prefixes[:add] : 0
-          v = get_ziff dgr, Thread.current[:topts][:key], (prefixes[:prefix_scale] ? prefixes[:prefix_scale].to_sym :  Thread.current[:topts][:scale]), oct, addition, (Thread.current[:tshared][:semitones] ? Thread.current[:tshared][:semitones] : 1)
+          v = get_ziff dgr, Thread.current[:topts][:key], (pc_scale ? pc_scale :  Thread.current[:topts][:scale]), oct, addition, (Thread.current[:tshared][:semitones] ? Thread.current[:tshared][:semitones] : 1)
         end
 
         v.merge!(Thread.current[:topts]) { |key, important, default| important }
@@ -301,7 +311,7 @@ grammar Ziffers
     '<' e:([a-z]+) '>'
     {
       def value
-          {prefix_scale: e.text_value.length==1 ? mode_to_scale(e.text_value) : e.text_value}
+          {prefix_scale: e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym}
       end
     }
   end

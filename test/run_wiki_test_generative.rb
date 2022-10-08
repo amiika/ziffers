@@ -6,8 +6,8 @@ def test_generative
 
   # Generative syntax
   with_random_seed 2353 do
-    a = zparse "[: q ? ? ? 0 ? ? ? (1,2) [6,7] (1,2) [6,7] (1,2) [6,7] (1,2) [6,[7 2,8,9 3,11]] :]"
-    assert_equal(a.notes.length,30)
+    a = zparse "[: q ? ? ? 0 ? ? ? (1,2) [6,7] (1,2) [6,7] (1,2) [6,7] (1,2) [6 3,[7 2,8 3,9 3,11 3]] :]"
+    assert_equal(a.notes.length,32)
     a = zparse "([1,4,5,3],[(6,7),(6,[8,10,11]),(6,[9,10,39])])"
     assert_equal(a.notes.length,1)
     a = zparse "(: (1,(2,[4,5,(6,9),10])) :4)"
@@ -17,7 +17,9 @@ def test_generative
     a = zparse "q (0 1 2 3)*(-1 1 -1 1)" # Cartesian product
     assert_equal(a.pcs,[0, 6, 5, 4, 0, 1, 2, 3, 0, 6, 5, 4, 0, 1, 2, 3])
     a = zparse "q (1 2 3 4)+[1 3, 2 2, 3 1]" # Cartesian sum with a random set
-    assert_equal(a.pcs,[2, 3, 4, 5, 1, 2, 3, 4, 4, 5, 6, 0])
+    assert_equal(a.pcs,[4, 5, 6, 0, 2, 3, 4, 5])
+    a = zparse "q (1 2 3 4)+(3 1)" # Same as with sets
+    assert_equal(a.pcs,[4, 5, 6, 0, 2, 3, 4, 5])
     a = zparse "(1 2 3)<>(4 5 3)" # Zip to sets
     assert_equal(a.pcs,[1, 4, 2, 5, 3, 3])
 
@@ -130,7 +132,7 @@ def test_generative
     assert_equal(a.pcs.length,2)
     a = zparse "(1 3 4 6 7)?2" # Take random 2: "3 3"
     assert_equal(a.pcs.length,2)
-    a = zparse "<q e e q>(: (1,4)..[5,6,7] :3)~" # Create random range between randomized values and add note lengths
+    a = zparse "(q e e q)<>(: (1,4)..[5,6,7] :3)~" # Create random range between randomized values and add note lengths
 
     # Assign
     a = zparse "A=(1..3 {(1,3)+2}) q A A A"
