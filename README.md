@@ -46,18 +46,19 @@ z1 "q (0 1 (3,7) 3)~<*>(4 [6,4,[5,4,2,7]] (0,(5,8)) (1,6))", synth: :kalimba
 ```
 and much more ... See [Ziffers wiki](https://github.com/amiika/ziffers/wiki) or download [A4 cheatsheet](https://github.com/amiika/ziffers/raw/master/Cheatsheet.pdf) to learn more.
 
-Here's is a cheatsheet you can copy to Sonic Pi editor:
+Here is a cheatsheet you can copy to Sonic Pi editor:
 ```
 # Pitches: -2 -1 0 1 2
 # Chords: 0 024 2 246
-# Escape/eval: {10 11} {1.2 2.43} {3+1*2}
-# Roman chords: i ii iii+4 iv+5 v+8 vi+10 vii+20
-# Named chords: i^7 i^min i^dim i^maj7
 # Note lengths: w 0 h 1 q 2 e 3 s 4
+# Subdivision: [1 2 [3 4]]
 # Decimal durations: 0.25 0 1 [0.333]2 3
 # Octaves: ^ 0 ^ 1 _ 2 _ 3
 # Escaped octave: <2> 1 <1>1<-2>3
-# Subdivision: [1 2 [3 4]]
+# Roman chords: i ii iii+4 iv+5 v+8 vi+10 vii+20
+# Named chords: i^7 i^min i^dim i^maj7
+# Modal interchange (a-g): iiia ig ivf^7
+# Escape/eval: {10 11} {1.2 2.43} {3+1*2}
 # Randoms: % ? % ? % ?
 # Random between: (-3,6)
 # Random selections: [q 1 2, q 3 e 4 6]
