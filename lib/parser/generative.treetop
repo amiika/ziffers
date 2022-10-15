@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / zip_ring / set / conditional_assingment / ranges / relative_duration / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / zip_ring / set / conditional_assingment / ranges / relative_duration / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / cyclic)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
@@ -10,7 +10,7 @@ grammar GenerativeSyntax
               v = resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length)
               v.map {|h| h.to_z }.join(" ")
             elsif v[:cycle]
-              cycle = v[:cycle][Thread.current[:tshared][:loop_i]%v[:cycle].length].to_z
+              cycle = v[:cycle][(Thread.current[:tshared][:loop_i] || 0)%v[:cycle].length].to_z
             else
               v.to_z
             end
@@ -61,21 +61,32 @@ grammar GenerativeSyntax
 
         set = Marshal.load(Marshal.dump(original_set))
 
-        set  = set.map {|v| v = v[:cycle][i%v[:cycle].length] if v.is_a?(Hash) and v[:cycle] ; v }.flatten.compact
+        cycle_i = repeat_two.text_value==":" ? i : (Thread.current[:tshared][:loop_i] || 0)
+        set  = set.map {|v| v = v[:cycle][cycle_i%v[:cycle].length] if v.is_a?(Hash) and v[:cycle] ; v }.flatten.compact
 
         set = ZiffArray.new(set)
 
-        # TODO: Early prototype of method calling
+        # Call for ZiffArray methods
         if a.methods.include?(:value)
           method_call = a.value
+          resolved_set = set.resolve_strings # Resolve note lengths & octaves for the list
           if method_call[1]
-            set = set.method(method_call[0]).(*method_call[1])
+            if method_call[1].is_a?(ZiffArray)
+              pcs = method_call[1].flatten.map {|h| h.is_a?(ZiffHash) ? h[:pc] : nil }.compact
+              param = pcs[(Thread.current[:tshared][:loop_i] || 0)%pcs.length]
+              # Exception for list methods
+              param = method_call[1].resolve_strings if ["fuse"].include?(method_call[0]) and !param.is_a?(ZiffArray)
+              set = resolved_set.method(method_call[0]).(param)
+            else
+              set = resolved_set.method(method_call[0]).(*method_call[1])
+            end
           else
-            set = set.method(method_call[0]).()
+            set = resolved_set.method(method_call[0]).()
           end
+          set = set.to_a.flatten if !set.is_a?(Array) # This is for enumerations like array permutation & combination
         end
 
-        # TODO: Replace this with aliased array methods?
+        # Special shorthands for unique list and splitting chords to sequences or vice versa
         if t.methods.include?(:value)
           t.value.split("").each do |transform|
             case transform
@@ -216,13 +227,13 @@ grammar GenerativeSyntax
       if select_range.methods.include?(:value)
         selection_range = select_range.value
         if selection_range.kind_of?(Array)
-          set = ZiffArray[*set][*selection_range]
+          set = [set[*selection_range]]
         else
-          set = ZiffArray[*set][selection_range]
+          set = [set[selection_range]]
         end
       end
 
-      set
+      ZiffArray.new(set)
     end
 
     def eval_func(v,tfunc)
@@ -297,7 +308,7 @@ grammar GenerativeSyntax
     end
 
     rule array_method
-      '.' v:([a-z_]+) i:('(' r:(min_max_list) ')')?
+      '<' v:([a-z_]+) '>' i:(('(' r:(min_max_list) ')' / r:(set)))?
       {
       def value
         [v.text_value,(i.empty?) ? nil : i.r.value]
@@ -389,14 +400,13 @@ grammar GenerativeSyntax
   end
 
   rule repeat
-   '[:' l:(repeat_subset) ':' p:([0-9])* ']'
+   '[:' l:(set_items) ':' p:([0-9])* ']'
     {
        def value
          rep_result = []
          r = !p.text_value.empty? ? p.text_value.to_i : 2
          rep_value = l.value
          rep_value = rep_value.map {|v| (v.is_a?(Hash) and v[:subset]) ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length) : v }
-         # TODO: Check default sleep in some cases like: [: 2 0.25 3 :] ?
          r.times do |i|
           rep = rep_value.each_with_object([]) do |v,o|
             if v.is_a?(Hash) and v[:cycle]
@@ -405,7 +415,7 @@ grammar GenerativeSyntax
               o.push(v)
             end
           end
-          rep_result += rep+["|"] # Break for octaves
+          rep_result += rep+["|"] # Break for octaves, note lengths etc.
           end
          rep_result.flatten.compact
        end
@@ -430,25 +440,7 @@ grammar GenerativeSyntax
     (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / zip_ring / set)*
     {
     def value
-      elements.map {|v| v.value }
-    end
-    }
-  end
-
-  rule repeat_subset
-    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar)*
-    {
-    def value
-      elements.map {|v| v.value }
-    end
-    }
-  end
-
-  rule cyclic_subset
-    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens  / bar)*
-    {
-    def value
-      elements.map {|v| v.value }
+      elements.map {|v| v.value }.compact
     end
     }
   end
@@ -463,7 +455,7 @@ grammar GenerativeSyntax
   end
 
   rule cyclic
-  '<' first:(cyclic_subset) following:(';' i:cyclic_subset)+ '>'
+  '<' first:(set_items) following:(';' i:set_items)+ '>'
     {
     def value
       if following.empty?
@@ -471,6 +463,7 @@ grammar GenerativeSyntax
       else
         r = following.elements.map {|v| v.i.value }
         r.prepend(first.value)
+        r = r.compact
         {:cycle=>r}
       end
     end
@@ -799,11 +792,28 @@ grammar GenerativeSyntax
   end
 
   rule min_max
-    v:(integer / integer_array / random_between)
+    v:(integer / integer_array / random_between / cyclic_min_max)
     {
       def value
-        v.value
+      val = v.value
+      val = val[:cycle][(Thread.current[:tshared][:loop_i] || 0)%val[:cycle].length] if val.is_a?(Hash) and val[:cycle]
+      val
       end
+    }
+  end
+
+  rule cyclic_min_max
+  '<' first:(min_max) following:(';' i:min_max)+ '>'
+    {
+    def value
+      if following.empty?
+        {:cycle=>first.value}
+      else
+        r = following.elements.map {|v| v.i.value }
+        r.prepend(first.value)
+        {:cycle=>r}
+      end
+    end
     }
   end
 
@@ -815,7 +825,7 @@ grammar GenerativeSyntax
         first.value
       else
         r = rest.elements.map {|v| v.i.value }
-        [r].append([first.value].flatten).flatten
+        [r].prepend([first.value].flatten).flatten
       end
     end
     }
@@ -1011,7 +1021,7 @@ end
         first.value
       else
         r = rest.elements.map {|v| v.i.value }
-        [r].append([first.value].flatten).flatten.pick(1)[0]
+        [r].prepend([first.value].flatten).flatten.pick(1)[0]
       end
     end
     }
@@ -1066,7 +1076,7 @@ end
         first.value
       else
         r = rest.elements.map {|v| v.i.value }
-        r.append(first.value).pick.flatten
+        r.prepend(first.value).pick.flatten
       end
     end
     }

@@ -76,17 +76,17 @@ def testrandom
   sleep 0.5
   zplay "e ((0,6))+1*2/3%7"
   sleep 0.5
-  zplay "e <w q q e e>((1000,4000))"
+  zplay "e (w q q e e)<>((1000,4000))"
   sleep 0.5
-  zplay "e <w q q e e e>(0..8)"
+  zplay "e (w q q e e e)<>(0..8)"
   sleep 0.5
-  zplay "e <w q q e e e>(0..8)~"
+  zplay "e (w q q e e e)<>(0..8)~"
   sleep 0.5
-  zplay "q <q e e>(: 100..1000 :3)?5$"
+  zplay "q (q e e)<>(: 100..1000 :3)?5$"
   sleep 0.5
-  zplay "<q e e>(: 100..1000 :3)?5&"
+  zplay "(q e e)<>(: 100..1000 :3)?5&"
   sleep 0.5
-  zplay "<e q e>(: 0..4 :4)~2+1*3"
+  zplay "(e q e)<>(: 0..4 :4)~2+1*3"
 
 end
 
@@ -126,7 +126,7 @@ def testlsystem
   with_synth :beep do
     zplay "q 0", rules: {"0"=>"0 2","2"=>"5 3 2 0"}, gen: 3
     zplay "q?", rules: {"q?"=>"q? e ? ? ? q?"}, gen: 2, scale: :major_pentatonic
-    zplay "q1", rules: {/[a-z][0-6]/=>"<q e q q e>(0..6)~"}, gen: 2, scale: :gong
+    zplay "q1", rules: {/[a-z][0-6]/=>"(q e q q e)<>(0..6)~"}, gen: 2, scale: :gong
     zplay "q1", rules: {/(3)1/=>"q =($1+1) 1 =($2+2)",/[1-7]/=>"e 3 1 3"}, gen: 3
     # TODO: Fix these?
     # zplay "q 1 2 3", rules: {/[1-9]/=>"'$*1' {e,q} '$*2'"}, gen: 4

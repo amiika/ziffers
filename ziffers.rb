@@ -259,6 +259,11 @@ module Ziffers
         use_arg_bpm_scaling defaults[:use_arg_bpm_scaling] ? defaults[:use_arg_bpm_scaling] : false
       end
 
+      loop_i = loop_name ? $zloop_states[loop_name][:loop_i] : loop_i
+      loop_n = (melody.is_a?(Array) ? melody.length : melody.to_s.length)*(loop_i+1)
+      defaults[:loop_i] = loop_i
+      defaults[:loop_n] = loop_i
+
       if defaults[:store] and loop_name and $zloop_states[loop_name][:parsed_melody]
         melody = $zloop_states[defaults[:loop_name]][:parsed_melody]
         melody = normalize_melody(melody, opts, defaults)
@@ -281,11 +286,6 @@ module Ziffers
       else
           melody = normalize_melody(melody, opts, defaults)
       end
-
-      loop_i = loop_name ? $zloop_states[loop_name][:loop_i] : loop_i
-      loop_n = melody.length*(loop_i+1)
-      defaults[:loop_i] = loop_i
-      defaults[:loop_n] = loop_i
 
       if defaults[:bpm] then
         if defaults[:run]

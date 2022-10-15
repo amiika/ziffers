@@ -180,6 +180,33 @@ module Ziffers
 
     alias m mirror
 
+    @@perm_cache = {}
+
+    def permutation_index(index=nil,num=nil)
+
+      notes, stuff = self.partition {|v| v.is_a? Hash }
+      if !num
+        num = notes.length
+      elsif num>notes.length
+        num = notes.length
+      elsif num<1
+        raise "Invalid permutation size!"
+      end
+      index = sonic_random(0, notes.length-1) if !index
+      notes = ZiffArray.new(notes)
+      perm_check = notes.to_z+">>"+num.to_s+":"+index.to_s
+      if @@perm_cache[perm_check]
+        perm = @@perm_cache[perm_check]
+      else
+        perm = notes.permutation(num).to_a
+        @@perm_cache[perm_check] = perm
+      end
+      res = perm[index%perm.length]
+      ZiffArray.new(stuff.compact+res)
+    end
+
+    alias p permutation_index
+
     def tonnetz(val)
       ZiffArray.new(self.map {|h| h[:hpcs] ? (apply_moves val, h) : h}.flatten)
     end
@@ -390,7 +417,7 @@ module Ziffers
     #end
 
     def to_z
-      self.map {|h| h.to_z}.join(" ")
+      self.map {|h| h.is_a?(ZiffHash) ? h.to_z : h.to_s }.join(" ")
     end
 
     def content
@@ -493,6 +520,8 @@ module Ziffers
       ZiffArray.new(most_left_compact(self.cycles))
     end
 
+    alias norm normal_form
+
     def zero
       transpose(-1 * self[0][:pc])
     end
@@ -573,6 +602,28 @@ module Ziffers
         n
       }
       new_durations
+    end
+
+    def resolve_strings
+      last_duration = 1.0
+      last_octave = 0
+      new_list = self.flatten.compact.map do |h|
+        if h.is_a?(String)
+          if h.include?("_") || h.include?("^")
+            last_octave = h.split("").map {|v| (v=='^' ? 1 : -1)}.inject(0,:+)
+          else
+            last_duration = h.split("").map {|v| @@default_durs[v.to_sym] }.inject(0,:+)
+          end
+          nil
+        elsif h.is_a?(ZiffHash)
+          h[:sleep] = last_duration if !h[:sleep]
+          h[:octave] = last_octave if !h[:octave]
+          h
+        else
+          nil
+        end
+      end
+      ZiffArray.new(new_list.compact)
     end
 
     def transform_rhythm(opts,pattern=nil)
