@@ -4,7 +4,7 @@ use_synth :piano
 
 Ziffers.debug
 
-use_bpm 80
+use_bpm 400
 
 def testzplay
 
@@ -18,7 +18,7 @@ def testzplay
   zplay "[:q 0 1 2 0:] [:q 2 3 h4:] [: [:e 4 5 4 3 q 2 0:] [:q 0 _4 h0:] :]", key: :e, scale: :major
 
   # Same using list notation
-  zplay "[: [0 1 2 0] :] [: [[2 3]4] :] [: [: [[4 5][4 3]2 0] :] [: [[0 _4] 0] :] :]", key: :e, scale: :major
+  zplay "w [: [0 1 2 0] :] [: [[2 3]4] :] [: [: [[4 5][4 3]2 0] :] [: [[0 _4] 0] :] :]", key: :e, scale: :major
 
   # row row
   zplay "q. 0 0 | q0 e1 q.2 | q2 e1 q2 e3 | h.4 | e 7 7 7 4 4 4 2 2 2 0 0 0 | q4 e3 q2 e1 | h. 0 "
@@ -39,16 +39,16 @@ end
 
 def testchords
   # Chord synth test
-  zplay "e i ii iii iv v vi vii", chord_name: "major", chord_sleep: 0.15, chord_synth: :piano
-  zplay "e i ii iii iv v vi vii", chord_name: "minor", chord_sleep: 0.15, chord_synth: :piano
-  zplay "e [: iv 0 1 2 iii 1 2 3 ii 3 2 1 i 0 1 2 :]", chord_key: :e3, key: :e3, scale: "mixolydian", chord_sleep: 0
-  zplay "e [:iv 0 1 2 iii 1 2 3 ii 3 2 1 i 0 1 2:]", chord_key: "f", key: "e", scale: "mixolydian", chord_sleep: 0
-  zplay "e [: i^major7 vi^dim ii^m7 v^dim7 :]", chord_sleep: 0.4, scale: :mixolydian
-  zplay "e vii%-1 iii vi ii%0 v%0 i%0 iv%0", chord_sleep: 0.4
-  zplay "@(e 0 1 2 1) [: i^7 :]  [: iv^dim :] "
-  zplay "@(e 0 1 e 2 1 0 1) [: i^6 :] [: iv^dim7 :]", key: :d3, scale: :mixolydian
-  zplay "@(e 4 3 2 1 0) [: ii^m7 :] [: v^add11%-2 :] [: i^maj9%1 :] vi^m9%-3 vi^m9%-2", key: :e2
-  zplay "@(q 0 012) i^7 v iv "
+  zplay "e i ii iii iv v vi vii", chord_name: "major", chord_duration: 0.15, chord_synth: :piano
+  zplay "e i ii iii iv v vi vii", chord_name: "minor", chord_duration: 0.15, chord_synth: :piano
+  zplay "[: e iv 0 1 2 iii 1 2 3 ii 3 2 1 i 0 1 2 :]", chord_key: :e3, key: :e3, scale: "mixolydian", chord_duration: 0
+  zplay "[: e iv 0 1 2 iii 1 2 3 ii 3 2 1 i 0 1 2:]", chord_key: "f", key: "e", scale: "mixolydian", chord_duration: 0
+  zplay "[: e i^major7 vi^dim ii^m7 v^dim7 :]", chord_duration: 0.4, scale: :mixolydian
+  zplay "e vii%-1 iii vi ii%0 v%0 i%0 iv%0", chord_duration: 0.4
+  zplay "([: i^7 :]  [: iv^dim :])@(e 0 1 2 1)"
+  zplay "([: i^6 :] [: iv^dim7 :])@(e 0 1 e 2 1 0 1)", key: :d3, scale: :mixolydian
+  zplay "([: ii^m7 :] [: v^add11%-2 :] [: i^maj9%1 :] vi^m9%-3 vi^m9%-2)@(e 4 3 2 1 0)", key: :e2
+  zplay "(i^7 v iv)@(q 0 012)"
 end
 
 def testcontrolchars
@@ -111,15 +111,15 @@ end
 def testsingledegrees
   (scale :gong).reflect.each do |k|
     [1,3,6].each do |d|
-      zplay d, key: 40+k, scale: :blues_minor, sleep: 0.125
+      zplay d, key: 40+k, scale: :blues_minor, duration: 0.125
     end
   end
 end
 
 def testarraydegrees
-  zplay [3,3,2,2,1,1,2,2,3,3,2,2,1,1,2,2], key: :c, scale: :chromatic, sleep: 0.125
+  zplay [3,3,2,2,1,1,2,2,3,3,2,2,1,1,2,2], key: :c, scale: :chromatic, duration: 0.125
   zplay [[0, 0.5], [0, 0.5], [0, 1], [1, 1]], scale: :aeolian
-  zplay [0,2,4,5,6,7].zip(0.1.step(2.0,0.1).to_a), sleep: 0.125
+  zplay [0,2,4,5,6,7].zip(0.1.step(2.0,0.1).to_a), duration: 0.125
 end
 
 def testlsystem
@@ -155,7 +155,7 @@ end
 def testUseChars
   zplay "q A2 X O e X X q O", use: {"X": :bd_tek, "O": :drum_snare_soft}
   zplay "q [: X O e X X q O :]", use: {"X": {note: 40, port: "loopmidi", channel: 8}, "O": {note: 30, port: "loopmidi", channel: 8}}
-  zplay "q [: O X X X X :]", use: {"X": :bd_tek, "O": {sample: :ambi_choir, rate: 0.2, sleep: 0}}
+  zplay "q [: O X X X X :]", use: {"X": :bd_tek, "O": {sample: :ambi_choir, rate: 0.2, duration: 0}}
 end
 
 def testpreparse

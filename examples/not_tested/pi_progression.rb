@@ -24,5 +24,5 @@ def pi
     end
   end
   
-  z1 pi, sleep: 0.125
+  z1 pi, duration: 0.125
   

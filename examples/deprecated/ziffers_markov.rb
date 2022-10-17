@@ -67,7 +67,7 @@ end
 n = zparse("|:q1231:|:q34h5:|@:e5654q31:|:q1_5^h1:@|")
 
 notes = zparams(n, :note)
-sleeps = zparams(n, :sleep)
+sleeps = zparams(n, :beats)
 notesAndLengths = notes.zip(sleeps)
 
 chain = markov(notesAndLengths)

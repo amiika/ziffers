@@ -8,7 +8,7 @@ n = zparse ievanpolka, key:"g", scale:"minor"
 notes = zparams(n, :note)
 pitch = zparams(n, :pitch)
 notes = [notes,pitch].transpose.map {|x| x.reduce(:+)}
-durations = zparams(n, :sleep)
+durations = zparams(n, :beats)
 
 with_synth :mod_tri do
   play_pattern_timed notes, durations, release: 0.1

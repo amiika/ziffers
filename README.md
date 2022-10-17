@@ -34,7 +34,7 @@ samples = {
   H: {sample: :drum_cymbal_closed, amp: 0.2}
 }
 
-z1 breakbeat, use: samples, sleep: 0.25
+z1 breakbeat, use: samples, duration: 0.25
 ```
 or play infinite sequences. Easy as:
 ```
@@ -68,6 +68,7 @@ Here is a cheatsheet you can copy to Sonic Pi editor:
 # Basic operations: (1 2 (3 4)+2)*2 ((1 2 3)+(0 9 13))-2 ((3 4 {10})*(2 9 3))%7
 # Product operations: (0 1 2 3)+(1 4 2 3) (0 1 2)-(0 2 1)+2
 # Euclid cycles: (q1)<6,7>(q4 (e3 e4) q2) or (q1)<6,7<(q4 q3 q2)
+# <0 1 2)<i>(-2 1)
 # List assignation: A=(0 (1,6) 3) B=(3 ? 2) B A B B A
 # Random repeat: (: 1 (2,6) 3 :4)
 # Conditionals: 1 {%<0.5?3} 3 4 (: 1 2 {%<0.2?3:2} :3)

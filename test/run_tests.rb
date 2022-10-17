@@ -43,11 +43,11 @@ def test3
   assert_equal(m3_1_s,m3_2_s)
 
   m4 = zparse "[[2 3] 0 [1 2 [2 3 [ 5 [2 3]]]]]"
-  m4_s = zparams(m4,:sleep)
-  assert_equal(m4_s,[0.16666666666666666, 0.16666666666666666, 0.3333333333333333, 0.1111111111111111, 0.1111111111111111, 0.037037037037037035, 0.037037037037037035, 0.018518518518518517, 0.009259259259259259, 0.009259259259259259])
+  m4_s = m4.durations
+  assert_equal(m4_s,[0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.027777777777777776, 0.027777777777777776, 0.009259259259259259, 0.009259259259259259, 0.004629629629629629, 0.0023148148148148147, 0.0023148148148148147])
 
   a = zparse "[:q 0 1 2 0:] [:q 2 3 h4:] [: [:e 4 5 4 3 q 2 0:] [:q 0 _4 h0:] :]"
-  b = zparse "[: [0 1 2 0] :] [: [[2 3]4] :] [: [: [[4 5][4 3]2 0] :] [: [[0 _4] 0] :] :]"
+  b = zparse "[:w [0 1 2 0] :] [:w [[2 3]4] :] [: [:w [[4 5][4 3]2 0] :] [:w [[0 _4] 0] :] :]"
   assert_equal(a.durations,b.durations)
   assert_equal(a.octaves,b.octaves)
 end
@@ -125,7 +125,7 @@ def test_chords
   tc = zparse "012 234 345 5679"
   tc_res =  [[60, 62, 64], [64, 65, 67], [65, 67, 69], [69, 71, 72, 76]]
   assert_equal(tc.notes,tc_res)
-  a = zparse "e i ii iii iv v vi vii", chord_name: "minor", chord_sleep: 0.15, chord_synth: :piano
+  a = zparse "e i ii iii iv v vi vii", chord_name: "minor", chord_duration: 0.15, chord_synth: :piano
   assert_equal(a.notes,[[60, 63, 67], [62, 65, 69], [64, 67, 71], [65, 68, 72], [67, 70, 74], [69, 72, 76], [71, 74, 78]])
   a = zparse "T43 E34 931"
   assert_equal(a.orig_pcs,[[10, 4, 3], [11, 3, 4], [9, 3, 1]])
@@ -148,7 +148,7 @@ def test_octaves
 end
 
 def test_samples
-  a = zparse "A q B e A A", A: :ambi_dark_woosh, B: :ambi_sauna
+  a = zparse "w A q B e A A", A: :ambi_dark_woosh, B: :ambi_sauna
   assert_equal(a.samples, [:ambi_dark_woosh, :ambi_sauna, :ambi_dark_woosh, :ambi_dark_woosh])
   assert_equal(a.durations, [1.0, 0.25, 0.125, 0.125])
 

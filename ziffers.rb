@@ -32,9 +32,9 @@ module Ziffers
     include Ziffers::Common
     include Ziffers::Generators
 
-    @@slice_opts_keys = [:delta_midi, :scale, :key, :synth, :amp, :sleep, :port, :channel, :vel, :vel_f, :chord_channel, :parse_cc, :cc, :value, :mapping, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :beat_stretch,:pitch_stretch, :pitch, :rpitch, :window_size, :pitch_dis, :time_dis, :run_each, :method, :beat_stretch, :pitch_stretch, :start, :finish, :onset, :split, :amp_slide, :pan_slide, :pre_amp,:on,:slice,:num_slices,:norm,:lpf,:lpf_init_level,:lpf_attack_level,:lpf_decay_level,:lpf_sustain_level,:lpf_release_level,:lpf_attack,:lpf_decay,:lpf_sustain,:lpf_release,:lpf_min,:lpf_env_curve,:hpf,:hpf_init_level,:hpf_attack_level,:hpf_decay_level,:hpf_sustain_level,:hpf_release_level,:hpf_attack,:hpf_decay,:hpf_sustain,:hpf_release,:hpf_env_curve,:hpf_max,:rpitch,:pitch,:window_size,:pitch_dis,:time_dis,:compress,:threshold,:slope_below,:slope_above,:clamp_time,:relax_time,:slide]
+    @@slice_opts_keys = [:delta_midi, :scale, :key, :synth, :amp, :beats, :duration, :port, :channel, :vel, :vel_f, :chord_channel, :parse_cc, :cc, :value, :mapping, :midi, :note, :notes, :amp, :pan, :attack, :decay, :sustain, :release, :pc, :pcs, :rate, :beat_stretch,:pitch_stretch, :pitch, :rpitch, :window_size, :pitch_dis, :time_dis, :run_each, :method, :beat_stretch, :pitch_stretch, :start, :finish, :onset, :split, :amp_slide, :pan_slide, :pre_amp,:on,:slice,:num_slices,:norm,:lpf,:lpf_init_level,:lpf_attack_level,:lpf_decay_level,:lpf_sustain_level,:lpf_release_level,:lpf_attack,:lpf_decay,:lpf_sustain,:lpf_release,:lpf_min,:lpf_env_curve,:hpf,:hpf_init_level,:hpf_attack_level,:hpf_decay_level,:hpf_sustain_level,:hpf_release_level,:hpf_attack,:hpf_decay,:hpf_sustain,:hpf_release,:hpf_env_curve,:hpf_max,:rpitch,:pitch,:window_size,:pitch_dis,:time_dis,:compress,:threshold,:slope_below,:slope_above,:clamp_time,:relax_time,:slide]
 
-    @@opts_shorthands = {:c=>:channel, :p=>:port, :k=>:key, :s=>:scale}
+    @@opts_shorthands = {:c=>:channel, :p=>:port, :k=>:key, :s=>:scale, :sleep=>:duration}
 
     def replace_shorthands opts
       @@opts_shorthands.each do |short_key,long_key|
@@ -92,8 +92,8 @@ module Ziffers
       @@set_keys
     end
 
-    def self.set_default_sleep(sleep)
-      @@default_sleep[:sleep] = sleep.to_f
+    def self.set_default_duration(duration)
+      @@default_duration[:duration] = duration.to_f
     end
 
     def self.durations
@@ -346,7 +346,7 @@ module Ziffers
       end
       melody.each_with_index do |ziff,index|
         if !ziff[:skip] and ziff[:rest]
-          sleep ziff[:sleep]
+          sleep ziff[:beats]
           next
         end
 
@@ -386,7 +386,7 @@ module Ziffers
         end
 
         if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
-          sleep ziff[:sleep]
+          sleep ziff[:beats]
           midi_pitch_bend delta_midi: 8192, **ziff.slice(:port,:channel,:vel,:vel_f) if ziff[:port] and ziff[:delta_midi] and (melody[index+1] and !melody[index+1][:delta_midi])
         end
       end
@@ -428,7 +428,7 @@ module Ziffers
             end
             arp_opts = cn.merge(arp_notes).except(:pcs, :pc)
             if ziff[:port] then
-              sustain = ziff[:chord_release] ? ziff[:chord_release] : (ziff[:sustain] ? ziff[:sustain] : ziff[:sleep])
+              sustain = ziff[:chord_release] ? ziff[:chord_release] : (ziff[:sustain] ? ziff[:sustain] : ziff[:beats])
               if arp_notes[:notes] then
                 arp_notes[:notes].each_with_index do |arp_note,i|
                   ziff[:channel] = (arp_note[:chord_channel].is_a?(Integer) ? arp_note[:chord_channel] : arp_note[:chord_channel][i]) if arp_note[:chord_channel]
@@ -444,13 +444,13 @@ module Ziffers
               arp_opts[:notes] = arp_opts[:notes].map {|h| h[:note] } if arp_opts[:notes]
               synth (ziff[:chord_synth]!=nil ? ziff[:chord_synth] : (ziff[:synth]!=nil ? ziff[:synth] : current_synth)), clean(arp_opts)
             end
-            sleep cn[:sleep]
+            sleep cn[:beats]
             midi_pitch_bend delta_midi: 8192, **cn.slice(:port,:channel,:vel,:vel_f) if cn[:delta_midi]
           end
           ## TODO: Deprecated arpeggio ends to else
         else
           if ziff[:port]
-            sustain = ziff[:chord_release] ? ziff[:chord_release] : (ziff[:sustain] ? ziff[:sustain] : ziff[:sleep])
+            sustain = ziff[:chord_release] ? ziff[:chord_release] : (ziff[:sustain] ? ziff[:sustain] : ziff[:beats])
             ziff[:hpcs].each_with_index do |pc_note,i|
               ziff[:channel] = (ziff[:chord_channel].is_a?(Integer) ? ziff[:chord_channel] : ziff[:chord_channel][i]) if ziff[:chord_channel]
               check_cc pc_note
@@ -468,7 +468,7 @@ module Ziffers
           midi_cc ziff[:parse_cc], ziff[:note], port: ziff[:port], channel: ziff[:channel]
         else
           check_cc ziff
-          sustain = ziff[:sustain] ? ziff[:sustain] : ziff[:sleep]
+          sustain = ziff[:sustain] ? ziff[:sustain]*4 : ziff[:beats]
           play_midi_out(ziff[:note], ziff.slice(:port,:channel,:vel,:vel_f,:delta_midi).merge({sustain: sustain}))
         end
       else
@@ -483,7 +483,7 @@ module Ziffers
             ziff[:pitch] = (scale 0, ziff[:scale], num_octaves: 2)[ziff[:pc]]+(ziff[:octave])*12-0.001
           end
           if ziff[:cut] then
-            ziff[:finish] = [0.0,(ziff[:sleep]/(sample_duration (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample])))*ziff[:cut],1.0].sort[1]
+            ziff[:finish] = [0.0,(ziff[:duration]/(sample_duration (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample])))*ziff[:cut],1.0].sort[1]
             ziff[:finish]=ziff[:finish]+ziff[:start] if ziff[:start]
           end
           # Normalize sample parameters
@@ -510,17 +510,17 @@ module Ziffers
         if ziff[:slide] != nil then
           first = ziff[:slide].clone
           first[:note] = first.delete(:notes)[0]
-          first[:release] = ziff[:sleep]*ziff[:slide][:notes].length
+          first[:release] = (ziff[:duration]*ziff[:slide][:notes].length)*4
           first[:note_slide] = ziff[:note_slide] ? ziff[:note_slide] : 0.9
 
           if !first[:sample]
-            c = play clean(first)
+            c = first[:synth] ? (synth first[:synth], clean(first)) : (play clean(first))
           else
             c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean_sample(ziff)
           end
 
-          slide_sleep = ziff[:sleep]/ziff[:slide][:notes].length
-          sleep slide_sleep
+          slide_beats = (ziff[:duration]/ziff[:slide][:notes].length)*4
+          sleep slide_beats
           rest = ziff[:slide][:notes]
           rest.each_with_index do |cnote,i|
              slide_ziff = ziff[:slide].clone
@@ -530,7 +530,7 @@ module Ziffers
 
               cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:pcs)
               control c, cc
-              sleep slide_sleep
+              sleep slide_beats
           end
         end
       end
@@ -1097,11 +1097,13 @@ module Ziffers
   end
 
   def note_array_to_hash(obj,opts=get_default_opts)
-    defObj = [0,opts[:sleep],opts[:key],opts[:scale],opts[:release]]
-    arrayOpts = [:note,:sleep,:key,:scale,:release]
+    defObj = [0,opts[:duration],opts[:key],opts[:scale],opts[:release]]
+    arrayOpts = [:note,:duration,:key,:scale,:release]
     obj.each_with_index { |item,index| defObj[index] = item }
     defObj[0] = get_note_from_dgr(defObj[0], defObj[2], defObj[3])
-    opts.merge(Hash[arrayOpts.zip(defObj)])
+    h = opts.merge(Hash[arrayOpts.zip(defObj)])
+    h[:beats] = h[:duration]*4
+    h
   end
 
   # TRANSFORMATIONS
@@ -1216,12 +1218,12 @@ module Ziffers
         ziff[key] = val
       end
 
-      if val.is_a?(Array) and ![:chord_channel,:harmonize,:scale,:run,:run_each,:apply,:mapping,:multi].include?(key)
-        val = val.ring[loop_i]
-        ziff[key] = val
-      elsif val.is_a? SonicPi::Core::RingVector
-        val = val[loop_i*melody_size+note_i] # This if for tweak
-        ziff[key] = val
+      if ![:chord_channel,:harmonize,:scale,:run,:run_each,:apply,:mapping,:multi].include?(key)
+        if val.is_a?(Array)
+          val = val.ring[loop_i]
+        elsif val.is_a? SonicPi::Core::RingVector
+          val = val[loop_i*melody_size+note_i] # This if for tweak
+        end
       end
 
       case key
@@ -1238,11 +1240,13 @@ module Ziffers
         end
         ziff.update_note
       when :cc, :channel, :port
-        if !ziff[key]
+          # TODO: Is this necessary? if !ziff[key]
           ziff[key] = val
+      when :chord_duration
+        if ziff[:notes]
+          ziff[:duration] = val
+          ziff[:beats] = val*4
         end
-      when :chord_sleep
-        ziff[:sleep] = val if ziff[:notes]
       when :transpose then
         ziff = ziff.transpose val
       when :inverse then
@@ -1259,11 +1263,15 @@ module Ziffers
         ziff = ziff.detune val
       when :object_transform
         ziff = send(val,ziff,loop_i,note_i,melody_size)
-      when :sleep
-        # Ignore these
+      when :duration
+        ziff[key] = val
+        ziff[:beats] = ziff[key]*4
+      when :attack, :decay, :sustain, :release, :chord_release
+        ziff[key] = (ziff[:duration]*val)*4
       else # :synth, :amp, :release, :sustain, :decay, :attack, :pan, :res, :cutoff, etc
         ziff[key] = val
       end
+
     end
     return ziff
   end

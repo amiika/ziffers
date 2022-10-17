@@ -32,8 +32,7 @@ module Ziffers
     @@default_opts = {
       :key => :c,
       :scale => :major,
-      :release => 1.0,
-      :sleep => 1.0
+      :duration => 0.25
     }
 
       @@rhythm_keys = ['e','q','q.','h','h.','w','w.','d','d.','l']

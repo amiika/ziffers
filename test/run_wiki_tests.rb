@@ -17,11 +17,11 @@ def test_melody
   assert_equal(a.durations,[0.25, 0.375, 0.375, 0.375, 0.5, 0.5])
 
   # Subdivision
-  a = zparse "[4 2 4 2] [4 5 4 2] [3 1 3 1] [3 4 3 1] [4 2 4 2] [4 5 4 2] 4 [4 3 2 1] 0"
+  a = zparse "w [4 2 4 2] [4 5 4 2] [3 1 3 1] [3 4 3 1] [4 2 4 2] [4 5 4 2] 4 [4 3 2 1] 0"
   assert_equal(a.durations,[0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 1.0, 0.25, 0.25, 0.25, 0.25, 1.0])
   a = zparse "w [1 2 3 4] h [1 2 3 4] q [1 2 3 4] w [1 2[3 4]] h [ 1 [ 2 [ 3 [ 4 ]]]]"
   assert_equal(a.durations,[0.25, 0.25, 0.25, 0.25, 0.125, 0.125, 0.125, 0.125, 0.0625, 0.0625, 0.0625, 0.0625, 0.3333333333333333, 0.3333333333333333, 0.16666666666666666, 0.16666666666666666, 0.25, 0.125, 0.0625, 0.0625])
-  
+
   # Triplets
   a = zparse "q 2 6 a 1 3 2 q 5 1 a 4 3 2"
   assert_equal(a.durations,[0.25, 0.25, 0.167, 0.167, 0.167, 0.25, 0.25, 0.167, 0.167, 0.167])
@@ -29,11 +29,13 @@ def test_melody
   assert_equal(a.durations.map{|v| v.round(3)},[0.25, 0.25, 0.167, 0.167, 0.167, 0.25, 0.25, 0.167, 0.167, 0.167])
 
   # Parameters
-  a = zparse "1 2 3", release:0.25, sleep: 0.25
+  a = zparse "1 2 3", release:0.25, duration: 0.25
   assert_equal(a.durations,[0.25,0.25,0.25])
 
-  a = zparse "1 2 3", release: [0.25,0.5].ring, sleep: [0.25,0.5].ring
+  a = zparse "1 2 3", release: [0.25,0.5].ring, duration: [0.25,0.5].ring
   assert_equal(a.durations,[0.25,0.5,0.25])
+  assert_equal(a.beats,[1.0,2.0,1.0])
+  assert_equal(a.vals(:release),[0.25,0.5,0.25])
 
   # Rests
   a = zparse "q 1 h r 2", key: :d
@@ -122,7 +124,7 @@ def test_melody
   a = zparse "q 0 3 5 K<g3> 0 3 5 "
   assert_equal(a.vals(:key),[:c, :c, :c, "g3", "g3", "g3"])
   a = zparse "q X0 123 5 3 2 X<0.5> 123 5 3 2"
-  assert_equal(a.vals(:chord_sleep),[0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5])
+  assert_equal(a.vals(:chord_duration),[0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5])
 
   # Accents or Dynamics
 
@@ -135,9 +137,9 @@ def test_melody
   # Staccato
 
   a = zparse "h 0 '0 ''0 '''0"
-  assert_equal(a.vals(:release),[1.0, 0.5, 0.3333333333333333, 0.25])
+  assert_equal(a.vals(:release),[2.0, 1.3333333333333333, 1.0, 0.8])
   a = zparse "A 'A ''A '''A", A: :ambi_choir
-  assert_equal(a.vals(:pitch_stretch),[nil, 1.0, 0.5, 0.3333333333333333])
+  assert_equal(a.vals(:pitch_stretch),[nil, 0.6666666666666666, 0.5, 0.4])
 
 
   # Slide
@@ -182,7 +184,7 @@ def test_play
 
   a = zparse 1 # Plays in :c :major
   assert_equal(a.pcs,[1])
-  a = zparse [1,2,3], key: "f", sleep: 0.25
+  a = zparse [1,2,3], key: "f", duration: 0.25
   assert_equal(a.pcs,[1,2,3])
   a = zparse "w1 h2 q3"
   assert_equal(a.pcs,[1,2,3])
@@ -212,7 +214,7 @@ def test_play
   # Parse degrees from notes
 
   a1 = zparse "[: 0.25 c d e c:][: 0.25 e f 0.5 g:] [: [:0.125 g a g f 0.25 e c:] [: 0.25 c _g 0.5 c:] :]", parsekey: :c, key: :e
-  a2 = zparse "[: [c d e c] :] [: [[e f] g] :] [: [: [[g a][g f] e c] :][: [[c _g] c] :] :]", parsekey: :c, key: :g
+  a2 = zparse "w [: [c d e c] :] [: [[e f] g] :] [: [: [[g a][g f] e c] :][: [[c _g] c] :] :]", parsekey: :c, key: :g
   assert_equal(a1.durations,a2.durations)
 
   # Sample synth
@@ -231,7 +233,7 @@ def test_play
   assert_equal(a2.vals(:char),["X", "O", "X", "X", "O", "X", "O", "X", "X", "O"])
   assert_equal(a2.samples,[:bd_tek, :drum_snare_soft, :bd_tek, :bd_tek, :drum_snare_soft, :bd_tek, :drum_snare_soft, :bd_tek, :bd_tek, :drum_snare_soft])
   assert_equal(a1.samples,a2.samples)
-  a = zparse "[: O q X X X X :2]", X: :bd_tek, O: {sample: :ambi_choir, rate: 0.3, sleep: 0}
+  a = zparse "[: O q X X X X :2]", X: :bd_tek, O: {sample: :ambi_choir, rate: 0.3, duration: 0}
   assert_equal(a.vals(:rate),[0.3, nil, nil, nil, nil, 0.3, nil, nil, nil, nil])
 
   n = {
@@ -306,7 +308,7 @@ def test_chords
   # Chords
   a = zparse "[: i vi v :]" # Play chords as a sequence using default chord length of 1
   assert_equal(a.pcs,[[0, 2, 4], [5, 0, 2], [4, 6, 1], [0, 2, 4], [5, 0, 2], [4, 6, 1]])
-  a = zparse "q [: iv 1 2 3 iii 2 3 4 ii 4 3 2 i 1 2 3 :]", chord_sleep: 0 # Play chord simultaniously with the melody using **chord_sleep**
+  a = zparse "q [: iv 1 2 3 iii 2 3 4 ii 4 3 2 i 1 2 3 :]", chord_duration: 0 # Play chord simultaniously with the melody using **chord_duration**
   assert_equal(a.pcs,[[3, 5, 0], 1, 2, 3, [2, 4, 6], 2, 3, 4, [1, 3, 5], 4, 3, 2, [0, 2, 4], 1, 2, 3, [3, 5, 0], 1, 2, 3, [2, 4, 6], 2, 3, 4, [1, 3, 5], 4, 3, 2, [0, 2, 4], 1, 2, 3])
   a = zparse "i"   # Plays trichord
   assert_equal(a.pcs,[[0, 2, 4]])
@@ -332,7 +334,7 @@ def test_chords
   assert_equal(a.pcs,[[0, 2, 4], [5, 0, 2, 4, 6, 2]])
   a = zparse "i^maj*2" # Plays chord in two octaves
   assert_equal(a.pcs,[[0, 2, 4, 0, 2, 4]])
-  a = zparse "vii%-2 iii%-1 vi%-1 ii v i%1 iv%2", chord_sleep: 0.25, key: :d, scale: :minor
+  a = zparse "vii%-2 iii%-1 vi%-1 ii v i%1 iv%2", chord_duration: 0.25, key: :d, scale: :minor
   assert_equal(a.pcs,[[1, 3, 6], [6, 2, 4], [2, 5, 0], [1, 3, 5], [4, 6, 1], [2, 4, 0], [0, 3, 5]])
 
   # Arpeggios

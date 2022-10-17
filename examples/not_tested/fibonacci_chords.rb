@@ -15,5 +15,5 @@ end
 enum = fibonacci
 
 live_loop :fibonacci_chords do
-  zplay enum.next.to_s, sleep: 0.5
+  zplay enum.next.to_s, duration: 0.5
 end

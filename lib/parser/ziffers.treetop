@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / comment / opt_list / continue / bar / relative_duration / multisleep / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / jumper / reset / skip)*
+    (s / comment / opt_list / continue / bar / relative_duration / multi_duration / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / jumper / reset / skip)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.compact
@@ -10,7 +10,7 @@ grammar Ziffers
   end
 
   rule opt_list
-    p:(escaped_opts / prefix_sleep)? '(' line ')'
+    p:(escaped_opts / prefix_duration)? '(' line ')'
     {
       def value
         list_opts = p.value if !p.empty?
@@ -20,7 +20,7 @@ grammar Ziffers
   end
 
   rule fixed_octave
-    o:([\^\_]+) (s / sleep)
+    o:([\^\_]+) (s / duration)
     {
     def value
       Thread.current[:topts][:octave] = 0 if !Thread.current[:topts][:octave]
@@ -31,7 +31,7 @@ grammar Ziffers
   end
 
   rule numeric_octave
-    '<' o:(integer) '>' (s / sleep)
+    '<' o:(integer) '>' (s / duration)
     {
       def value
         Thread.current[:topts][:octave] = o.value
@@ -51,18 +51,18 @@ grammar Ziffers
     }
   end
 
-  rule multisleep
-    sleep ![0-9a-zA-Z_\^#<]
+  rule multi_duration
+    duration ![0-9a-zA-Z_\^#<]
     {
     def value
-      Thread.current[:topts][:sleep] = sleep.value
+      Thread.current[:topts][:duration] = duration.value
       Thread.current[:topts][:relative_duration] = false if Thread.current[:topts][:relative_duration]
       nil
     end
     }
   end
 
-  rule sleep
+  rule duration
     s:(zchar / decimal) negation:('-')? d:('.')*
     {
     def value
@@ -85,7 +85,7 @@ grammar Ziffers
   end
 
   rule arpeggio
-    '@(' a:(sleep / s / chords / pitch_classes)* ')'
+    '@(' a:(duration / s / chords / pitch_classes)* ')'
     {
      def value
       #chord_list = n.elements.collect {|v| v.value }.filter_map {|v| v if v}
@@ -93,7 +93,7 @@ grammar Ziffers
       arp = a.elements.collect {|v| v.value }.filter_map do |v|
         if v then
           if v.is_a?(Float)
-              Thread.current[:topts][:sleep] = v
+              Thread.current[:topts][:duration] = v
               nil
           else
             v.merge!(Thread.current[:topts]) if v.is_a?(Hash)
@@ -123,13 +123,15 @@ grammar Ziffers
       v = {:notes=>note_list, :pcs=>pitch_class_list, :hpcs=>e, :octaves=>octave_list}
       v.merge!(Thread.current[:topts])
       v[:amp] = e[0][:amp] if e[0][:amp]
-      if Thread.current[:tchordsleep]
-        v[:sleep] = Thread.current[:tchordsleep]
+      if Thread.current[:tchordduration]
+        v[:duration] = Thread.current[:tchordduration]
       else
-        v[:sleep] = e[0][:sleep] if e[0][:sleep]
+        v[:duration] = e[0][:duration] if e[0][:duration]
       end
+      v[:beats] = v[:duration]*4.0
       v[:arpeggio] = Thread.current[:tarp] if Thread.current[:tarp]
       v = ZiffHash[v]
+      v.update_ADSR
       if !Thread.current[:tshared][:normalized]
         v = apply_transformation v, Thread.current[:tshared], 0, Thread.current[:counter]
         Thread.current[:counter] = Thread.current[:counter]+1
@@ -140,14 +142,15 @@ grammar Ziffers
   end
 
   rule call
-    prefix:(prefix_sleep)* method_call
+    prefix:(prefix_duration)* method_call
     {
       def value
         v = {method: method_call.value }.merge!(Thread.current[:topts])
         prefixes = prefix.elements.map {|v| v.value}.inject{|a,b| a.merge(b){|_,x,y| x + y}}
 
-        if prefixes
-          v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
+        if prefixes and prefixes[:duration]
+          v[:duration] = prefixes[:duration]
+          v[:beats] = v[:duration]*4.0
         end
 
         ZiffHash[v]
@@ -238,7 +241,7 @@ grammar Ziffers
   end
 
   rule pitch_classes
-    prefix:(escaped_prefix_sleep / prefix_sleep / octave / escaped_octave / add / dynamics / staccato / prefix_scale)* some_pitch_class:(normal_pitch_class / eval)
+    prefix:(escaped_prefix_duration / prefix_duration / octave / escaped_octave / add / dynamics / staccato / prefix_scale)* some_pitch_class:(normal_pitch_class / eval)
     {
       def value
         dgr = some_pitch_class.value
@@ -277,32 +280,39 @@ grammar Ziffers
         v.merge!(Thread.current[:topts]) { |key, important, default| important }
         v[:amp] = v[:amp] ? v[:amp]+(v[:amp]/2)*prefixes[:dynamics] : (prefixes[:dynamics]<0 ? 1.0/-(prefixes[:dynamics]-1) : 1.0+0.5*prefixes[:dynamics])  if prefixes[:dynamics]
 
-        v[:release] = v[:release]/(prefixes[:staccato]+1) if prefixes[:staccato]
-
-        if prefixes[:sleep]
-          v[:sleep] = prefixes[:sleep]
+        if prefixes[:duration]
+          v[:duration] = prefixes[:duration]
           v.delete(:relative_duration)
+        else
+          opt_duration = Thread.current[:topts][:duration]
+          v[:duration] = opt_duration.is_a?(Numeric) ? opt_duration : 0.25
         end
+
+        v[:release] = ((v[:duration]/(prefixes[:staccato]+2))+(v[:duration]/((prefixes[:staccato]+2))))/v[:duration] if prefixes[:staccato]
+
+        v[:beats] = v[:duration]*4.0
 
         Thread.current[:topts].delete(:relative_duration_value)
 
         v = ZiffHash[v]
+        v.update_ADSR
         if !Thread.current[:tshared][:normalized] # If directly from zparse
           v = apply_transformation v, Thread.current[:tshared], 0, Thread.current[:counter]+(Thread.current[:tshared][:loop_i] ? Thread.current[:tshared][:loop_i] : 0)
           Thread.current[:counter] = Thread.current[:counter]+1
         end
+
         v
      end
     }
   end
 
-  rule prefix_sleep
+  rule prefix_duration
     s:([mklpdcwyhnqaefsxtgujz]) d:('.')*
     {
     def value
         sum = Thread.current[:default_durs][s.text_value.to_sym]
         sum = sum * (2.0-(1.0/(2*d.text_value.length))) if !d.text_value.empty?
-        {sleep: sum}
+        {duration: sum}
      end
     }
   end
@@ -316,11 +326,11 @@ grammar Ziffers
     }
   end
 
-  rule escaped_prefix_sleep
+  rule escaped_prefix_duration
   '[' decimal ']'
   {
     def value
-      {sleep: decimal.value}
+      {duration: decimal.value}
     end
    }
   end
@@ -377,14 +387,14 @@ grammar Ziffers
         samples = elements.collect {|v| v.value }.compact
         raise "No samples or lambas defined for A-Z" if samples.length==0
         chars = samples.map {|s| s[:char]}
-        samples_hash = {samples: samples, chars: chars, sleep: samples[0][:sleep]}
+        samples_hash = {samples: samples, chars: chars, duration: samples[0][:duration], beats: samples[0][:beats] }
         ZiffHash[samples_hash]
       end
     }
   end
 
   rule use
-     prefix:(prefix_sleep / escaped_prefix_sleep / octave / add / dynamics / staccato)* u:[ABCDFGHIJKLMNOPQRSUWXYZO]
+     prefix:(prefix_duration / escaped_prefix_duration / octave / add / dynamics / staccato)* u:[ABCDFGHIJKLMNOPQRSUWXYZO]
     {
     def value
       use_list = Thread.current[:tshared][:use] if Thread.current[:tshared] and Thread.current[:tshared].has_key?(:use)
@@ -411,13 +421,19 @@ grammar Ziffers
 
           v.merge!(Thread.current[:topts]) { |key, important, default| important }
 
-          if prefixes[:sleep]
-            v[:sleep] = prefixes[:sleep]
+          if prefixes[:duration]
+            v[:duration] = prefixes[:duration]
             v.delete(:relative_duration)
+          else
+            opt_duration = Thread.current[:topts][:duration]
+            v[:duration] = opt_duration.is_a?(Numeric) ? opt_duration : 0.25
           end
 
+          v[:beats] = v[:duration]*4.0
+
           if v.has_key?(:cue)
-            v[:sleep] = 0.0
+            v[:duration] = 0.0
+            v[:beats] = 0.0
             v.delete(:relative_duration)
           end
 
@@ -433,7 +449,7 @@ grammar Ziffers
           end
 
           v[:pitch] = v[:pitch] ? v[:pitch]+Thread.current[:topts][:add] : Thread.current[:topts][:add] if prefixes[:add]
-          v[:pitch_stretch] = 1.0/prefixes[:staccato] if prefixes[:staccato]
+          v[:pitch_stretch] = ((v[:duration]/(prefixes[:staccato]+2))+(v[:duration]/((prefixes[:staccato]+2))))/v[:duration] if v[:duration] and prefixes[:staccato]
           v[:char] = u.text_value
 
           ZiffHash[v]
@@ -466,11 +482,12 @@ grammar Ziffers
   end
 
   rule rest
-  s:(sleep)? 'r'
+  s:(duration)? 'r'
   {
     def value
       v = {note: :r}
-      v[:sleep] = s.methods.include?(:value) ? s.value : Thread.current[:topts][:sleep]
+      v[:duration] = s.methods.include?(:value) ? s.value : Thread.current[:topts][:duration]
+      v[:beats] = v[:duration]*4.0
       ZiffHash[v]
    end
   }
@@ -497,8 +514,7 @@ grammar Ziffers
        'D': :decay,
        'S': :sustain,
        'R': :release,
-       'Z': :sleep,
-       'X': :chord_sleep,
+       'X': :chord_duration,
        'I': :pitch,
        'K': :key,
        'L': :scale,
@@ -524,8 +540,11 @@ end
   '~' e:( '<' v:([0-9]+ '.' [0-9]+) '>')? s? c:(chords)
     {
       def value
+      cho = ZiffHash[c.value.merge!(Thread.current[:topts])]
         v = {
-          :slide=>ZiffHash[c.value.merge!(Thread.current[:topts])]
+          :slide=>cho,
+          :duration=>cho[:duration]*cho[:pcs].length,
+          :beats=>(cho[:duration]*cho[:pcs].length)*4
         }
         v.merge!(Thread.current[:topts])
         v[:note_slide] = e.v.text_value.to_f if !e.empty?
@@ -591,7 +610,7 @@ end
        def value
           Thread.current[:topts].except!(:skip)
           Thread.current[:topts][:octave] = 0
-          Thread.current[:topts][:sleep] = Thread.current[:topts_orig][:sleep] ? Thread.current[:topts_orig][:sleep] : 1.0
+          Thread.current[:topts][:duration] = Thread.current[:topts_orig][:duration] ? Thread.current[:topts_orig][:duration] : 0.25
           Thread.current[:topts][:measure] = !Thread.current[:topts][:measure] ? 0 : Thread.current[:topts][:measure] += 1
           Thread.current[:topts][:relative_duration] = false if Thread.current[:topts][:relative_duration]
           Thread.current[:topts].delete(:relative_duration_value)

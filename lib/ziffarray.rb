@@ -54,7 +54,11 @@ module Ziffers
     end
 
     def measure_durations
-      self.measures.map {|l| l.sum {|h| h[:sleep] ? h[:sleep] : 0 }}
+      self.measures.map {|l| l.sum {|h| h[:duration] ? h[:duration] : 0 }}
+    end
+
+    def measure_beats
+      self.measures.map {|l| l.sum {|h| h[:beats] ? h[:beats] : 0 }}
     end
 
     def group_measures(i)
@@ -111,9 +115,6 @@ module Ziffers
 
     alias i inverse
 
-    def duration
-      self.durations.inject(0){|sum,x| sum+x }
-    end
 
     def samples
       self.map do |s|
@@ -463,13 +464,13 @@ module Ziffers
             if cn.is_a?(String)
               cn
             elsif cn[:hpcs]
-              arp_chord = cn[:hpcs].map{|d| h = ZiffHash[ziff[:hpcs][d[:pc]%ziff[:hpcs].length].dup] ; h = h.merge(d.slice(:prefix,:octave,:add,:amp,:sleep)) ; h.update_note ; h }
+              arp_chord = cn[:hpcs].map{|d| h = ZiffHash[ziff[:hpcs][d[:pc]%ziff[:hpcs].length].dup] ; h = h.merge(d.slice(:prefix,:octave,:add,:amp,:duration)) ; h.update_note ; h }
               ziff_dup = ziff.dup
               ziff_dup[:hpcs] = arp_chord
               ZiffHash[ziff_dup]
             else
               ziff_dup = ziff[:hpcs][cn[:pc]%ziff[:hpcs].length].dup
-              ziff_dup = ziff_dup.merge(cn.slice(:prefix,:octave,:add,:amp,:sleep))
+              ziff_dup = ziff_dup.merge(cn.slice(:prefix,:octave,:add,:amp,:duration))
               h = ZiffHash[ziff_dup]
               h.update_note
               h
@@ -490,11 +491,11 @@ module Ziffers
             if cn.is_a?(String)
               cn
             elsif cn[:hpcs]
-              new_chord = cn[:hpcs].map{|d| h = select[d[:pc]%select.length] ; h = h.merge(d.slice(:prefix,:octave,:add,:amp,:sleep)) ; h }
+              new_chord = cn[:hpcs].map{|d| h = select[d[:pc]%select.length] ; h = h.merge(d.slice(:prefix,:octave,:add,:amp,:duration)) ; h }
               ZiffHash[{hpcs: new_chord}]
             else
               ziff_dup = select[cn[:pc]%select.length].dup
-              ziff_dup = ziff_dup.merge(cn.slice(:prefix,:octave,:add,:amp,:sleep))
+              ziff_dup = ziff_dup.merge(cn.slice(:prefix,:octave,:add,:amp,:duration))
               ZiffHash[ziff_dup]
             end
           end
@@ -532,6 +533,18 @@ module Ziffers
 
     def durations
       self.map{|x,i| x.duration }
+    end
+
+    def beats
+      self.map{|x,i| x.beats }
+    end
+
+    def duration
+      self.durations.inject(0){|sum,x| sum+x }
+    end
+
+    def duration_in_beats
+      self.beats.inject(0){|sum,x| sum+x }
     end
 
     def rotate(v=1)
@@ -616,7 +629,7 @@ module Ziffers
           end
           nil
         elsif h.is_a?(ZiffHash)
-          h[:sleep] = last_duration if !h[:sleep]
+          h[:duration] = last_duration if !h[:duration]
           h[:octave] = last_octave if !h[:octave]
           h
         else

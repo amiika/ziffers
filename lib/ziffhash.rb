@@ -141,9 +141,9 @@ module Ziffers
       end
 
       def to_z
-        if self[:sleep]
-          sleep_value = @@default_durs.key(self[:sleep])
-          sleep_value = "["+self[:sleep].to_s+"]" if !sleep_value
+        if self[:duration]
+          duration_value = @@default_durs.key(self[:duration])
+          duration_value = "["+self[:duration].to_s+"]" if !duration_value
         end
         if self[:octave]
           if self[:octave].is_a?(Integer)
@@ -163,7 +163,7 @@ module Ziffers
               (self[:staccato] || "") +
               (self[:dynamics] || "") +
               (octave_value || "") +
-              ((sleep_value and !self[:hpcs] and !self[:samples]) ? sleep_value.to_s : "") +
+              ((duration_value and !self[:hpcs] and !self[:samples]) ? duration_value.to_s : "") +
               ((self[:note] and self[:note]==:r) ? "r" : "") +
               (self[:char] || "") +
               (pc || "") +
@@ -380,20 +380,31 @@ module Ziffers
       end
 
       def duration
-        self[:sleep]
+        self[:duration]
+      end
+
+      def beats
+        self[:beats]
       end
 
       def change_duration(val)
         ziff = self.deep_clone
-        ziff[:sleep] = val if val
+        ziff[:duration] = val if val
         ziff
+      end
+
+      def update_ADSR
+        [:attack,:decay,:sustain].each do |key|
+          self[key] = (self[:duration]*self[key])*4 if self[key] and self[key].is_a?(Numeric)
+        end
+        self[:release] = ((self[:release] and self[:release].is_a?(Numeric)) ? (self[:duration]*self[:release])*4 : self[:duration]*4)
       end
 
       def flex(ratio)
         ziff = self.deep_clone
-        if ziff[:sleep] then
-          ziff[:sleep] = ziff[:sleep] + ziff[:sleep]*ratio
-          set_ADSR(ziff,@@default_opts.slice(:attack,:decay,:sustain,:release))
+        if ziff[:duration] then
+          ziff[:duration] = ziff[:duration] + ziff[:duration]*ratio
+          ziff[:beats] = ziff[:duration]*4
         end
         return ziff
       end

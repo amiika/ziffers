@@ -1,13 +1,13 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / zip_ring / set / conditional_assingment / ranges / relative_duration / decimal_sleep / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multisleep / multioctave / rest /  s / bar / parens / cyclic)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / zip_ring / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens / cyclic)*
     {
       def value
         e = elements.collect {|v| v.value }.map do |v|
           if v.is_a?(Hash) then
             if v[:subset]
-              v = resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length)
+              v = resolve_subsets(v[:subset], v[:subduration]/v[:subset].length)
               v.map {|h| h.to_z }.join(" ")
             elsif v[:cycle]
               cycle = v[:cycle][(Thread.current[:tshared][:loop_i] || 0)%v[:cycle].length].to_z
@@ -15,7 +15,7 @@ grammar GenerativeSyntax
               v.to_z
             end
           elsif v.is_a?(Array)
-            v.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length).map {|h| h.to_z }.join(" ") : v.to_z) : v}
+            v.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subduration]/v[:subset].length).map {|h| h.to_z }.join(" ") : v.to_z) : v}
           else
            v.to_s
           end
@@ -26,12 +26,12 @@ grammar GenerativeSyntax
   end
 
   rule enclosed_set
-    p:(ignore_params / set_sleep) s:(set)
+    p:(ignore_params / set_duration) s:(set)
     {
       def value
         val = s.value
         if val.is_a?(Array)
-          p.value+"("+val.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length).map {|h| h.to_z }.join(" ") : v.to_z) : v}.join(" ")+")"
+          p.value+"("+val.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subduration]/v[:subset].length).map {|h| h.to_z }.join(" ") : v.to_z) : v}.join(" ")+")"
         else
           p.value+(val.is_a?(Hash) ? val.to_z : v)
         end
@@ -39,7 +39,7 @@ grammar GenerativeSyntax
     }
   end
 
-  rule set_sleep
+  rule set_duration
     [a-z]+
     {
     def value
@@ -282,7 +282,7 @@ grammar GenerativeSyntax
               vals =  onbeat_list
             else # List as ring
               vals = onbeat_list[on_i%onbeat_list.length]
-              vals[:sleep] = vals[:subsleep] if vals.kind_of?(Hash) and !vals[:sleep] and vals[:subsleep] # Set sleep to outprint
+              vals[:duration] = vals[:subduration] if vals.kind_of?(Hash) and !vals[:duration] and vals[:subduration] # Set duration to outprint
             end
             on_i+=1
             vals
@@ -293,7 +293,7 @@ grammar GenerativeSyntax
                 vals = offbeat_list
               else
                 vals = (offbeat_list[off_i%offbeat_list.length])
-                vals[:sleep] = vals[:subsleep] if vals.kind_of?(Hash) and !vals[:sleep] and vals[:subsleep]
+                vals[:duration] = vals[:subduration] if vals.kind_of?(Hash) and !vals[:duration] and vals[:subduration]
               end
             else
               vals = "r"
@@ -330,7 +330,7 @@ grammar GenerativeSyntax
     {
       def value
         Thread.current[:tshared][:use] = {} if !Thread.current[:tshared][:use]
-        Thread.current[:tshared][:use][k.text_value] = set.value.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length) : v) : v}
+        Thread.current[:tshared][:use][k.text_value] = set.value.flatten.map {|v| v.is_a?(Hash) ? (v[:subset] ? resolve_subsets(v[:subset], v[:subduration]/v[:subset].length) : v) : v}
         nil
       end
     }
@@ -350,7 +350,7 @@ grammar GenerativeSyntax
           else
             v = {char: k.text_value}
             v[:prefix] = prefixes[:prefix] if prefixes[:prefix]
-            v[:sleep] = prefixes[:sleep] if prefixes[:sleep]
+            v[:duration] = prefixes[:duration] if prefixes[:duration]
             ZiffHash[v]
           end
         end
@@ -358,14 +358,14 @@ grammar GenerativeSyntax
     end
 
   rule rest
-    s:(sleep)? 'r'
+    s:(duration)? 'r'
     {
       def value
         v = ZiffHash[{note: :r}]
         if s.methods.include?(:value)
-          v[:sleep] = s.value
+          v[:duration] = s.value
         else
-          v[:subsleep] = Thread.current[:topts][:sleep] if Thread.current[:topts][:sleep]
+          v[:subduration] = Thread.current[:topts][:duration] if Thread.current[:topts][:duration]
         end
         v
      end
@@ -394,7 +394,7 @@ grammar GenerativeSyntax
     {
       def value
         s = parens_subset.elements.collect { |v| v.value }.filter_map {|v| v if v.is_a?(Hash)}
-        {:subset=>s, :subsleep=>Thread.current[:topts][:sleep]}
+        {:subset=>s, :subduration=>Thread.current[:topts][:duration]}
       end
     }
   end
@@ -406,7 +406,7 @@ grammar GenerativeSyntax
          rep_result = []
          r = !p.text_value.empty? ? p.text_value.to_i : 2
          rep_value = l.value
-         rep_value = rep_value.map {|v| (v.is_a?(Hash) and v[:subset]) ? resolve_subsets(v[:subset], v[:subsleep]/v[:subset].length) : v }
+         rep_value = rep_value.map {|v| (v.is_a?(Hash) and v[:subset]) ? resolve_subsets(v[:subset], v[:subduration]/v[:subset].length) : v }
          r.times do |i|
           rep = rep_value.each_with_object([]) do |v,o|
             if v.is_a?(Hash) and v[:cycle]
@@ -437,7 +437,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_sleep / group / roman / cyclic / eval / pitch_classes / multisleep / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / zip_ring / set)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_duration / group / roman / cyclic / eval / pitch_classes / multi_duration / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }.compact
@@ -648,7 +648,7 @@ grammar GenerativeSyntax
           :scale=>cur_scale
         }
         v.merge!(Thread.current[:topts])
-        v[:subsleep] = Thread.current[:tchordsleep] if Thread.current[:tchordsleep]
+        v[:subduration] = Thread.current[:tchordduration] if Thread.current[:tchordduration]
         parsed_chord = ZiffHash[v]
         parsed_chord.inv_chord! inv.value if inv.methods.include?(:value)
         parsed_chord
@@ -1039,11 +1039,11 @@ end
 
         v[:prefix] = prefixes[:prefix] if prefixes[:prefix]
 
-        # Subsleep is used here to store the multisleep value. Sleep is not generally outputted to support things like [: <q;e> 0 2 :]
-        v[:subsleep] = Thread.current[:topts][:sleep] if Thread.current[:topts][:sleep]
+        # Subduration is used here to store the multi_duration value. Sleep is not generally outputted to support things like [: <q;e> 0 2 :]
+        v[:subduration] = Thread.current[:topts][:duration] if Thread.current[:topts][:duration]
 
-        if prefixes[:sleep]
-          v[:sleep] = prefixes[:sleep]
+        if prefixes[:duration]
+          v[:duration] = prefixes[:duration]
         end
         ZiffHash[v]
      end
@@ -1051,7 +1051,7 @@ end
   end
 
   rule prefix_list
-    (prefix_array / escaped_prefix_sleep / prefix_octave / prefix_sleep / octave / escaped_octave / add / dynamics / staccato / prefix_scale)*
+    (prefix_array / escaped_prefix_duration / prefix_octave / prefix_duration / octave / escaped_octave / add / dynamics / staccato / prefix_scale)*
     {
     def value
       elements.map {|v| v.value }
@@ -1082,22 +1082,22 @@ end
     }
   end
 
-  rule prefix_sleep
+  rule prefix_duration
     s:([mklpdcwyhnqaefsxtgujz]) d:('.')*
     {
     def value
         sum = Thread.current[:default_durs][s.text_value.to_sym]
         sum = sum * (2.0-(1.0/(2*d.text_value.length))) if !d.text_value.empty?
-        {sleep: sum}
+        {duration: sum}
      end
     }
   end
 
-  rule escaped_prefix_sleep
+  rule escaped_prefix_duration
   '[' decimal ']'
   {
     def value
-      {sleep: decimal.value}
+      {duration: decimal.value}
     end
    }
   end
@@ -1176,17 +1176,17 @@ end
      }
    end
 
-   rule multisleep
-     s:(sleep)
+   rule multi_duration
+     s:(duration)
      {
      def value
-       Thread.current[:topts][:sleep] = s.value
+       Thread.current[:topts][:duration] = s.value
        s.text_value
      end
      }
    end
 
-   rule sleep
+   rule duration
      s:(zchar) d:('.')*
      {
      def value
@@ -1197,11 +1197,11 @@ end
      }
    end
 
-   rule decimal_sleep
+   rule decimal_duration
      s:(decimal)
      {
      def value
-         Thread.current[:topts][:sleep] = s.value
+         Thread.current[:topts][:duration] = s.value
          s.value
       end
      }

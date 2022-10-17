@@ -28,7 +28,8 @@ module Ziffers
         if z[:subset]
           n.push(*resolve_subsets(z[:subset],divSleep/z[:subset].length))
         else
-          z[:sleep] = divSleep
+          z[:duration] = divSleep
+          z[:beats] = z[:duration]*4
           n.push(z)
         end
       end
@@ -157,28 +158,29 @@ module Ziffers
         measures = ziffers.measures
 
         measures.each do |m|
-          used = m.inject({duration: 0, count: 0}) do |sum,h|
+          used = m.inject({total_duration: 0, count: 0}) do |sum,h|
             if h[:relative_duration]
               sum[:count] = sum[:count]+1
             else
-              sum[:duration] = sum[:duration]+h[:sleep]
+              sum[:total_duration] = sum[:total_duration]+h[:duration]
             end
             sum
           end
-          duration_left = (Thread.current[:tshared][:measure_length] || 1.0)-used[:duration]
+          duration_left = (Thread.current[:tshared][:measure_length] || 1.0)-used[:total_duration]
           m.each do |h|
             if h[:relative_duration]
               if h[:relative_duration_value] and used[:count]>1
-                h[:sleep] = ([h[:relative_duration_value],1.0].min * duration_left).round(3)
-                duration_left = duration_left-h[:sleep]
+                h[:duration] = ([h[:relative_duration_value],1.0].min * duration_left).round(3)
+                duration_left = duration_left-h[:duration]
                 used[:count] = used[:count]-1
               elsif used[:count]>1
-                h[:sleep] = (sonic_random_float(0.01,duration_left,2) * duration_left).round(3)
-                duration_left = duration_left-h[:sleep]
+                h[:duration] = (sonic_random_float(0.01,duration_left,2) * duration_left).round(3)
+                duration_left = duration_left-h[:duration]
                 used[:count] = used[:count]-1
               else
-                h[:sleep] = duration_left.round(3)
+                h[:duration] = duration_left.round(3)
               end
+              h[:beats] = h[:duration]*4
             end
           end
         end
@@ -194,7 +196,7 @@ module Ziffers
       opts = opts.filter {|k,v| !v.is_a?(Proc) }
       Thread.current[:default_durs] = @@default_durs
       Thread.current[:tshared] = deep_clone(shared.except(:rules,:run,:use,:multi))
-      Thread.current[:tchordsleep] = opts[:chord_sleep]
+      Thread.current[:tchordduration] = opts[:chord_duration]
       Thread.current[:topts] = deep_clone(opts)
 
       loop_name = shared[:loop_name]
