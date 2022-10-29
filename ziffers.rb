@@ -22,7 +22,7 @@ load "~/ziffers/lib/defaults.rb"
 load "~/ziffers/lib/pc_sets.rb"
 '''
 
-print "Ziffers 2.0 beta"
+print "Ziffers 2.0"
 
 module Ziffers
 
@@ -810,7 +810,7 @@ module Ziffers
 
     # Original looper
     def zloop(name, melody, opts={}, defaults={})
-      
+
       defaults[:loop_name] = name
 
       defaults = defaults.merge(opts)

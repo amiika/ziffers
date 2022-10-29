@@ -56,7 +56,6 @@ grammar GenerativeSyntax
 
       reps = repeat_times.value if repeat_times.methods.include?(:value)
       reps = (reps and reps>1) ? reps : (repeat_two.text_value==":" ? 2 : 1)
-      zlog ""
       Thread.current[:tshared][:set_index] = (Thread.current[:tshared][:set_index] || 0) + 1
       Thread.current[:tshared][:set_repeat_index] = (Thread.current[:tshared][:set_repeat_index] || 0) + 1 if reps>1
 
@@ -414,9 +413,9 @@ grammar GenerativeSyntax
          rep_value = l.value
          rep_value = rep_value.map {|v| (v.is_a?(Hash) and v[:subset]) ? resolve_subsets(v[:subset], v[:subduration]/v[:subset].length) : v }
          r.times do |i|
-          rep = rep_value.each_with_object([]) do |v,o|
+          rep = rep_value.each_with_object([]).with_index do |(v,o),ri|
             if v.is_a?(Hash) and v[:cycle]
-              o.push(resolve_cycle(v,"R"+((Thread.current[:tshared][:repeat_cycle_index] || 0) + 1).to_s,r))
+              o.push(resolve_cycle(v,"R"+((Thread.current[:tshared][:repeat_cycle_index] || 0) + 1).to_s+"_"+ri.to_s,r))
             else
               o.push(v)
             end

@@ -63,12 +63,13 @@ Here is a cheatsheet you can copy to Sonic Pi editor:
 # Random between: (-3,6)
 # Random selections: [q 1 2, q 3 e 4 6]
 # Repeat: [: 1 (2,6) 3 :4]
-# Cycles: [: <q;e> 1  <2 3;3 5> :]
+# Repeat cycles: [: <q e> (1,4)  <(2 3) (3 (1,7))> :]
 # Lists: h 1 q(0 1 2 3) 2
+# List cycles: (: <q e> (1,4) <(2 3) (3 (1,7))> :)
 # Basic operations: (1 2 (3 4)+2)*2 ((1 2 3)+(0 9 13))-2 ((3 4 {10})*(2 9 3))%7
 # Product operations: (0 1 2 3)+(1 4 2 3) (0 1 2)-(0 2 1)+2
 # Euclid cycles: (q1)<6,7>(q4 (e3 e4) q2) or (q1)<6,7<(q4 q3 q2)
-# <0 1 2)<i>(-2 1)
+# Transformations: (0 1 2)<r> (0 1 2)<i>(-2 1) etc.
 # List assignation: A=(0 (1,6) 3) B=(3 ? 2) B A B B A
 # Random repeat: (: 1 (2,6) 3 :4)
 # Conditionals: 1 {%<0.5?3} 3 4 (: 1 2 {%<0.2?3:2} :3)
