@@ -24,13 +24,13 @@ def testzplay
   zplay "q. 0 0 | q0 e1 q.2 | q2 e1 q2 e3 | h.4 | e 7 7 7 4 4 4 2 2 2 0 0 0 | q4 e3 q2 e1 | h. 0 "
 
   # Test additions: Jericho
-  zplay "[: q 0 #-1 0 1 2 1 2 3 4 h 4 4 r <q3 h3 3 r q4 h 4 4 r ; q 2 3 h 4 3 2 1 0> :]", key: :b, scale: :minor
+  zplay "[: q 0 #-1 0 1 2 1 2 3 4 h 4 4 r <(q3 h3 3 r q4 h 4 4 r) (q 2 3 h 4 3 2 1 0)> :]", key: :b, scale: :minor
 
   # Ode to joy
-  zplay "[: q 2 2 3 4 | q 4 3 2 1 | q 0 0 1 2 <q2 1 h1 ; q1 0 h0> :] q 1 1 2 0 | q 1 e 2 3 q 2 0 | q 1 e 2 3 q 2 1| q 0 1 h _4 | q 2 2 3 4 | q 4 3 2 1| q 0 0 1 2| q 1 0 h0|"
+  zplay "[: q 2 2 3 4 | q 4 3 2 1 | q 0 0 1 2 <(q2 1 h1) (q1 0 h0)> :] q 1 1 2 0 | q 1 e 2 3 q 2 0 | q 1 e 2 3 q 2 1| q 0 1 h _4 | q 2 2 3 4 | q 4 3 2 1| q 0 0 1 2| q 1 0 h0|"
 
   # twinkle twinkle
-  zplay "q [: 0 0 4 4 5 5 h4 q 3 3 2 2 1 1 h0 < [:q4 4 3 3 2 2 h1 :] ;  > :]"
+  zplay "q [: 0 0 4 4 5 5 h4 q 3 3 2 2 1 1 h0 <(:q4 4 3 3 2 2 h1:) r> :]"
 
   # Numbered loops
   zplay "q [: 0 1 2 :] [: 5 0 5 :3] [: 0 3 :4] _2"
@@ -64,9 +64,9 @@ def testrandom
   sleep 0.5
   zplay "e (0..11)~"
   sleep 0.5
-  zplay "e ( (100,1000) :3)&"
+  zplay "e ( (100,1000) :3)<r>"
   sleep 0.5
-  zplay "e (0..2)@"
+  zplay "e (0..2)<m>"
   sleep 0.5
   zplay "e (0..6)?"
   sleep 0.5

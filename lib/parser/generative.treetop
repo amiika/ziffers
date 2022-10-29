@@ -1,16 +1,17 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / zip_ring / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens / cyclic)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / zip_ring / cyclic / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens)*
     {
       def value
-        e = elements.collect {|v| v.value }.map do |v|
+        e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
           if v.is_a?(Hash) then
             if v[:subset]
               v = resolve_subsets(v[:subset], v[:subduration]/v[:subset].length)
               v.map {|h| h.to_z }.join(" ")
             elsif v[:cycle]
-              cycle = v[:cycle][(Thread.current[:tshared][:loop_i] || 0)%v[:cycle].length].to_z
+              cycle = resolve_cycle(v, "R"+i.to_s)
+              cycle.to_z
             else
               v.to_z
             end
@@ -55,14 +56,19 @@ grammar GenerativeSyntax
 
       reps = repeat_times.value if repeat_times.methods.include?(:value)
       reps = (reps and reps>1) ? reps : (repeat_two.text_value==":" ? 2 : 1)
+      zlog ""
+      Thread.current[:tshared][:set_index] = (Thread.current[:tshared][:set_index] || 0) + 1
+      Thread.current[:tshared][:set_repeat_index] = (Thread.current[:tshared][:set_repeat_index] || 0) + 1 if reps>1
 
       set = reps.times.collect do |i|
-        original_set = content.value.flatten
 
+        original_set = content.value.flatten
         set = Marshal.load(Marshal.dump(original_set))
 
-        cycle_i = repeat_two.text_value==":" ? i : (Thread.current[:tshared][:loop_i] || 0)
-        set  = set.map {|v| v = v[:cycle][cycle_i%v[:cycle].length] if v.is_a?(Hash) and v[:cycle] ; v }.flatten.compact
+        # Resolve cycles and create loop counters for each cycle
+
+        set_id = ((Thread.current[:tshared][:set_repeat_index] || 0) > 0 ? 0 : Thread.current[:tshared][:set_index]).to_s
+        set  = set.map.with_index {|v,n| v = resolve_cycle(v, "S"+set_id+"_"+((Thread.current[:tshared][:set_cycle_index] || 0) + 1).to_s+"_"+n.to_s, reps) if v.is_a?(Hash) and v[:cycle] ; v }.flatten.compact
 
         set = ZiffArray.new(set)
 
@@ -122,8 +128,6 @@ grammar GenerativeSyntax
                         set.map  do |c|
                             c_dup = Marshal.load(Marshal.dump(c))
                             z_dup = Marshal.load(Marshal.dump(z))
-
-                            z_dup = z_dup[:cycle][i%z_dup[:cycle].length] if z_dup.is_a?(Hash) and z_dup[:cycle]
 
                             if z and c
                               if z.is_a?(Hash) and c.is_a?(Hash)
@@ -215,7 +219,9 @@ grammar GenerativeSyntax
           end
         end
         set
-      end
+      end # End repeat
+
+      Thread.current[:tshared][:set_repeat_index] = Thread.current[:tshared][:set_repeat_index]-1 if Thread.current[:tshared][:set_repeat_index] and reps>1
 
       scale_prefix = set_scale.value if set_scale.methods.include?(:value)
       if scale_prefix
@@ -373,7 +379,7 @@ grammar GenerativeSyntax
   end
 
   rule operation
-    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)?
+    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)
     {
     def operator
       op.text_value
@@ -403,14 +409,14 @@ grammar GenerativeSyntax
    '[:' l:(set_items) ':' p:([0-9])* ']'
     {
        def value
-         rep_result = []
+         rep_result = ["|"]
          r = !p.text_value.empty? ? p.text_value.to_i : 2
          rep_value = l.value
          rep_value = rep_value.map {|v| (v.is_a?(Hash) and v[:subset]) ? resolve_subsets(v[:subset], v[:subduration]/v[:subset].length) : v }
          r.times do |i|
           rep = rep_value.each_with_object([]) do |v,o|
             if v.is_a?(Hash) and v[:cycle]
-              o.push(v[:cycle][i%v[:cycle].length])
+              o.push(resolve_cycle(v,"R"+((Thread.current[:tshared][:repeat_cycle_index] || 0) + 1).to_s,r))
             else
               o.push(v)
             end
@@ -445,6 +451,15 @@ grammar GenerativeSyntax
     }
   end
 
+  rule cyclic_items
+    (ignore / ranges / use / control / escaped_multi_octave / decimal_duration / group / roman / cyclic / eval / pitch_classes / multi_duration / multioctave / rest / array / random_between / conditional_assingment / parens / bar / euclid / zip_ring / set)*
+    {
+    def value
+      elements.map {|v| v.value }.compact
+    end
+    }
+  end
+
   rule parens_subset
     (ignore / use / control / ranges / escaped_multi_octave / group / roman / eval / pitch_classes / multioctave / rest / s / random_between / parens)*
     {
@@ -455,17 +470,13 @@ grammar GenerativeSyntax
   end
 
   rule cyclic
-  '<' first:(set_items) following:(';' i:set_items)+ '>'
+  '<' ' '* first:(cyclic_items) following:(' ' i:cyclic_items)+ ' '* '>'
     {
     def value
-      if following.empty?
-        {:cycle=>first.value}
-      else
         r = following.elements.map {|v| v.i.value }
         r.prepend(first.value)
         r = r.compact
         {:cycle=>r}
-      end
     end
     }
   end
@@ -796,23 +807,19 @@ grammar GenerativeSyntax
     {
       def value
       val = v.value
-      val = val[:cycle][(Thread.current[:tshared][:loop_i] || 0)%val[:cycle].length] if val.is_a?(Hash) and val[:cycle]
+      val = resolve_cycle(val,"M"+((Thread.current[:tshared][:min_max_cycle_index] || 0) + 1).to_s) if val.is_a?(Hash) and val[:cycle]
       val
       end
     }
   end
 
   rule cyclic_min_max
-  '<' first:(min_max) following:(';' i:min_max)+ '>'
+  '<' first:(min_max) following:(' ' i:min_max)+ '>'
     {
     def value
-      if following.empty?
-        {:cycle=>first.value}
-      else
         r = following.elements.map {|v| v.i.value }
         r.prepend(first.value)
         {:cycle=>r}
-      end
     end
     }
   end

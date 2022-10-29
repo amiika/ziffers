@@ -183,7 +183,7 @@ def test_effects
     O: { sample: :drum_cymbal_open, amp: ->(){rrand 0.5, 2.0}}
   }
 
-  a = zparse "[: h [KH H] [SH H] [KH KH] <[SH H];[SH K]> :]", use: m
+  a = zparse "[: h [KH H] [SH H] [KH KH] <[SH H] [SH K]> :]", use: m
 
   # Running with effects
   a = zparse "|h 1 2 3 4 | 4 3 2 1|", run: [

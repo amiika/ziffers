@@ -180,7 +180,17 @@ module Ziffers
             gen = defaults[:gen] ? defaults[:gen] : 1
             n = lsystem(n,opts,defaults,gen,nil)[gen-1]
           end
-          n = parse_generative n, opts, defaults
+
+          loop_name = shared[:loop_name]
+          if loop_name
+            # Store generative options back to loop opts. Used currently only by cycle indexes.
+            n = parse_generative n, opts, defaults, true
+            $zloop_states[loop_name][:defaults][:cycle_counters] = n[1][:cycle_counters] if n[1][:cycle_counters]
+            n = n[0]
+          else
+            n = parse_generative n, opts, defaults
+          end
+
           print "G: "+n if @@debug
         end
 
@@ -800,7 +810,7 @@ module Ziffers
 
     # Original looper
     def zloop(name, melody, opts={}, defaults={})
-
+      
       defaults[:loop_name] = name
 
       defaults = defaults.merge(opts)

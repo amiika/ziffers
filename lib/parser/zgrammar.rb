@@ -36,6 +36,36 @@ module Ziffers
       new_list
     end
 
+    def resolve_cycle(item, index, repeats=0)
+      if item.is_a?(Hash) && item[:cycle]
+        index = [index] if !index.is_a?(Array) # Turn first level index to array to form index for all levels
+        index_sym = index.join.to_sym
+        cycle_opts = repeats<2 ? (:cycle_counters) : (:local_counters)
+        if !Thread.current[:tshared][cycle_opts]
+          Thread.current[:tshared][cycle_opts] = {}
+          Thread.current[:tshared][cycle_opts][index_sym] = 0
+        elsif !Thread.current[:tshared][cycle_opts][index_sym]
+          Thread.current[:tshared][cycle_opts][index_sym] = 0
+        else
+          Thread.current[:tshared][cycle_opts][index_sym] += 1
+        end
+        loop_i =  Thread.current[:tshared][cycle_opts][index_sym]
+        itm_index = loop_i%item[:cycle].length
+        item = item[:cycle][itm_index]
+        if item.is_a?(Array)
+          item = item.map do |h|
+            (h.is_a?(Hash) && h[:cycle]) ? resolve_cycle(h, index.push(itm_index), repeats) : h
+          end
+          item = ZiffArray.new(item.flatten)
+        end
+      elsif item.is_a?(Hash) && item[:subset]
+        item = resolve_subsets(item[:subset], item[:subduration]/item[:subset].length)
+      else
+        item = item.is_a?(Array) ? ZiffArray.new(item.flatten) : item
+      end
+      item
+    end
+
     def sonic_random(min,max)
       return min if min == max
       range = (min - max).abs
@@ -191,7 +221,7 @@ module Ziffers
       apply_array_transformations ziffers, opts, shared
     end
 
-    def parse_generative(text, opts={}, shared={})
+    def parse_generative(text, opts={}, shared={}, return_shared_opts=false)
       shared = shared.filter {|k,v| !v.is_a?(Proc) }
       opts = opts.filter {|k,v| !v.is_a?(Proc) }
       Thread.current[:default_durs] = @@default_durs
@@ -220,7 +250,7 @@ module Ziffers
         zlog shared
         raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason)
       end
-      result.value
+      return_shared_opts ? [result.value,Thread.current[:tshared]] : result.value
     end
 
     def parse_failure(text)
