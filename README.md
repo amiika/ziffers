@@ -40,7 +40,11 @@ or play infinite sequences. Easy as:
 ```
 zplay pi, rhythm: "q q h q q h h q ee h q ee"
 ```
-or create lists and do list operations using randomization and crazy recursive notation:
+or simple [aleatoric](https://en.wikipedia.org/wiki/Aleatoric_music) melodies:
+```
+z1 "[0,3,5] 4 (1,3) (4,6) 2 e <3 0 (2,4)> (5,7)", scale: :ahirbhairav, key: :e, synth: :piano, attack: 0.25
+```
+or go crazy and create lists and do list operations using transformations and nested notation:
 ```
 z1 "q (0 1 (3,7) 3)~<*>(4 [6,4,[5,4,2,7]] (0,(5,8)) (1,6))", synth: :kalimba
 ```
@@ -66,6 +70,7 @@ Here is a cheatsheet you can copy to Sonic Pi editor:
 # Repeat cycles: [: <q e> (1,4)  <(2 3) (3 (1,7))> :]
 # Lists: h 1 q(0 1 2 3) 2
 # List cycles: (: <q e> (1,4) <(2 3) (3 (1,7))> :)
+# Loop cycles (for zloop or z0-z9): <0 <1 <2 <3 <4 5>>>>>
 # Basic operations: (1 2 (3 4)+2)*2 ((1 2 3)+(0 9 13))-2 ((3 4 {10})*(2 9 3))%7
 # Product operations: (0 1 2 3)+(1 4 2 3) (0 1 2)-(0 2 1)+2
 # Euclid cycles: (q1)<6,7>(q4 (e3 e4) q2) or (q1)<6,7<(q4 q3 q2)

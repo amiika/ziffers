@@ -386,6 +386,28 @@ def test_random_chord_names
 
 end
 
+def test_cycles
+  a = zparse "[: <2 3> <4 5> :]"
+  b = zparse "(: <2 3> <4 5> :)"
+  assert_equal(a.pcs,[2,4,3,5])
+  assert_equal(a,b)
+
+  a = zparse "(: <1 <2 <3 <4 <5 6>>>>> :32)"
+  assert_equal(a.pcs.length,32)
+  assert_equal(a.pcs,[1,2,1,3,1,2,1,4,1,2,1,3,1,2,1,5,1,2,1,3,1,2,1,4,1,2,1,3,1,2,1,6])
+
+  a = zparse "[: <q e> <4 5> :]"
+  b = zparse "(: <q e> <4 5> :)"
+  assert_equal(a.durations,[0.25,0.125])
+  assert_equal(a,b)
+
+  a = zparse "[: <q e> 2 (<3 4 5>) :3]"
+  assert_equal(a.pcs,[2,3,2,3,2,3]) # Cycles do not mix. Feature. Not a bug.
+
+  a = zparse "(: <q e> 2 (<3 4 5>) :3)"
+  assert_equal(a.pcs,[2,3,2,4,2,5])
+end
+
 
 
 print "Testing ..."
@@ -406,5 +428,6 @@ test_conditionals
 test_random_chords
 test_random_chord_names
 test_transforms
+test_cycles
 
 print "All tests passed!"

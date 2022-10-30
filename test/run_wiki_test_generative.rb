@@ -301,16 +301,20 @@ def test_transformations
   a = zparse "q 0 2 1 4"
   assert_equal(a.pcs,[0,2,1,4])
   b = a.inverse
+  assert_equal(a.durations,b.durations)
   assert_equal(b.pcs,[0, 5, 6, 3])
   c = a.retrograde
   assert_equal(c.pcs,[4,1,2,0])
+  assert_equal(a.durations,c.durations)
   d = a.inverse.retrograde
   assert_equal(d.pcs,[3, 6, 5, 0])
+  assert_equal(a.durations,d.durations)
   e = a.transpose -3
   assert_equal(e.pcs,[4, 6, 5, 1])
   f = a.retrograde 0,2
   assert_equal(f.pcs,[4, 1, 2, 0])
   g = a.rotate 2
+  assert_equal(a.durations,g.durations)
   assert_equal(g.pcs,[1, 4, 0, 2])
   h = a.swap 3
   assert_equal(h.pcs,[4, 2, 1, 0])

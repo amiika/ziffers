@@ -111,6 +111,19 @@ def test_melody
     "[: q 4 e4 e4 3 2 | q 1 -1 -1 1 | <(q 3 e3 e3 2 1 | q 2 0 0 2) (q 3 e3 e3 2 1 | q 2 0 h0)> :]", key: :g, scale: :minor
   assert_equal(a.measures.length,16)
 
+  a = zparse "[: 1 <2 3 4 5 6 7> :7]"
+  assert_equal(a.pcs,[1,2,1,3,1,4,1,5,1,6,1,0,1,2])
+
+  a = zparse "[: 1 <2 3 4 5 6 7> :7]"
+  assert_equal(a.pcs,[1,2,1,3,1,4,1,5,1,6,1,0,1,2])
+
+  a = zparse "[: 0 2 <1 3 <4 7>> :6]" # Cycles with normal repeat
+  b = zparse "(: 0 2 <1 3 <4 7>> :6)" # Cycles with generative repeat
+  assert_equal(a.pcs,b.pcs)
+
+  a = zparse "(: 3 <3 6> 7 <2 1> 4 <3 <5 (e 4 3)>> :4)"
+  assert_equal(a.pcs,[3, 3, 0, 2, 4, 3, 3, 6, 0, 1, 4, 5, 3, 3, 0, 2, 4, 3, 3, 6, 0, 1, 4, 4, 3])
+
   # Control characters
 
   a = zparse "q P1 0 1 2 P-1 0 3 4"

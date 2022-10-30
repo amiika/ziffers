@@ -11,6 +11,10 @@ module Ziffers
       @@default_opts
     end
 
+    def get_default(key)
+      @@default_opts[key]
+    end
+
     def list_dur_chars
       @@default_durs.to_a
     end

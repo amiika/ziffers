@@ -618,7 +618,7 @@ module Ziffers
     end
 
     def resolve_strings
-      last_duration = 1.0
+      last_duration = get_default(:duration)
       last_octave = 0
       new_list = self.flatten.compact.map do |h|
         if h.is_a?(String)

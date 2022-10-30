@@ -78,10 +78,12 @@ grammar GenerativeSyntax
           if method_call[1]
             if method_call[1].is_a?(ZiffArray)
               pcs = method_call[1].flatten.map {|h| h.is_a?(ZiffHash) ? h[:pc] : nil }.compact
-              param = pcs[(Thread.current[:tshared][:loop_i] || 0)%pcs.length]
-              # Exception for list methods
-              param = method_call[1].resolve_strings if ["fuse"].include?(method_call[0]) and !param.is_a?(ZiffArray)
-              set = resolved_set.method(method_call[0]).(param)
+              if ["fuse"].include?(method_call[0]) # Exception for list methods
+                param = method_call[1].resolve_strings
+                set = resolved_set.method(method_call[0]).(param)
+              else
+                set = pcs.map {|pc| resolved_set.method(method_call[0]).(pc) }
+              end
             else
               set = resolved_set.method(method_call[0]).(*method_call[1])
             end
