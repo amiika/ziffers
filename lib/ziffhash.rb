@@ -34,6 +34,23 @@ module Ziffers
         self[:notes] || [self[:note]]
       end
 
+      def notes_from_pcs
+        if self[:hpcs]
+          self[:hpcs].map {|h| get_note_from_dgr h[:pc], h[:key], h[:scale], (h[:octave] || 0), (h[:add] || 0) }
+        else
+          get_note_from_dgr self[:pc], self[:key], self[:scale], (h[:octave] || 0), (h[:add] || 0)
+        end
+      end
+
+      def multiply_chord_octaves!(oct)
+        if self[:hpcs]
+          dup = 1.upto(oct-1).collect do |i|
+            self[:hpcs].map {|h| h = h.dup ; h[:octave] = (h[:octave] || 0)+i ; h }
+          end
+          self[:hpcs] = self[:hpcs]+dup.flatten
+        end
+      end
+
       # Chord inversion
       def inv_chord!(val)
         (val.abs).times do |i|
@@ -41,6 +58,7 @@ module Ziffers
           arr[i%self[:hpcs].length][:octave] = 0 if !arr[i%self[:hpcs].length][:octave]
           arr[i%self[:hpcs].length][:octave] += (val<0 ? -1 : 1)
         end
+        # NOTE: Rotate orders by note value ... but in some cases root order is assumed. Could be changed here by commenting out next line.
         self[:hpcs] = self[:hpcs].rotate(val)
         self.update_note
       end
@@ -267,13 +285,15 @@ module Ziffers
       # Update pcs based on note values
       def update_pcs
         if self[:pc]
-          self[:pc] = midi_to_pc(self[:note],self[:key],self[:scale])
+          new_ziff = midi_to_pc(self[:note],self[:key],self[:scale])
+          self[:pc] = new_ziff[:pc]
+          self[:add] = new_ziff[:add]
         elsif self[:hpcs]
           new_pcs = []
           self[:hpcs].each do |d|
             new_pcs << midi_to_pc(d[:note],d[:key],d[:scale])
           end
-          self[:hpcs]= new_pcs
+          self[:hpcs] = new_pcs
           self[:pcs] = new_pcs.map {|h| h[:pc] }
         end
       end

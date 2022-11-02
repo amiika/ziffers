@@ -242,11 +242,9 @@ def test_generative
   assert_equal(a.durations,[0.25,0.25,0.125,0.125])
 
   a = zparse "e ( 10..15+2 )", parse_cc: 20
-  print a.notes
   assert_equal(a.notes, [10,12,14])
 
   a = zparse "e ( 2..4*2 )", parse_cc: 20
-  print a.pcs
   assert_equal(a.notes, [2,4,6,8])
 
   # Tired of fixing these. For some reason Sonic Pi opens these in different encoding
@@ -255,19 +253,15 @@ def test_generative
   #  assert_equal(a.notes, [40,40,40,40,40,40])
 
   a = zparse "0..5"
-  print a.pcs
   assert_equal(a.orig_pcs,[0,1,2,3,4,5])
 
   a = zparse "5..0"
-  print a.pcs
   assert_equal(a.orig_pcs,[5,4,3,2,1,0])
 
   a = zparse "0..5+2"
-  print a.pcs
   assert_equal(a.orig_pcs,[0,2,4])
 
   a = zparse "5..0+2"
-  print a.pcs
   assert_equal(a.orig_pcs,[4,2,0])
 
   a = zparse "5..0*2"

@@ -207,5 +207,35 @@ def cardinal_move(move)
   mapping[move]
 end
 
+# Voice leading from: https://gist.github.com/xavriley/1ea12a3d319dfcf86152
+
+# squish things into a single octave for comparison
+# between chords and sort from lowest to highest
+def octave_transform(input_chord, root)
+  input_chord.map {|x| root + (x%12) }.sort
+end
+
+# get the distances between the notes
+def t_matrix(chord_a, chord_b)
+  root = chord_a.first
+  z = octave_transform(chord_a, root).zip(octave_transform(chord_b, root))
+  z.map {|a,b| b - a }
+end
+
+def voice_lead(chord_a, chord_b)
+  # get mapping of notes in chord a
+  # to the sorted version of the chord a
+  root = chord_a.first
+
+  a_leadings = chord_a.map {|x|
+    [x, octave_transform(chord_a, root).index(root + (x%12))]
+  }
+  t_matrix = t_matrix(chord_a, chord_b)
+  b_voicing = a_leadings.map {|x,y|
+    x + t_matrix[y] if t_matrix[y] # Bad fix for chords of different sizes
+  }
+  b_voicing.compact
+end
+
 end
 end

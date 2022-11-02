@@ -281,33 +281,34 @@ grammar GenerativeSyntax
           offbeat_list = opt.offbeat.value.compact if !opt.offbeat.empty? and opt.offbeat.methods.include?(:value)
           offbeat_list = offbeat_list.select {|h| h.kind_of?(Hash) || h.kind_of?(Array)  } if lb.text_value=='>' # If as ring
         end
+        cycle_id = "E"+((Thread.current[:tshared][:euclid_cycle_index] || 0) + 1).to_s
         result = bin_euclid(s.value,e.value)
-        .map do |n|
+        .map.with_index do |n,ei|
           if n==1 # On beat
-            onbeat_list = onbeat.value.compact if onrand.text_value=='~'
             if rb.text_value==')>' # List as whole
               vals =  onbeat_list
             else # List as ring
               vals = onbeat_list[on_i%onbeat_list.length]
-              vals[:duration] = vals[:subduration] if vals.kind_of?(Hash) and !vals[:duration] and vals[:subduration] # Set duration to outprint
-            end
+              vals = resolve_cycle(vals,cycle_id+"O"+(onrand.text_value=='~' ? (on_i%onbeat_list.length).to_s : ei.to_s)) if vals.is_a?(Hash) && vals[:cycle]
+              end
             on_i+=1
-            vals
+            onbeat_list = onbeat.value.compact if onrand.text_value=='~'
           else # Off beat
             if offbeat_list
-              offbeat_list = opt.offbeat.value.compact if offrand.text_value=='~' # Rerandomize
               if lb.text_value=='<'
                 vals = offbeat_list
               else
                 vals = (offbeat_list[off_i%offbeat_list.length])
-                vals[:duration] = vals[:subduration] if vals.kind_of?(Hash) and !vals[:duration] and vals[:subduration]
+                vals = resolve_cycle(vals,cycle_id+"F"+(offrand.text_value=='~' ? (off_i%offbeat_list.length).to_s : ei.to_s)) if vals.is_a?(Hash) && vals[:cycle]
               end
             else
               vals = "r"
             end
             off_i+=1
-            vals
+            offbeat_list = opt.offbeat.value.compact if offrand.text_value=='~' # Rerandomize
           end
+          #vals[:duration] = vals[:subduration] if vals.kind_of?(Hash) and !vals[:duration] and vals[:subduration]
+          vals
         end
         (!r.empty? and r.methods.include?(:value)) ? result.rotate(-r.value) : result
       end
@@ -641,14 +642,13 @@ grammar GenerativeSyntax
         if name
           root = degree roman, Thread.current[:topts][:key], cur_scale
           shift = note_info(Thread.current[:topts][:key]).midi_note-60
-          notes = chord(root, name, {num_octaves: !oct.text_value.empty? ? oct.text_value.to_i : 1}).notes
+          notes = chord(root, name).notes
           pcs = notes.map {|n| h = midi_to_pc(n-shift,Thread.current[:topts][:key], cur_scale); h[:prefix] = "<"+mode.text_value+">" if !mode.empty?; h }
           pcs
         else # TODO: This is not working for some scales ... but not really sure if this is even fixable.
           pc_scale = (scale 0, cur_scale, num_octaves: 7).notes.to_a
           trichords = (Scale.from_roman(roman)-1).step(pc_scale.size-1,2).map {|i| pc_scale[i]} # Select every 2nd
           take_notes = (rd.methods.include?(:value) ? rd.value : 3)
-          take_notes = take_notes * oct.text_value.to_i if !oct.text_value.empty?
           chrom_pcs = trichords.take(take_notes)
           pcs = chrom_pcs.map {|idx| pc_scale.index(idx) }
           pcs = pcs.map {|p| h = get_ziff(p,Thread.current[:topts][:key], cur_scale); h[:prefix] = "<"+mode.text_value+">" if !mode.empty?; h }
@@ -663,6 +663,7 @@ grammar GenerativeSyntax
         v[:subduration] = Thread.current[:tchordduration] if Thread.current[:tchordduration]
         parsed_chord = ZiffHash[v]
         parsed_chord.inv_chord! inv.value if inv.methods.include?(:value)
+        parsed_chord.multiply_chord_octaves!(oct.text_value.to_i) if !oct.text_value.empty?
         parsed_chord
       end
     }
@@ -1047,6 +1048,8 @@ end
 
         v[:prefix] = prefixes[:prefix] if prefixes[:prefix]
 
+        v[:add] = prefixes[:add] if prefixes[:add]
+
         # Subduration is used here to store the multi_duration value. Sleep is not generally outputted to support things like [: <q;e> 0 2 :]
         v[:subduration] = Thread.current[:topts][:duration] if Thread.current[:topts][:duration]
 
@@ -1153,7 +1156,7 @@ end
     ('#' / 'b')
     {
       def value
-        {prefix: text_value}
+        {add: text_value=='#' ? 1 : -1}
       end
     }
   end

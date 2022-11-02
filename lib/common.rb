@@ -7,8 +7,8 @@ module Ziffers
         @@degree_based = degrees
       end
 
-    def get_note_from_dgr(dgr, zkey, zscale,oct=0)
-      ziff = get_ziff(dgr,zkey,zscale,oct)
+    def get_note_from_dgr(dgr, zkey, zscale, oct=0, add=0)
+      ziff = get_ziff(dgr,zkey,zscale,oct,add)
       ziff[:note]
     end
 

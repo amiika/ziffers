@@ -660,5 +660,32 @@ module Ziffers
       pattern
     end
 
+    def filter_chords
+      self.filter {|h| h[:hpcs] }
+    end
+
+    def notes_from_pcs
+      self.map {|h| h.notes_from_pcs }
+    end
+
+    def voice_leading
+      self.map.with_index do |h,i|
+        if h[:hpcs]
+          if i>0
+            new_notes = voice_lead(self[i-1].notes_from_pcs,h.notes_from_pcs)
+            new_notes.map.with_index {|v,i| h[:hpcs][i][:note] = v}
+            h.update_pcs
+            h
+          else
+            h
+          end
+        else
+          h
+        end
+      end
+    end
+
+    alias v voice_leading
+
   end
 end
