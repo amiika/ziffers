@@ -165,10 +165,12 @@ module Ziffers
 
           if defaults[:use]
             defaults[:use].each do |key,val|
-              if (val.is_a? String) or (val.is_a? Integer) or (val.is_a?(Array) and (val[0].is_a?(Integer) or val[0].is_a?(String))) then
+              if (val.is_a? String) or (val.is_a?(Array) and (val[0].is_a?(Integer) or val[0].is_a?(String))) then
                 val = val[defaults[:loop_i]%val.length] if val.is_a?(Array)
-                n = n.gsub key.to_s, val.is_a?(Integer) ? "{#{val.to_s}}" : val
+                n = n.gsub key.to_s, val
                 defaults[:use].delete(:key)
+              elsif val.is_a? Integer
+                defaults[:use][key] = {note: val}
               end
             end
           end
@@ -196,7 +198,7 @@ module Ziffers
 
         n = defaults[:parse_chords] ? n.to_s : n.to_s.split("").join(" ") if n.is_a?(Integer)
 
-        n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9][0-9])/) {|m| "#{$1}{#{$2}}" } if defaults[:midi] or defaults[:parse_cc] # Hack for midi
+        n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9]+)/) {|m| "#{$1}{#{$2}}" } if defaults[:midi] or defaults[:parse_cc] # Hack for midi
 
         parsed = parse_ziffers(n, opts, defaults)
         print "P: "+parsed.to_z if @@debug

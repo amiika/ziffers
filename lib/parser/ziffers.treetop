@@ -384,11 +384,17 @@ grammar Ziffers
     use 2..
       {
       def value
-        samples = elements.collect {|v| v.value }.compact
-        raise "No samples or lambas defined for A-Z" if samples.length==0
-        chars = samples.map {|s| s[:char]}
-        samples_hash = {samples: samples, chars: chars, duration: samples[0][:duration], beats: samples[0][:beats] }
-        ZiffHash[samples_hash]
+        items = elements.collect {|v| v.value }.compact
+        raise "No samples or lambas defined for A-Z" if items.length==0
+        chars = items.map {|s| s[:char]}
+        samplelist = items.filter {|h| h[:sample]}
+        notelist = items.filter {|h| h[:note]}
+        if samplelist.length>0 # TODO: How about both. Not supported at the moment.
+          hash = {samples: samplelist, chars: chars, duration: samplelist[0][:duration], beats: samplelist[0][:beats] }
+        else
+          hash = {hpcs: notelist, chars: chars, duration: notelist[0][:duration], beats: notelist[0][:beats], notes: notelist.map{|h| h[:note]}}
+        end
+        ZiffHash[hash]
       end
     }
   end
