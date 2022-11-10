@@ -344,6 +344,14 @@ def test_transformations
 
 end
 
+def test_euclid
+  2.upto(32) do |n|
+      1.upto(n) do |i|
+        assert_equal(spread(i,n).map{|v| v ? 1 : 0},euclidean_morrill(i,n))
+      end
+  end
+end
+
 test_generative
 test_effects
 test_rules

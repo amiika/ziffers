@@ -54,13 +54,13 @@ def test_melody
   assert_equal(a.octaves,[0, 0, 0, 1, 3, 3, 2, 2, 2, 0, 0, 0])
   a = zparse "q 0 _4 0 ^1 _1^3__2" # Change octave for single notes only
   assert_equal(a.octaves,[0, -1, 0, 1, [-1,1,-2]])
-  a = zparse "q 0 <-1> 0 2 <0> 0 1" # Change octave explicitly to certain value for all following notes
+  a = zparse "q 0 [-1] 0 2 [0] 0 1" # Change octave explicitly to certain value for all following notes
   assert_equal(a.octaves,[0, -1, -1, 0, 0])
   a = zparse "_A A ^A", A: :ambi_choir # Change pitch of the sample
   assert_equal(a.pitches, [-12.0, nil, 12.0])
   a = zparse "q 1 2 ^ 3 4 ^ 0 ^ 4 3 ___ 2 1", octave: -1 # Staff octave is set to -1
   assert_equal(a.octaves,[-1, -1, 0, 0, 1, 2, 2, -1, -1])
-  a = zparse "1 1__3^3 1<3>3<1>3" # Both syntaxes can be used with chords
+  a = zparse "1 1__3^3 1[3]3[1]3" # Both syntaxes can be used with chords
   assert_equal(a.octaves,[0, [0, -2, 1], [0, 3, 1]])
   a = zparse "|q _ 0 1 | 0 1 |" # Octaves (and durations) are reseted in each measure
   assert_equal(a.octaves,[-1, -1, 0, 0])
@@ -132,8 +132,8 @@ def test_melody
   assert_equal(a.vals(:amp),[0.1, 0.1, 0.1, 2.0, 2.0, 2.0])
   a = zparse "q B<0.1> 0 1 2 B<2.0> 0 1 2"
   assert_equal(a.vals(:attack),[0.1, 0.1, 0.1, 2.0, 2.0, 2.0])
-  a = zparse "q 0 3 5 L<minor> 0 3 5 "
-  assert_equal(a.vals(:scale),[:major, :major, :major, "minor", "minor", "minor"])
+  a = zparse "q 0 3 5 [minor] 0 3 5 "
+  assert_equal(a.vals(:scale),[:major, :major, :major, :minor, :minor, :minor])
   a = zparse "q 0 3 5 K<g3> 0 3 5 "
   assert_equal(a.vals(:key),[:c, :c, :c, "g3", "g3", "g3"])
   a = zparse "q X0 123 5 3 2 X<0.5> 123 5 3 2"
@@ -296,9 +296,9 @@ def test_rhythm
   assert_equal(a.durations,[0.125,0.125,0.25,0.125])
   a = zparse "1 2 3", rhythm: {0=>0.35,1=>"q",2=>"h",3=>"q",4=>"e",5=>"e",6=>"q",7=>"q",8=>"e"}
   assert_equal(a.durations,[0.25, 0.5, 0.25])
-  a = zparse "1 2 3", rhythm: {hex: 0x0F }
+  a = zparse "1 2 3", rhythm: {binary: 0x0F }
   assert_equal(a.durations,[0.25, 0.25, 0.25])
-  a = zparse"0 1 2 3 4 5", rhythm: {hex: 0x1234 }
+  a = zparse"0 1 2 3 4 5", rhythm: {binary: 0x1234 }
   assert_equal(a.durations,[0.23076923076923078, 0.3076923076923077, 0.07692307692307693, 0.15384615384615385, 0.23076923076923078, 0.23076923076923078])
 
   # TODO: Tests for schillinger
@@ -311,10 +311,16 @@ def test_rhythm
   assert_equal(a.vals(:char),["X", nil, "S", nil])
   a = zparse "q (X S)<3,6,1>", X: :bd_haus, S: :drum_snare_soft
   assert_equal(a.vals(:char),[nil, "X", nil, "S", nil, "X"])
-  a = zparse "q (X S)<5,8>(H Z)", X: :bd_haus, S: :drum_snare_soft, H: :drum_cymbal_closed
-  assert_equal(a.vals(:char),["X", "H", "S", "X", "S", "X", "H"])
+  a = zparse "q (X S)<5,8>(H Z)", X: :bd_haus, S: :drum_snare_soft, H: :drum_cymbal_closed, Z: :drum_cymbal_open
+  assert_equal(a.vals(:char),["X", "H", "S", "Z", "X", "S", "H", "X"])
   a = zparse "((e 1 3) (e 5 2))<5,7>(q6 q5)"
-  assert_equal(a.pcs,[1, 3, 6, 5, 2, 1, 3, 5, 2, 5, 1, 3])
+  assert_equal(a.pcs,[1, 3, 6, 5, 2, 1, 3, 5, 5, 2, 1, 3])
+  a = zparse "(0 1 2)<1,5>(3 4 5)"
+  assert_equal(a.pcs,[0,3,4,5,3])
+  a = zparse "(0 1 2)<2,5>(3 4 5)"
+  assert_equal(a.pcs,[0,3,4,1,5])
+  a = zparse "(0 1 2)<2,5>(<3 4> 5)"
+  assert_equal(a.pcs,[0,3,5,1,4])
 end
 
 test_melody

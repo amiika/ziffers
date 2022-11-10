@@ -53,12 +53,12 @@ module Ziffers
 
       # Chord inversion
       def inv_chord!(val)
+        arr = val<0 ? self[:hpcs].reverse : self[:hpcs]
         (val.abs).times do |i|
-          arr = val<0 ? self[:hpcs].reverse : self[:hpcs]
           arr[i%self[:hpcs].length][:octave] = 0 if !arr[i%self[:hpcs].length][:octave]
           arr[i%self[:hpcs].length][:octave] += (val<0 ? -1 : 1)
         end
-        # NOTE: Rotate orders by note value ... but in some cases root order is assumed. Could be changed here by commenting out next line.
+        # NOTE: Rotate orders by note value ... but in some cases root order is assumed.
         self[:hpcs] = self[:hpcs].rotate(val)
         self.update_note
       end
@@ -407,13 +407,15 @@ module Ziffers
         self[:beats]
       end
 
-      def change_duration(val)
+      def clone_and_update_duration(val)
         ziff = self.deep_clone
         ziff[:duration] = val if val
+        ziff[:beats] = ziff[:duration]*4
+        ziff.update_ADSR!
         ziff
       end
 
-      def update_ADSR
+      def update_ADSR!
         [:attack,:decay,:sustain].each do |key|
           self[key] = (self[:duration]*self[key])*4 if self[key] and self[key].is_a?(Numeric)
         end

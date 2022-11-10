@@ -1,10 +1,15 @@
 module Ziffers
   module Defaults
 
-    def int_to_length(val)
-      # 0.125, 0.25, 0.375, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0
-      k = @@rhythm_keys[val%@@rhythm_keys.length]
-      @@default_durs[k.to_sym]
+    def int_to_length(val,map=nil)
+      if map
+        map[val%map.length]
+      else
+        # ['e','q','q.','h','h.','w','w.','d','d.','l']
+        # 0.125, 0.25, 0.375, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0
+        k = @@rhythm_keys[val%@@rhythm_keys.length]
+        @@default_durs[k.to_sym]
+      end
     end
 
     def get_default_opts

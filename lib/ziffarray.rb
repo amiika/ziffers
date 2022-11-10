@@ -554,55 +554,48 @@ module Ziffers
     alias rot rotate
 
     def merge_lengths(arr, loop_n=0)
-      ZiffArray.new(self.map.with_index{|x,i| x.change_duration arr[(i+loop_n)%arr.length]})
+      ZiffArray.new(self.map.with_index{|x,i| x.clone_and_update_duration(arr[(i+loop_n)%arr.length]) })
     end
 
-    def schillinger(opts)
-      if opts[:third] and opts[:major] and opts[:minor]
-        if opts[:complementary]
-         resultant = complementary(opts[:major], opts[:minor], opts[:third])
-        else
-          resultant = generator(opts[:major], opts[:minor], opts[:third])
-        end
-      elsif opts[:major] and opts[:minor]
-        if opts[:secondary]
-          resultant = secondary(opts[:major], opts[:minor])
-        else
-          resultant = generator(opts[:major],opts[:minor])
-        end
-      end
-      ints_to_lengths resultant
-    end
-
-    def modify_rhythm(val, loop_n=0)
+    def modify_rhythm(val, loop_n=0, rhythm_map=nil)
       new_arr = self.deep_clone
-      val = val.ring if val.is_a?(Array) and !!val[0] == val[0] # Boolean array to ring
-      if val.is_a?(Array)
+      val = val.() if val.is_a? Proc
+      if val.is_a?(Array) and (!val.union([true,false]).difference([true,false]).any? or !val.union([1,0]).difference([1,0]).any?)
+        pattern = parse_binary(val, 1.0, rhythm_map) # If boolean or bool as int array
+      elsif val.is_a?(Array)
         pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
       elsif val.is_a?(SonicPi::Core::RingVector)
-        if (!!val[0] == val[0])
-        seq_length = val.length.to_f
-        pattern = bools_to_seq(val).map {|v| v / seq_length }
-      else
-        pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
-      end
-      elsif val.is_a?(Integer)
-        pattern = ints_to_lengths(val.to_s.split("").map{|v| v.to_i})
-      elsif val.is_a?(Hash)
-        # TODO: Create more elegant functions for hex etc.
-        numbers = val.slice(0,1,2,3,4,5,6,7,8,9,10,11)
-        if val[:hex]
-          bools = val[:hex].to_s(2).split("").map{|b| b=="1" ? true : false }.flatten
-          seq_length = bools.length.to_f
-          pattern = bools_to_seq(bools).map {|v| v / seq_length }
+        if !val.to_a.union([true,false]).difference([true,false]).any? or !val.to_a.union([1,0]).difference([1,0]).any?
+          pattern = parse_binary(val, 1.0, rhythm_map) # If boolean ring
+        else
+          pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
         end
-        pattern = map_pcs_to_durations(numbers) if numbers and numbers.size>0
-        pattern = schillinger(val) if val[:minor] and val[:major]
-        pattern = val[:pattern] if val[:pattern]
+      elsif val.is_a?(Integer)
+        pattern = ints_to_lengths(val.to_s.split("").map{|v| v.to_i}, rhythm_map)
+      elsif val.is_a?(Hash)
+        rhythm_map = val[:durs] if val[:durs]
+        numbers = val.slice(0,1,2,3,4,5,6,7,8,9,10,11)
+        if numbers and numbers.size>0
+          pattern = map_pcs_to_durations(numbers)
+        elsif val[:binary]
+          val[:binary] = val[:binary].() if val[:binary].is_a? Proc
+          pattern = parse_binary(val[:binary], (val[:ratio] ? val[:ratio] : 1.0), rhythm_map)
+        elsif val[:minor] and val[:major]
+          pattern = schillinger(val, rhythm_map)
+        elsif val[:pattern]
+          pattern = val[:pattern]
+        end
         pattern = transform_rhythm val, pattern
       elsif val.is_a?(String)
-        #.bytes.map {|v| v.to_s(2).split("").map{|b| b=="1" ? true : false } }.flatten
-        pattern = val.delete(" \t\r\n").split("").reduce([]) { |acc,c| (@@default_durs.keys.include? c.to_sym) ? acc << @@default_durs[c.to_sym] : acc }
+        pattern = val.split(val.include?(" ") ? /[\s\t\r\n]/ : "").map  do |ch|
+          if (@@default_durs.keys.include? ch.to_sym)
+            @@default_durs[ch.to_sym] # Map chars to default lengths
+          elsif ch.match(/^(\d)+$/)
+            int_to_length(ch.to_i) # Map ints to default lengths
+          else
+            get_default(:duration)
+          end
+        end
       end
       new_arr = new_arr.merge_lengths(pattern, loop_n)
       new_arr
@@ -640,11 +633,13 @@ module Ziffers
     end
 
     def transform_rhythm(opts,pattern=nil)
-      pattern = self.durations if !pattern
+      if !pattern
+        pattern = self.durations
+      else
+        pattern = ZiffArray.new(pattern) if pattern.is_a?(Array)
+      end
       opts.each do |key,val|
         case key
-        when :retrograde then
-           pattern = pattern.retrograde val
         when :swap then
           pattern = pattern.swap *val
         when :rotate then
@@ -686,6 +681,7 @@ module Ziffers
     end
 
     alias v voice_leading
+    alias lead voice_leading
 
   end
 end

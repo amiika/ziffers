@@ -129,19 +129,6 @@ module Ziffers
       nArr
     end
 
-    def bin_euclid(pulse,step)
-      ratio = 1.0*step/pulse
-      rhythm = Array.new(step,0);
-      index = 0
-      pulse.times do
-        rhythm[index.to_i] = 1
-        index += ratio
-      end
-      # In Sonic Pi's spread algorithm booleans seem to rotated if there are consecutive true values
-      rhythm = (rhythm[0]==1 and rhythm[1]==1) ? rhythm.rotate(-2) : rhythm
-      return rhythm
-    end
-
     def deep_clone(h)
       Marshal.load(Marshal.dump(h))
     end
@@ -225,7 +212,7 @@ module Ziffers
       shared = shared.filter {|k,v| !v.is_a?(Proc) }
       opts = opts.filter {|k,v| !v.is_a?(Proc) }
       Thread.current[:default_durs] = @@default_durs
-      Thread.current[:tshared] = deep_clone(shared.except(:rules,:run,:use,:multi))
+      Thread.current[:tshared] = deep_clone(shared.except(:rules,:run,:use,:multi,:rhythm))
       Thread.current[:tchordduration] = opts[:chord_duration]
       Thread.current[:topts] = deep_clone(opts)
 

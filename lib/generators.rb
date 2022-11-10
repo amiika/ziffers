@@ -9,8 +9,8 @@ module Ziffers
   module Generators
     include Ziffers::Defaults
 
-  def ints_to_lengths(val)
-    val.map {|n| int_to_length(n) }
+  def ints_to_lengths(val,map=nil)
+    val.map {|n| int_to_length(n,map) }
   end
 
   # Creates tone matrix from the given row. Given row should be in a prime form and contain only unique integers
@@ -36,8 +36,27 @@ module Ziffers
     prime_rows.reverse.transpose
   end
 
-  # Schillinger resultants
 
+  # Schillinger rhythm generator
+
+  def schillinger(opts,map=nil)
+    if opts[:third] and opts[:major] and opts[:minor]
+      if opts[:complementary]
+       resultant = complementary(opts[:major], opts[:minor], opts[:third])
+      else
+        resultant = generator(opts[:major], opts[:minor], opts[:third])
+      end
+    elsif opts[:major] and opts[:minor]
+      if opts[:secondary]
+        resultant = secondary(opts[:major], opts[:minor])
+      else
+        resultant = generator(opts[:major],opts[:minor])
+      end
+    end
+    ints_to_lengths resultant, map
+  end
+
+  # Schillinger resultants
   def resultants(major,minor,secondary=false)
     result = secondary ? secondary(major, minor) : generator(major,minor)
     ints_to_lengths(result)
@@ -54,10 +73,21 @@ module Ziffers
     counter = 0
     resultant = 1.upto(cp).collect do |i|
       counter+=1
-      s_counter+=1
       if ((i % major==0) || (i % minor==0) || (third && (i % third==0)))
-        s_start+=1
-        s_counter = 0 if s_start==2
+        duration = counter
+        counter = 0
+        duration
+      end
+    end
+    resultant.compact
+  end
+
+  def complementary(major,minor,third)
+    cp = major*minor*third
+    counter = 0
+    resultant = 1.upto(cp).collect do |i|
+      counter+=1
+      if (i%(major*minor)===0 || i%(major*third)===0 || i%(minor*third)===0)
         duration = counter
         counter = 0
         duration
@@ -85,26 +115,26 @@ module Ziffers
   end
 
 
-  def complementary(major,minor,third)
-    cp = major*minor*third
-    counter = 0
-    resultant = 1.upto(cp).collect do |i|
-      counter+=1
-      if (i%(major*minor)===0 || i%(major*third)===0 || i%(minor*third)===0)
-        duration = counter
-        counter = 0
-        duration
-      end
-    end
-    resultant.compact
+
+  def starts_descent(list, index)
+    length = list.length
+    next_index = (index + 1) % length
+    list[index] > list[next_index] ? 1 : 0
   end
 
- # Euclidean generators (Spread to integers)
+  # Morrills Euclidean algorithm
+  #https://arxiv.org/pdf/2206.12421.pdf
+  def euclidean_morrill(pulses, length)
+    return Array.new(length,1) if pulses>=length
+    res_list = -1.upto(length-1).collect {|t| pulses * t % length }
+    length.times.collect {|index| starts_descent(res_list, index) }
+  end
 
-  def bools_to_seq(arr)
+ # Turns binary/boolean sequence to intervals
+  def bools_to_intervals(arr)
     last = 0
     l = arr.each_with_index.inject([]) do |a,(j,i)|
-      if j
+      if j==true or j==1
         a.push(1)
         last+=1 if i>0
       else
@@ -115,22 +145,25 @@ module Ziffers
     l
   end
 
-  def spreader(r, l=1.0)
-    i = 0
-    arr = []
-    r.each_with_index.map do |x,j|
-      i+=1  if x and j>0
-      if !arr[i]
-        arr.push(l/r.length)
-      else
-        arr[i]+=l/r.length
-      end
+  def bools_to_durations(arr, default_dur=1.0, rhythm_map=nil)
+    intervals = bools_to_intervals(arr)
+    if rhythm_map
+      ints_to_lengths(intervals, rhythm_map)
+    else
+      intervals.map {|v| v / (arr.length / default_dur)}
     end
-    arr
   end
 
-  def bin_lengths val
-    spreader(val.to_s(2).split("").map{|b| b=="1" ? true : false }.flatten)
+  def parse_binary(val, default_dur=1.0, rhythm_map=nil)
+    if val.is_a?(Integer)
+      bools_to_durations(val.to_s(2).split("").map{|b| b=="1" ? true : false }.flatten, default_dur, rhythm_map)
+    elsif val.is_a?(String)
+      bools_to_durations(val.bytes.map {|v| v.to_s(2).split("").map{|b| b=="1" ? true : false } }.flatten, default_dur, rhythm_map)
+    elsif val.is_a?(Array) or val.is_a?(SonicPi::Core::RingVector)
+      bools_to_durations(val,default_dur,rhythm_map)
+    else
+      raise "Not that shit!"
+    end
   end
 
   # Slonimsky scales: https://slonimsky.netlify.app/

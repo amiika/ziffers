@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / comment / opt_list / continue / bar / relative_duration / multi_duration / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / jumper / reset / skip)*
+    (s / comment / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / jumper / reset / skip)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.compact
@@ -31,7 +31,7 @@ grammar Ziffers
   end
 
   rule numeric_octave
-    '<' o:(integer) '>' (s / duration)
+    '[' o:(integer) ']' (s / duration)
     {
       def value
         Thread.current[:topts][:octave] = o.value
@@ -131,7 +131,7 @@ grammar Ziffers
       v[:beats] = v[:duration]*4.0
       v[:arpeggio] = Thread.current[:tarp] if Thread.current[:tarp]
       v = ZiffHash[v]
-      v.update_ADSR
+      v.update_ADSR!
       if !Thread.current[:tshared][:normalized]
         v = apply_transformation v, Thread.current[:tshared], 0, Thread.current[:counter]
         Thread.current[:counter] = Thread.current[:counter]+1
@@ -208,29 +208,6 @@ grammar Ziffers
     }
   end
 
-  rule parameter_list
-    '<' first:(parameter) rest:(',' i:parameter)* '>'
-    {
-    def value
-      if rest.empty?
-        first.value
-      else
-        r = rest.elements.map {|v| v.i.value }
-        r = [first.value]+r
-      end
-    end
-    }
-  end
-
-  rule parameter
-    p:(decimal / integer)
-    {
-      def value
-        p.value
-      end
-    }
-  end
-
   rule normal_pitch_class
     d:('-'? [0-9TE])
     {
@@ -295,7 +272,7 @@ grammar Ziffers
         Thread.current[:topts].delete(:relative_duration_value)
 
         v = ZiffHash[v]
-        v.update_ADSR
+        v.update_ADSR!
         if !Thread.current[:tshared][:normalized] # If directly from zparse
           v = apply_transformation v, Thread.current[:tshared], 0, Thread.current[:counter]+(Thread.current[:tshared][:loop_i] ? Thread.current[:tshared][:loop_i] : 0)
           Thread.current[:counter] = Thread.current[:counter]+1
@@ -318,7 +295,7 @@ grammar Ziffers
   end
 
   rule prefix_scale
-    '<' e:([a-z]+) '>'
+    '[' e:([a-z]+) ']'
     {
       def value
           {prefix_scale: e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym}
@@ -335,6 +312,17 @@ grammar Ziffers
    }
   end
 
+  rule multi_scale
+    '[' e:([a-z]+) ']' s
+    {
+      def value
+          val = e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym
+          Thread.current[:topts][:scale] = val
+          nil
+      end
+    }
+  end
+
   rule octave
     ('^' / '_')
     {
@@ -345,7 +333,7 @@ grammar Ziffers
   end
 
   rule escaped_octave
-    '<' o:(integer) '>'
+    '[' o:(integer) ']'
     {
       def value
         {fixed_octave: o.value}
@@ -510,7 +498,7 @@ grammar Ziffers
   end
 
   rule control
-   d:([ABCDFGHIJKLMNOPQRSUWXYZ]) c:(integer / escaped_decimal / escaped_text)
+   d:([ABCDFGHIJKMNOPQRSUWXY]) c:(integer / escaped_decimal / escaped_text)
    {
      def value
      control_chars = {

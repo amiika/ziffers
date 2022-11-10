@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / repeat / euclid / zip_ring / cyclic / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / escaped_multi_scale / repeat / euclid / zip_ring / cyclic / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
@@ -282,10 +282,10 @@ grammar GenerativeSyntax
           offbeat_list = offbeat_list.select {|h| h.kind_of?(Hash) || h.kind_of?(Array)  }
         end
         cycle_id = "E"+((Thread.current[:tshared][:euclid_cycle_index] || 0) + 1).to_s
-        result = bin_euclid(s.value,e.value)
+        result = euclidean_morrill(s.value,e.value)
         .map.with_index do |n,ei|
           if n==1 # On beat
-            vals = onbeat_list[on_i%onbeat_list.length]
+            vals = resolve_cycle({cycle: onbeat_list},cycle_id+"OR")
             if rb.text_value==')>' # No randomization & cycles per run
               vals = resolve_cycle(vals,cycle_id+"O"+ei.to_s) if vals.is_a?(Hash) && vals[:cycle]
             else # List as ring with randomize
@@ -295,7 +295,7 @@ grammar GenerativeSyntax
             on_i+=1
           else # Off beat
             if offbeat_list
-              vals = (offbeat_list[off_i%offbeat_list.length])
+              vals = resolve_cycle({cycle: offbeat_list},cycle_id+"FR")
               if lb.text_value=='<' # No randomization & cycles per run
                 vals = resolve_cycle(vals,cycle_id+"F"+ei.to_s) if vals.is_a?(Hash) && vals[:cycle]
               else # List as ring with randomize
@@ -1071,7 +1071,7 @@ end
   end
 
   rule prefix_scale
-    '<' ([a-z])+ '>'
+    '[' ([a-z])+ ']'
     {
       def value
           {prefix: text_value}
@@ -1135,7 +1135,7 @@ end
   end
 
   rule escaped_octave
-    '<' o:(integer) '>'
+    '[' o:(integer) ']'
     {
       def value
         {prefix: text_value}
@@ -1144,7 +1144,16 @@ end
   end
 
   rule escaped_multi_octave
-    o:('<' integer '>') s
+    o:('[' integer ']') s
+    {
+      def value
+        o.text_value
+      end
+    }
+  end
+
+  rule escaped_multi_scale
+    o:('[' [a-z]+ ']') s
     {
       def value
         o.text_value

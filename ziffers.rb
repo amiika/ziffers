@@ -1196,7 +1196,7 @@ module Ziffers
       when :order_transform
         melody = send(val, melody, loop_i+(loop_i*melody.length))
       when :rhythm
-        melody = melody.modify_rhythm val, loop_i+(loop_i*melody.length)
+        melody = melody.modify_rhythm(val, ((defaults[:phase_rhythm]==nil || defaults[:phase_rhythm])  ? loop_i : 0), defaults[:durs])
       end
     end
     return melody
