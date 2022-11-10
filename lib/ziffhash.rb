@@ -161,7 +161,7 @@ module Ziffers
       def to_z
         if self[:duration]
           duration_value = @@default_durs.key(self[:duration])
-          duration_value = "["+self[:duration].to_s+"]" if !duration_value
+          duration_value = "<"+self[:duration].to_s+">" if !duration_value
         end
         if self[:octave]
           if self[:octave].is_a?(Integer)

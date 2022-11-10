@@ -281,7 +281,8 @@ grammar GenerativeSyntax
           offbeat_list = opt.offbeat.value.compact if !opt.offbeat.empty? and opt.offbeat.methods.include?(:value)
           offbeat_list = offbeat_list.select {|h| h.kind_of?(Hash) || h.kind_of?(Array)  }
         end
-        cycle_id = "E"+((Thread.current[:tshared][:euclid_cycle_index] || 0) + 1).to_s
+        Thread.current[:tshared][:euclid_cycle_index] = (Thread.current[:tshared][:euclid_cycle_index] || 0) + 1
+        cycle_id = "E"+Thread.current[:tshared][:euclid_cycle_index].to_s
         result = euclidean_morrill(s.value,e.value)
         .map.with_index do |n,ei|
           if n==1 # On beat
@@ -307,7 +308,6 @@ grammar GenerativeSyntax
               vals = "r"
             end
           end
-          #vals[:duration] = vals[:subduration] if vals.kind_of?(Hash) and !vals[:duration] and vals[:subduration]
           vals
         end
         (!r.empty? and r.methods.include?(:value)) ? result.rotate(-r.value) : result
@@ -808,8 +808,9 @@ grammar GenerativeSyntax
     v:(integer / integer_array / random_between / cyclic_min_max)
     {
       def value
+      Thread.current[:tshared][:min_max_cycle_index] = (Thread.current[:tshared][:min_max_cycle_index] || 0) + 1
       val = v.value
-      val = resolve_cycle(val,"M"+((Thread.current[:tshared][:min_max_cycle_index] || 0) + 1).to_s) if val.is_a?(Hash) and val[:cycle]
+      val = resolve_cycle(val,"M"+Thread.current[:tshared][:min_max_cycle_index].to_s) if val.is_a?(Hash) and val[:cycle]
       val
       end
     }
@@ -1071,7 +1072,7 @@ end
   end
 
   rule prefix_scale
-    '[' ([a-z])+ ']'
+    '<' ([a-z])+ '>'
     {
       def value
           {prefix: text_value}
@@ -1105,7 +1106,7 @@ end
   end
 
   rule escaped_prefix_duration
-  '[' decimal ']'
+  '<' decimal '>'
   {
     def value
       {duration: decimal.value}
@@ -1135,7 +1136,7 @@ end
   end
 
   rule escaped_octave
-    '[' o:(integer) ']'
+    '<' o:(integer) '>'
     {
       def value
         {prefix: text_value}
@@ -1144,7 +1145,7 @@ end
   end
 
   rule escaped_multi_octave
-    o:('[' integer ']') s
+    o:('<' integer '>') s
     {
       def value
         o.text_value
@@ -1153,7 +1154,7 @@ end
   end
 
   rule escaped_multi_scale
-    o:('[' [a-z]+ ']') s
+    o:('<' [a-z]+ '>') s
     {
       def value
         o.text_value

@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / comment / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / jumper / reset / skip)*
+    (s / comment / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / reset / skip)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.compact
@@ -31,7 +31,7 @@ grammar Ziffers
   end
 
   rule numeric_octave
-    '[' o:(integer) ']' (s / duration)
+    '<' o:(integer) '>' (s / duration)
     {
       def value
         Thread.current[:topts][:octave] = o.value
@@ -295,7 +295,7 @@ grammar Ziffers
   end
 
   rule prefix_scale
-    '[' e:([a-z]+) ']'
+    '<' e:([a-z]+) '>'
     {
       def value
           {prefix_scale: e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym}
@@ -304,7 +304,7 @@ grammar Ziffers
   end
 
   rule escaped_prefix_duration
-  '[' decimal ']'
+  '<' decimal '>'
   {
     def value
       {duration: decimal.value}
@@ -313,7 +313,7 @@ grammar Ziffers
   end
 
   rule multi_scale
-    '[' e:([a-z]+) ']' s
+    '<' e:([a-z]+) '>' s
     {
       def value
           val = e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym
@@ -333,7 +333,7 @@ grammar Ziffers
   end
 
   rule escaped_octave
-    '[' o:(integer) ']'
+    '<' o:(integer) '>'
     {
       def value
         {fixed_octave: o.value}
@@ -461,18 +461,6 @@ grammar Ziffers
         eval(e.text_value)
       end
     }
-  end
-
-  rule jumper
-  ('[DC]' / '[DCF]' / '[F]' / '[S]' / '[DS]' / '[DSF]')
-  {
-    def value
-      # TODO: Not implemented
-      {
-        :jumper=>text_value
-      }
-    end
-  }
   end
 
   rule rest

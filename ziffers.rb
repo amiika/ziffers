@@ -196,7 +196,13 @@ module Ziffers
           print "G: "+n if @@debug
         end
 
-        n = defaults[:parse_chords] ? n.to_s : n.to_s.split("").join(" ") if n.is_a?(Integer)
+        if n.is_a?(Integer)
+          if defaults[:parse_chords]
+            n = n.to_s
+          else
+            n = (n<0 ? "-"+n.to_s[1..].split("").join(" -") : n.to_s.split("").join(" "))
+          end
+        end
 
         n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9]+)/) {|m| "#{$1}{#{$2}}" } if defaults[:midi] or defaults[:parse_cc] # Hack for midi
 

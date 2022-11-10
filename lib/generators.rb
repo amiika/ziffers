@@ -114,20 +114,18 @@ module Ziffers
     resultant.compact
   end
 
-
-
-  def starts_descent(list, index)
-    length = list.length
-    next_index = (index + 1) % length
-    list[index] > list[next_index] ? 1 : 0
-  end
-
   # Morrills Euclidean algorithm
   #https://arxiv.org/pdf/2206.12421.pdf
   def euclidean_morrill(pulses, length)
     return Array.new(length,1) if pulses>=length
     res_list = -1.upto(length-1).collect {|t| pulses * t % length }
     length.times.collect {|index| starts_descent(res_list, index) }
+  end
+
+  def starts_descent(list, index)
+    length = list.length
+    next_index = (index + 1) % length
+    list[index] > list[next_index] ? 1 : 0
   end
 
  # Turns binary/boolean sequence to intervals

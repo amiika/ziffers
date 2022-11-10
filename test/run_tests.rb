@@ -22,7 +22,7 @@ def test2
 
   # Test loops and octaves etc.
 
-  m2 = zparse("[:q _ 0 1 [-1] 2 [0]0:][: _ q 2 3 h4:][:[: _ e 4 5 4 3 q 2 0:][: _ q 0 _4 h0:]:]", key: :e, scale: :major)
+  m2 = zparse("[:q _ 0 1 <-1> 2 <0>0:][: _ q 2 3 h4:][:[: _ e 4 5 4 3 q 2 0:][: _ q 0 _4 h0:]:]", key: :e, scale: :major)
   print m2
   m2_s = m2.durations
   m2_n = m2.notes
@@ -136,13 +136,13 @@ def test_octaves
   t_o.octaves
   assert_equal(t_o.octaves,[0,1,1,0,-1])
 
-  to2 = zparse "0 [1] 2 [-2] 2 [3]1"
+  to2 = zparse "0 <1> 2 <-2> 2 <3>1"
   assert_equal(to2.octaves,[0, 1, -2, 3])
 
   a = zparse "_q1 0 2 3"
   assert_equal(a.octaves,[-1,0,0,0])
 
-  a = zparse "[-2] 0 2 ^3"
+  a = zparse "<-2> 0 2 ^3"
   assert_equal(a.octaves,[-2,-2,-1])
 
 end
@@ -303,7 +303,7 @@ def test_conditionals
   a = zparse "(1 2 r 3 4){2x}"
   assert_equal(a.pcs,[2, 4, nil, 6, 1])
 
-  a = zparse "(1 2 [-2] 3 4){2x}"
+  a = zparse "(1 2 <-2> 3 4){2x}"
   assert_equal(a.octaves,[0,0,-2,-1])
 
   a = zparse "((1 2 3)+(2 3 4)){x<3?x:x*3}"
@@ -326,10 +326,10 @@ def test_conditionals
   end
 
   with_random_seed 23532 do
-    a = zparse "1 {%>0.4?2} [2] 3"
+    a = zparse "1 {%>0.4?2} <2> 3"
     assert_equal(a.pcs,[1,3])
     assert_equal(a.octaves,[0,2])
-    a = zparse "1 {%>0.05?2} [2] 3"
+    a = zparse "1 {%>0.05?2} <2> 3"
     assert_equal(a.pcs,[1,2,3])
     assert_equal(a.octaves,[0,0,2])
     a = zparse "q (0..10){x%(2,4)==0?x-(1,3):x+(1,3)}"

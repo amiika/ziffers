@@ -54,13 +54,13 @@ def test_melody
   assert_equal(a.octaves,[0, 0, 0, 1, 3, 3, 2, 2, 2, 0, 0, 0])
   a = zparse "q 0 _4 0 ^1 _1^3__2" # Change octave for single notes only
   assert_equal(a.octaves,[0, -1, 0, 1, [-1,1,-2]])
-  a = zparse "q 0 [-1] 0 2 [0] 0 1" # Change octave explicitly to certain value for all following notes
+  a = zparse "q 0 <-1> 0 2 <0> 0 1" # Change octave explicitly to certain value for all following notes
   assert_equal(a.octaves,[0, -1, -1, 0, 0])
   a = zparse "_A A ^A", A: :ambi_choir # Change pitch of the sample
   assert_equal(a.pitches, [-12.0, nil, 12.0])
   a = zparse "q 1 2 ^ 3 4 ^ 0 ^ 4 3 ___ 2 1", octave: -1 # Staff octave is set to -1
   assert_equal(a.octaves,[-1, -1, 0, 0, 1, 2, 2, -1, -1])
-  a = zparse "1 1__3^3 1[3]3[1]3" # Both syntaxes can be used with chords
+  a = zparse "1 1__3^3 1<3>3<1>3" # Both syntaxes can be used with chords
   assert_equal(a.octaves,[0, [0, -2, 1], [0, 3, 1]])
   a = zparse "|q _ 0 1 | 0 1 |" # Octaves (and durations) are reseted in each measure
   assert_equal(a.octaves,[-1, -1, 0, 0])
@@ -132,7 +132,7 @@ def test_melody
   assert_equal(a.vals(:amp),[0.1, 0.1, 0.1, 2.0, 2.0, 2.0])
   a = zparse "q B<0.1> 0 1 2 B<2.0> 0 1 2"
   assert_equal(a.vals(:attack),[0.1, 0.1, 0.1, 2.0, 2.0, 2.0])
-  a = zparse "q 0 3 5 [minor] 0 3 5 "
+  a = zparse "q 0 3 5 <minor> 0 3 5 "
   assert_equal(a.vals(:scale),[:major, :major, :major, :minor, :minor, :minor])
   a = zparse "q 0 3 5 K<g3> 0 3 5 "
   assert_equal(a.vals(:key),[:c, :c, :c, "g3", "g3", "g3"])
