@@ -164,12 +164,6 @@ module Ziffers
     end
   end
 
-  # Slonimsky scales: https://slonimsky.netlify.app/
-  def slonimsky(nodes, interpolations, divisions=1)
-    return [] if (nodes <= 0)
-    nodes.times.collect { |i| [i * divisions] + interpolations.map { |x| (i * divisions) + x }}.flatten
-  end
-
   # Tonnetz moves
   def get_move(move,triad)
     moves = {

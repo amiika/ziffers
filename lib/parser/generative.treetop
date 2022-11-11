@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / escaped_multi_scale / repeat / euclid / zip_ring / cyclic / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens)*
+    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
@@ -269,6 +269,27 @@ grammar GenerativeSyntax
     }
   end
 
+  rule interpolate
+    first:(set) '<' val:(integer) '>' second:(set)
+    {
+      def value
+        intervals = first.value
+        divisions = second.value
+        nodes = val.value
+
+        filtered_set = intervals.filter{|h| h.is_a?(Hash) and h[:pc] }
+        divisions = divisions.map {|h| h[:pc]}.compact
+
+        new_pcs = 0.upto(nodes).collect { |i| [i * divisions[i%divisions.length]] + filtered_set.map { |x| (i * divisions[i%divisions.length]) + x[:pc] }}.flatten
+        zlog new_pcs
+        new_hpcs = new_pcs.map.with_index{|pc,i| ziff = filtered_set[i%filtered_set.length].dup; ziff[:pc] = pc ; ziff.update_note }
+        r = ZiffArray.new(new_hpcs.flatten)
+
+        r
+      end
+    }
+  end
+
     rule euclid
       '(' onbeat:(set_items) rb:(')<' / ')>') s:(min_max) ',' e:(min_max) ','? r:(min_max)? lb:('>' / '<') opt:('(' offbeat:(set_items) ')')?
       {
@@ -445,7 +466,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (ignore / ranges / repeat / use / control / escaped_multi_octave / decimal_duration / group / roman / cyclic / eval / pitch_classes / multi_duration / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / zip_ring / set)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / escaped_multi_scale / decimal_duration / group / roman / cyclic / eval / pitch_classes / multi_duration / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }.compact
@@ -454,7 +475,7 @@ grammar GenerativeSyntax
   end
 
   rule cyclic_items
-    (ignore / ranges / use / control / escaped_multi_octave / decimal_duration / group / roman / cyclic / eval / pitch_classes / multi_duration / multioctave / rest / array / random_between / conditional_assingment / parens / bar / euclid / zip_ring / set)*
+    (ignore / ranges / use / control / escaped_multi_octave / escaped_multi_scale / decimal_duration / group / roman / cyclic / eval / pitch_classes / multi_duration / multioctave / rest / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }.compact
@@ -463,7 +484,7 @@ grammar GenerativeSyntax
   end
 
   rule parens_subset
-    (ignore / use / control / ranges / escaped_multi_octave / group / roman / eval / pitch_classes / multioctave / rest / s / random_between / parens)*
+    (ignore / use / control / ranges / escaped_multi_octave / escaped_multi_scale / group / roman / eval / pitch_classes / multioctave / rest / s / random_between / parens)*
     {
     def value
       elements.map {|v| v.value }
@@ -569,6 +590,7 @@ grammar GenerativeSyntax
     o:('^' / '_')+ s
     {
       def value
+        Thread.current[:topts][:octave] = o.elements.map {|v| (v.text_value=='^' ? 1 : -1)}.inject(0,:+)
         o.text_value
       end
       def exact_value
@@ -1045,14 +1067,20 @@ end
         prefixes = {} if !prefixes
 
         dgr = d.value
-        v = {:pc=>dgr, :key=>Thread.current[:topts][:key], :scale=>Thread.current[:topts][:scale]}
 
+        pc_scale = prefixes[:scale] ? prefixes[:scale] : Thread.current[:topts][:scale]
+        pc_key = Thread.current[:topts][:key]
+
+        v = {:pc=>dgr, :key=>pc_key, :scale=>pc_scale, :scale_length=>scale(pc_key,pc_scale).length-1}
+
+        v[:octave] = prefixes[:octave] if prefixes[:octave]
         v[:prefix] = prefixes[:prefix] if prefixes[:prefix]
-
         v[:add] = prefixes[:add] if prefixes[:add]
 
         # Subduration is used here to store the multi_duration value. Sleep is not generally outputted to support things like [: <q;e> 0 2 :]
         v[:subduration] = Thread.current[:topts][:duration] if Thread.current[:topts][:duration]
+
+        v[:generative] = true
 
         if prefixes[:duration]
           v[:duration] = prefixes[:duration]
@@ -1072,10 +1100,12 @@ end
   end
 
   rule prefix_scale
-    '<' ([a-z])+ '>'
+    '<' s:([a-z_]+) '>'
     {
       def value
-          {prefix: text_value}
+          cur_scale = s.text_value
+          cur_scale = cur_scale.length<2 ? mode_to_scale(cur_scale) : cur_scale.to_sym
+          {prefix: text_value, scale: cur_scale}
       end
     }
   end
@@ -1121,7 +1151,8 @@ end
         {prefix: o.text_value }
       end
       def exact_value
-        {prefix: "<"+o.elements.map {|v| (v.text_value=='^' ? 1 : -1)}.inject(0,:+).to_s+">" }
+        octave_value = o.elements.map {|v| (v.text_value=='^' ? 1 : -1)}.inject(0,:+)
+        {prefix: "<"+octave_value.to_s+">", octave: octave_value }
      end
     }
   end
@@ -1139,24 +1170,29 @@ end
     '<' o:(integer) '>'
     {
       def value
-        {prefix: text_value}
+        octave_value = o.value
+        {prefix: text_value, octave: octave_value}
       end
     }
   end
 
   rule escaped_multi_octave
-    o:('<' integer '>') s
+    o:('<' val:(integer) '>') s
     {
       def value
+        Thread.current[:topts][:octave] = o.val.value
         o.text_value
       end
     }
   end
 
   rule escaped_multi_scale
-    o:('<' [a-z]+ '>') s
+    o:('<' sc:([a-z_]+) '>') s
     {
       def value
+        cur_scale = o.sc.text_value
+        cur_scale = cur_scale.length<2 ? mode_to_scale(cur_scale) : cur_scale.to_sym
+        Thread.current[:topts][:scale] = cur_scale
         o.text_value
       end
     }

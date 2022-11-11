@@ -165,7 +165,7 @@ module Ziffers
         zlog text
         zlog opts
         zlog shared
-        raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason)
+        raise "Invalid syntax after: "+parse_failure(zparser.failure_reason)+ ". Check parentheses!"
       end
 
       ziffers = ZiffArray.new(result.value)
@@ -235,7 +235,7 @@ module Ziffers
         zlog text
         zlog opts
         zlog shared
-        raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason)
+        raise "Invalid syntax after: "+parse_failure(rparser.failure_reason)+ ". Check parentheses!"
       end
       return_shared_opts ? [result.value,Thread.current[:tshared]] : result.value
     end
@@ -253,12 +253,13 @@ module Ziffers
 
       if !result
         zlog "PARAMS CRASH DEBUG: "
-        puts lparser.failure_reason
-        puts lparser.failure_line
-        puts lparser.failure_column
+        zlog lparser.failure_reason
+        zlog lparser.failure_line
+        zlog lparser.failure_column
         zlog text
+        raise "Invalid syntax after: "+parse_failure(lparser.failure_reason)+ ". Check parentheses!"
       end
-      raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
+
       result.value
     end
 
@@ -275,8 +276,8 @@ module Ziffers
         zlog repeatparser.failure_line
         zlog repeatparser.failure_column
         zlog text
+        raise "Invalid syntax after: "+parse_failure(repeatparser.failure_reason)+ ". Check parentheses!"
       end
-      raise "Invalid syntax after: "+parse_failure(@@zparser.failure_reason) if !result
       result.value
     end
 

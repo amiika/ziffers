@@ -295,7 +295,7 @@ grammar Ziffers
   end
 
   rule prefix_scale
-    '<' e:([a-z]+) '>'
+    '<' e:([a-z_]+) '>'
     {
       def value
           {prefix_scale: e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym}
@@ -313,7 +313,7 @@ grammar Ziffers
   end
 
   rule multi_scale
-    '<' e:([a-z]+) '>' s
+    '<' e:([a-z_]+) '>' s
     {
       def value
           val = e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym

@@ -169,6 +169,16 @@ module Ziffers
       arr
     end
 
+    # Interpolate pitch classes
+    # Does the same thing as: https://slonimsky.netlify.app/
+    def interpolate(nodes=1, divisions=1)
+      filtered_set = self.filter{|h| h.is_a?(Hash) and h[:pc] }
+      new_pcs = nodes.times.collect { |i| [i * divisions] + filtered_set.map { |x| (i * divisions) + x.opc }}.flatten
+      new_hpcs = new_pcs.map.with_index{|pc,i| ziff = filtered_set[i%filtered_set.length].dup; ziff[:pc] = pc ; ziff.update_note }
+      a = ZiffArray.new(new_hpcs)
+      a
+    end
+
     def reverse
       ZiffArray.new(self.deep_clone.reverse_each.to_a)
     end
@@ -618,7 +628,7 @@ module Ziffers
           if h.include?("_") || h.include?("^")
             last_octave = h.split("").map {|v| (v=='^' ? 1 : -1)}.inject(0,:+)
           else
-            last_duration = h.split("").map {|v| @@default_durs[v.to_sym] }.inject(0,:+)
+            last_duration = h.split("").map {|v| @@default_durs[v.to_sym] }.compact.inject(0,:+)
           end
           nil
         elsif h.is_a?(ZiffHash)
