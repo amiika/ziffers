@@ -279,13 +279,9 @@ grammar GenerativeSyntax
 
         filtered_set = intervals.filter{|h| h.is_a?(Hash) and h[:pc] }
         divisions = divisions.map {|h| h[:pc]}.compact
-
-        new_pcs = 0.upto(nodes).collect { |i| [i * divisions[i%divisions.length]] + filtered_set.map { |x| (i * divisions[i%divisions.length]) + x[:pc] }}.flatten
-        zlog new_pcs
-        new_hpcs = new_pcs.map.with_index{|pc,i| ziff = filtered_set[i%filtered_set.length].dup; ziff[:pc] = pc ; ziff.update_note }
-        r = ZiffArray.new(new_hpcs.flatten)
-
-        r
+        new_pcs = 1.upto(nodes).collect { |i| [i * divisions[i%divisions.length]] + filtered_set.map { |x| (i * divisions[i%divisions.length]) + x[:pc]+1 }}.flatten
+        new_hpcs = new_pcs.map.with_index{|pc,i| ziff = filtered_set[i%filtered_set.length].dup; ziff[:pc] = pc-1 ; ziff.update_note }
+        ZiffArray.new(new_hpcs.flatten)
       end
     }
   end

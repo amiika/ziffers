@@ -173,8 +173,8 @@ module Ziffers
     # Does the same thing as: https://slonimsky.netlify.app/
     def interpolate(nodes=1, divisions=1)
       filtered_set = self.filter{|h| h.is_a?(Hash) and h[:pc] }
-      new_pcs = nodes.times.collect { |i| [i * divisions] + filtered_set.map { |x| (i * divisions) + x.opc }}.flatten
-      new_hpcs = new_pcs.map.with_index{|pc,i| ziff = filtered_set[i%filtered_set.length].dup; ziff[:pc] = pc ; ziff.update_note }
+      new_pcs = 1.upto(nodes).collect { |i| [i * divisions] + filtered_set.map { |x| (i * divisions) + (x.opc+1) }}.flatten
+      new_hpcs = new_pcs.map.with_index{|pc,i| ziff = filtered_set[i%filtered_set.length].dup; ziff[:pc] = (pc-1) ; ziff.update_note }
       a = ZiffArray.new(new_hpcs)
       a
     end
