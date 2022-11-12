@@ -428,6 +428,16 @@ module Ziffers
     end
     end
 
+    # https://oeis.org/A001316
+    def dress(e=Float::INFINITY)
+      (0..e).lazy.collect {|n| A001316(n) }
+    end
+
+    def A001316(n)
+      return n+1 if n <= 1
+      A001316(n/2) << n%2
+    end
+
     # https://oeis.org/A030101
     def binrev(base=2)
     Enumerator.new do |y|
