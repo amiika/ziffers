@@ -1,5 +1,19 @@
-# From  http //www.stephenandrewtaylor.net/setfinder/index.html
+module Ziffers
 
+  def forte(n)
+    if n.is_a?(String)
+      r = FORTE.key(n)
+    elsif n.is_a?(Integer)
+      r = FORTE.keys[n]
+    elsif n.is_a?(Array)
+      r = n.sort
+      r = FORTE[r]
+      r = "No forte name for: "+n.to_s if !r
+    end
+    r ? r : []
+  end
+
+# From  http //www.stephenandrewtaylor.net/setfinder/index.html
 FORTE = {
   [0, 1, 2] =>  "3-1",
   [0, 1, 3] =>  "3-2",
@@ -210,6 +224,19 @@ FORTE = {
   [0, 1, 2, 3, 5, 6, 7, 9, 10] =>  "9-11",
   [0, 1, 2, 4, 5, 6, 8, 9, 10] =>  "9-12"
 }
+
+def ais(n)
+  if n.is_a?(String)
+    r = AIS.key(n)
+  elsif n.is_a?(Integer)
+    r = AIS.keys[n]
+  elsif n.is_a?(Array)
+    r = n.sort
+    r = AIS[r]
+    r = "Not an AIS name for: "+n.to_s if !r
+  end
+  r ? r : []
+end
 
 # From  https //github.com/marcobn/TheHichhikersGuideToAIS
 AIS = {
@@ -1132,3 +1159,5 @@ AIS = {
   [0, 4, 3, 1, 9, 11, 8, 2, 7, 10, 5, 6] =>  "12-916",
   [0, 4, 3, 1, 9, 2, 8, 5, 7, 10, 11, 6] =>  "12-917L"
 }
+
+end

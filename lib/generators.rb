@@ -152,16 +152,25 @@ module Ziffers
     end
   end
 
-  def parse_binary(val, default_dur=1.0, rhythm_map=nil)
+  def parse_binary_as_rhythm(val, default_dur=1.0, rhythm_map=nil)
+    bools_to_durations(parse_binary(val), default_dur, rhythm_map)
+  end
+
+  def parse_binary(val)
     if val.is_a?(Integer)
-      bools_to_durations(val.to_s(2).split("").map{|b| b=="1" ? true : false }.flatten, default_dur, rhythm_map)
+      val.to_s(2).split("").map{|b| b=="1" ? true : false }.flatten
     elsif val.is_a?(String)
-      bools_to_durations(val.bytes.map {|v| v.to_s(2).split("").map{|b| b=="1" ? true : false } }.flatten, default_dur, rhythm_map)
+      val.bytes.map {|v| v.to_s(2).split("").map{|b| b=="1" ? true : false } }.flatten
     elsif val.is_a?(Array) or val.is_a?(SonicPi::Core::RingVector)
-      bools_to_durations(val,default_dur,rhythm_map)
+      val
     else
-      raise "Not that shit!"
+      raise "Could not parse binary!"
     end
+  end
+
+  # Creates "scales" out of things
+  def scalenator(val)
+    bools_to_intervals(parse_binary(val))
   end
 
   # Tonnetz moves

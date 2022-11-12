@@ -571,12 +571,12 @@ module Ziffers
       new_arr = self.deep_clone
       val = val.() if val.is_a? Proc
       if val.is_a?(Array) and (!val.union([true,false]).difference([true,false]).any? or !val.union([1,0]).difference([1,0]).any?)
-        pattern = parse_binary(val, 1.0, rhythm_map) # If boolean or bool as int array
+        pattern = parse_binary_as_rhythm(val, 1.0, rhythm_map) # If boolean or bool as int array
       elsif val.is_a?(Array)
         pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
       elsif val.is_a?(SonicPi::Core::RingVector)
         if !val.to_a.union([true,false]).difference([true,false]).any? or !val.to_a.union([1,0]).difference([1,0]).any?
-          pattern = parse_binary(val, 1.0, rhythm_map) # If boolean ring
+          pattern = parse_binary_as_rhythm(val, 1.0, rhythm_map) # If boolean ring
         else
           pattern = val.map {|v| v.is_a?(Float) ? v : int_to_length(v)}
         end
@@ -589,7 +589,7 @@ module Ziffers
           pattern = map_pcs_to_durations(numbers)
         elsif val[:binary]
           val[:binary] = val[:binary].() if val[:binary].is_a? Proc
-          pattern = parse_binary(val[:binary], (val[:ratio] ? val[:ratio] : 1.0), rhythm_map)
+          pattern = parse_binary_as_rhythm(val[:binary], (val[:ratio] ? val[:ratio] : 1.0), rhythm_map)
         elsif val[:minor] and val[:major]
           pattern = schillinger(val, rhythm_map)
         elsif val[:pattern]
