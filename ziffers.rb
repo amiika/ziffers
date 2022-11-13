@@ -1233,7 +1233,7 @@ module Ziffers
         else
           val = val.()
         end
-        ziff[key] = val
+        # lambda val stored below. Not here!
       end
 
       if ![:chord_channel,:harmonize,:scale,:run,:run_each,:apply,:mapping,:multi].include?(key)
