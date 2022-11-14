@@ -708,7 +708,7 @@ module Ziffers
     def parse_rows(input)
       lines = input.split("\n").to_a.filter {|v| !v.strip.empty? }
       lines = lines.filter {|n| !n.start_with? "//" }
-      parameters = lines.map {|l| l.split("/") }
+      parameters = lines.map {|l| l.split("/ ") }
       rows = parameters.map{|p| p[0]}.filter {|v| !v.strip.empty? }.map {|l| l.split("|").filter {|v| !v.strip.empty? } }
       rows_length = rows.map(&:length).max
       rows = rows.map {|v| v.length<rows_length ? v+Array.new(rows_length-v.length){ nil } : v }

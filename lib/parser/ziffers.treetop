@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (s / comment / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / reset / skip)*
+    (comment / s / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / reset)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.compact
@@ -168,7 +168,25 @@ grammar Ziffers
   end
 
   rule comment
-    '<!' [a-zA-Z0-9_\-\s\n\r\|#+\-*]+ '>'
+    comment:(multi_line_comment / one_line_comment)
+    {
+      def value
+        comment.value
+      end
+    }
+  end
+
+  rule multi_line_comment
+    '/*' ((s [*] s) / [a-zA-Z0-9_\-\|#+\-] / s)+ '*/'
+    {
+      def value
+        nil
+      end
+    }
+  end
+
+  rule one_line_comment
+    '//' ([^\n]*)
     {
       def value
         nil
@@ -577,20 +595,9 @@ end
     }
   end
 
-  rule skip
-    '# '
-    {
-    def value
-      Thread.current[:topts][:skip] = Thread.current[:topts][:skip] ? false : true
-      nil
-    end
-  }
-  end
-
   rule bar
      '|' {
        def value
-          Thread.current[:topts].except!(:skip)
           Thread.current[:topts][:octave] = 0
           Thread.current[:topts][:duration] = Thread.current[:topts_orig][:duration] ? Thread.current[:topts_orig][:duration] : 0.25
           Thread.current[:topts][:measure] = !Thread.current[:topts][:measure] ? 0 : Thread.current[:topts][:measure] += 1

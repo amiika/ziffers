@@ -274,10 +274,17 @@ def test_play
 
   # Comments
 
-  a = zparse "| 2 3 |q <! This is a comment > 2 | e 4 2 |"
+  a = zparse "| 2 3 |q /* This is a comment */ 2 | e 4 2 |"
   assert_equal(a.pcs,[2,3,2,4,2])
-  a = zparse "|q 2 3 <! | q 1 2 > |  e 4 2 |"
+  a = zparse "|q 2 3 /* | q 1 2 */ |  e 4 2 |"
   assert_equal(a.pcs,[2,3,4,2])
+  a = zparse "|q 2 3 /* This is | q 1
+  2 comment */ |  e 4 2 |"
+  assert_equal(a.pcs,[2,3,4,2])
+  a = zparse "|q 2 3 // | q 1 2 |  e 4 2 |
+  5 6"
+  assert_equal(a.pcs,[2,3,5,6])
+
 
 end
 

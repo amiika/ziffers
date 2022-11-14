@@ -113,11 +113,17 @@ grammar GenerativeSyntax
           end
         end
 
+        # Suffle and take random or pick random
         if p and p.text_value != ""
-          set = set.shuffle if p.text_value[0]=="~"
-          set = p.text_value[0]=="~" ? set.take(p.text_value[1..].to_i) : set.pick(p.text_value[1..].to_i) if p.text_value.length>1
+          if p.text_value[0]=="~"
+            set = set.shuffle
+            set = set.take(p.text_value[1..].to_i) if p.text_value.length>1
+          else
+            set = p.text_value.length>1 ? set.pick(p.text_value[1..].to_i) : set.pick(1)
+          end
         end
 
+        # Operations
         if !o.empty? then
           o.elements.each do |op|
             if op.methods.include?(:value) then
@@ -447,6 +453,7 @@ grammar GenerativeSyntax
      }
   end
 
+  # Deprecated. Still works but consider using (1 2 3)? or (1 2 (3 3))~4 instead.
   rule array
     '[' first:(set_items) rest:(',' i:set_items)+ ']'
     {
@@ -556,7 +563,7 @@ grammar GenerativeSyntax
 
   # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
-    v:(reset  / slide / arpeggio / ignore_function / ignore_comment / ignore_params)
+    v:(ignore_comment / reset  / slide / arpeggio / ignore_function / ignore_params)
     {
       def value
         v.value.to_s
@@ -614,10 +621,28 @@ grammar GenerativeSyntax
   end
 
   rule ignore_comment
-    '<!' [a-zA-Z0-9_\-\s\n\r\|#+\-*]+ '>'
+    comment:(multi_line_comment / one_line_comment)
     {
       def value
-        text_value
+        comment.value
+      end
+    }
+  end
+
+  rule multi_line_comment
+    '/*' ((s [*] s) / [a-zA-Z0-9_\-\|#+\-] / s)+ '*/'
+    {
+      def value
+        nil
+      end
+    }
+  end
+
+  rule one_line_comment
+    '//' ([^\n]*)
+    {
+      def value
+        nil
       end
     }
   end
@@ -1261,13 +1286,13 @@ end
    end
 
    rule zchar
-   s:([mklpdcwyhnqaefsxtgujz]+)
-   {
-     def value
-       sum = s.text_value.split('').inject(0){|sum,x| sum + Thread.current[:default_durs][x.to_sym]}
-       sum.to_f
-    end
-   }
+     s:([mklpdcwyhnqaefsxtgujz]+)
+     {
+       def value
+         sum = s.text_value.split('').inject(0){|sum,x| sum + Thread.current[:default_durs][x.to_sym]}
+         sum.to_f
+      end
+     }
    end
 
 end

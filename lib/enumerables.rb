@@ -433,10 +433,28 @@ module Ziffers
       (0..e).lazy.collect {|n| A001316(n) }
     end
 
+    # Dress sequence https://oeis.org/A001316
     def A001316(n)
       return n+1 if n <= 1
       A001316(n/2) << n%2
     end
+
+    def inventory(e=Float::INFINITY)
+      (0..e).lazy.collect {|n| A342585(n) }
+    end
+
+  # Inventory sequence: http://oeis.org/A342585
+  def A342585(n)
+    values = []
+    current_val = 0
+    new_val = 0
+    n.times do |i|
+      new_val = values.count(current_val)
+      values.append(new_val)
+      current_val = new_val == 0 ? 0 : current_val+=1
+    end
+    new_val
+  end
 
     # https://oeis.org/A030101
     def binrev(base=2)
