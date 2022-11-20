@@ -250,9 +250,9 @@ def test_rules
     "8"=>"(1,7)"
   }, gen: 6, stable: true
 
-  a = zparse "1", rules: {/(3)1/=>"q ={$1+1} 1 ={$1+2}",/[1-7]/=>"e313"}, gen: 4, parse_chords: false
+  a = zparse "1", rules: {/e (3) 1/=>"q {$1+1} 1 {$1+2}",/[1-3]/=>"e 3 1 3"}, gen: 4
 
-  a = zparse "1 2 3", rules: {/[1-9]/=>"={$*1} [e,q] ={$*2}"}, gen: 4, parse_chords: false
+  a = zparse "1 2 3", rules: {/[1-9]/=>"{$*1} [e,q] {$*2}"}, gen: 4, parse_chords: false
 
   a = zparse "q 0 1 e 2 3 q 1", rules: {"0"=>"1", "1"=>"3", "3"=>"(1,6)", /[0-9]/=>"3" }
 

@@ -149,8 +149,8 @@ def test_melody
 
   # Staccato
 
-  a = zparse "h 0 '0 ''0 '''0"
-  assert_equal(a.vals(:release),[2.0, 1.3333333333333333, 1.0, 0.8])
+  a = zparse "h 0 '0 ''0 '''0 ''''0", release: 2.0
+  assert_equal(a.vals(:release),[2.0, 1.5, 1.0, 0.75, 0.6000000000000001])
   a = zparse "A 'A ''A '''A", A: :ambi_choir
   assert_equal(a.vals(:pitch_stretch),[nil, 0.6666666666666666, 0.5, 0.4])
 

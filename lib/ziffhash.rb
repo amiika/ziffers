@@ -165,7 +165,7 @@ module Ziffers
         end
         if self[:octave]
           if self[:octave].is_a?(Integer)
-            octave_value = (self[:octave]>0 ? "^"*self[:octave] : "_"*self[:octave].abs)
+            octave_value = "<"+self[:octave].to_s+">" #(self[:octave]>0 ? "^"*self[:octave] : "_"*self[:octave].abs)
           else
             octave_value = self[:octave].to_s
           end
@@ -416,10 +416,12 @@ module Ziffers
       end
 
       def update_ADSR!
-        [:attack,:decay,:sustain].each do |key|
-          self[key] = (self[:duration]*self[key])*4 if self[key] and self[key].is_a?(Numeric)
+          [:attack,:decay,:sustain,:release].each do |key|
+            if self[key] and self[key].is_a?(Numeric)
+              self[key] = (self[:duration]*self[key])*4 if get_default(:relative_adsr)
+              self[key] = (self[key]/self[:stacc])+((self[key]/2)/self[:stacc]) if self[:stacc]
+          end
         end
-        self[:release] = ((self[:release] and self[:release].is_a?(Numeric)) ? (self[:duration]*self[:release])*4 : self[:duration]*4)
       end
 
       def flex(ratio)

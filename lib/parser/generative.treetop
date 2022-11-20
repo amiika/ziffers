@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_set / control / use / escaped_multi_octave / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / eval / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens)*
+    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
@@ -53,7 +53,6 @@ grammar GenerativeSyntax
     set_scale:(prefix_scale)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* eval_f:(ternary)? select_range:(set_range)?
     {
     def value
-
       reps = repeat_times.value if repeat_times.methods.include?(:value)
       reps = (reps and reps>1) ? reps : (repeat_two.text_value==":" ? 2 : 1)
       Thread.current[:tshared][:set_index] = (Thread.current[:tshared][:set_index] || 0) + 1
@@ -211,13 +210,13 @@ grammar GenerativeSyntax
 
         if eval_f.methods.include?(:value)
           tfunc = eval_f.value
-          set = set.compact.map do |v|
+          set = set.compact.map.with_index do |v,i|
             if v.is_a?(Hash)
               if v[:pc]
-                v[:pc] = eval_func(v[:pc],tfunc)
+                v[:pc] = eval_func(v[:pc],tfunc,i)
               elsif v[:hpcs]
                 v[:hpcs] = v[:hpcs].map do |h|
-                  h[:pc] = eval_func(h[:pc],tfunc)
+                  h[:pc] = eval_func(h[:pc],tfunc,i)
                 end
                 v
               end
@@ -249,16 +248,16 @@ grammar GenerativeSyntax
       ZiffArray.new(set)
     end
 
-    def eval_func(v,tfunc)
+    def eval_func(v,tfunc,i)
       if tfunc.is_a?(Array)
-        cond = eval tfunc[0].gsub("x",v.to_s)
+        cond = eval tfunc[0].gsub("x",v.to_s).gsub("n",i.to_s)
         if cond
-          eval_func v, tfunc[1]
+          eval_func v, tfunc[1], i
         else
-          eval_func v, tfunc[2]
+          eval_func v, tfunc[2], i
         end
       else
-        eval tfunc.gsub("x",v.to_s)
+        eval tfunc.gsub("x",v.to_s).gsub("n",i.to_s)
       end
     end
     }
@@ -367,6 +366,26 @@ grammar GenerativeSyntax
     }
   end
 
+  rule assign_value
+    k:([ABCDFGHIJKLMNOPQRSUWXYZO]) '=' val:(decimal / random_decimal / min_max / random_percent / pitch_classes)
+    {
+      def value
+        Thread.current[:tshared][:use] = {} if !Thread.current[:tshared][:use]
+        Thread.current[:tshared][:use][k.text_value] = val.value
+        nil
+      end
+    }
+  end
+
+  rule assigned_variable
+    k:([ABCDFGHIJKLMNOPQRSUWXYZO])
+    {
+      def value
+        (Thread.current[:tshared][:use][k.text_value] || 0)
+      end
+    }
+  end
+
     rule use
       prefix:(prefix_list)? k:([ABCDFGHIJKLMNOPQRSUWXYZO]+)
       {
@@ -404,7 +423,7 @@ grammar GenerativeSyntax
   end
 
   rule operation
-    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:('-'? [0-9]+ / set / array / random_between)
+    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:(min_max / set / array)
     {
     def operator
       op.text_value
@@ -469,7 +488,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (ignore / ranges / repeat / use / control / escaped_multi_octave / escaped_multi_scale / decimal_duration / group / roman / cyclic / eval / pitch_classes / multi_duration / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / escaped_multi_scale / decimal_duration / group / roman / cyclic / conditional_assingment / multi_escape / pitch_classes / multi_duration / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }.compact
@@ -478,7 +497,7 @@ grammar GenerativeSyntax
   end
 
   rule cyclic_items
-    (ignore / ranges / use / control / escaped_multi_octave / escaped_multi_scale / decimal_duration / group / roman / cyclic / eval / pitch_classes / multi_duration / multioctave / rest / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
+    (ignore / ranges / use / control / escaped_multi_octave / escaped_multi_scale / decimal_duration / group / roman / cyclic / conditional_assingment / multi_escape / pitch_classes / multi_duration / multioctave / rest / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }.compact
@@ -487,10 +506,11 @@ grammar GenerativeSyntax
   end
 
   rule parens_subset
-    (ignore / use / control / ranges / escaped_multi_octave / escaped_multi_scale / group / roman / eval / pitch_classes / multioctave / rest / s / random_between / parens)*
+    (ignore / use / control / ranges / escaped_multi_octave / escaped_multi_scale / group / roman / pitch_classes / multioctave / rest / s / random_between / parens)*
     {
     def value
-      elements.map {|v| v.value }
+      e = elements.map {|v| v.value }
+      e
     end
     }
   end
@@ -590,7 +610,7 @@ grammar GenerativeSyntax
   end
 
   rule multioctave
-    o:('^' / '_')+ s
+    o:('^' / '_')+
     {
       def value
         Thread.current[:topts][:octave] = o.elements.map {|v| (v.text_value=='^' ? 1 : -1)}.inject(0,:+)
@@ -765,30 +785,36 @@ grammar GenerativeSyntax
   end
 
   rule multi_escape
-    '{' e:((random_decimal / random_between / decimal / integer / ' ')*) '}'
+    asis:('=')? '{' e:(eval / multi_duration / decimal / min_max / random_decimal / random_percent / escaped_eval / s)+ '}'
     {
       def value
-        e.elements.map {|v| v.text_value.strip.empty? ? v.text_value : "{"+(v.value || v.text_value).to_s+"}" }.join("")
+        escaped = e.elements.map do |v|
+          val = (v.value || v.text_value)
+          if val.is_a?(Numeric) and val.to_s.length>1
+            val = asis.text_value=="=" ? val.to_s : "{"+val.to_s+"}"
+          else
+            val.to_s
+          end
+        end
+        escaped.join("")
       end
     }
   end
 
   rule escaped_eval
-    '{' e:((random_decimal / random_between / decimal / integer / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!' / '~')*) '}'
+    '{' e:(clause) '}'
     {
       def value
-        v = e.elements.map {|v| v.methods.include?(:value) ? v.value : v.text_value }.join("")
-        eval(v)
+        eval(e.value)
       end
     }
   end
 
   rule eval
-    '={' e:((random_decimal / random_between / decimal / integer / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!' / '~')*) '}'
+    e:(clause)
     {
       def value
-        v = e.elements.map {|v| v.methods.include?(:value) ? v.value : v.text_value }.join("")
-        eval(v)
+        eval(e.value)
       end
     }
   end
@@ -848,13 +874,14 @@ grammar GenerativeSyntax
   end
 
   rule min_max
-    v:(integer / integer_array / random_between / cyclic_min_max)
+    v:(assigned_variable / integer / integer_array / random_between / cyclic_min_max / random_pitch_class)
     {
       def value
-      Thread.current[:tshared][:min_max_cycle_index] = (Thread.current[:tshared][:min_max_cycle_index] || 0) + 1
-      val = v.value
-      val = resolve_cycle(val,"M"+Thread.current[:tshared][:min_max_cycle_index].to_s) if val.is_a?(Hash) and val[:cycle]
-      val
+        Thread.current[:tshared][:min_max_cycle_index] = (Thread.current[:tshared][:min_max_cycle_index] || 0) + 1
+        val = v.value
+        val = (val[:pc] || val[:note] || 0) if val.is_a?(Hash)
+        val = resolve_cycle(val,"M"+Thread.current[:tshared][:min_max_cycle_index].to_s) if val.is_a?(Hash) and val[:cycle]
+        val
       end
     }
   end
@@ -927,50 +954,55 @@ grammar GenerativeSyntax
   end
 
   rule random_between
-  '(' m:(min_max) ',' x:(min_max) ')'
-  {
-    def value
-      sonic_random(m.value,x.value)
-    end
-    def text_value
-      self.value.to_s
-    end
-  }
-end
-
-rule conditional_assingment
-  '{' conditional_set '}'
-  {
-    def value
-      eval_cond conditional_set.value
-    end
-    def eval_cond(tfunc)
-      if tfunc.is_a?(Hash)
-        cond = eval tfunc[:condition]
-        if cond
-          eval_cond tfunc[:if]
-        else
-          eval_cond tfunc[:else]
-        end
-      else
-        tfunc
+    '(' m:(min_max) ',' x:(min_max) ')'
+    {
+      def value
+        sonic_random(m.value,x.value)
       end
-    end
-  }
-end
+      def text_value
+        self.value.to_s
+      end
+    }
+  end
 
-rule conditional_set
-  cond:(condition) s? '?' s? first:(conditional_assingment / set / set_items) s? ':'? s? second:(conditional_assingment / set / set_items)?
-  {
-    def value
-      {
-      :condition => (cond.methods.include?(:value) ? cond.value : nil),
-      :if => (first.methods.include?(:value) ? first.value : nil),
-      :else => (second.methods.include?(:value) ? second.value : nil)
-      }
-    end
-  }
-end
+  rule conditional_assingment
+    asis:('=')? '{' conditional_set '}'
+    {
+      def value
+        content = eval_cond conditional_set.value
+        if (content.is_a?(Integer) and content.to_s.length>1 and asis.text_value!="=")
+          "{"+content.to_s+"}"
+        else
+          content
+        end
+      end
+      def eval_cond(tfunc)
+        if tfunc.is_a?(Hash)
+          cond = eval tfunc[:condition]
+          if cond
+            eval_cond tfunc[:if]
+          else
+            eval_cond tfunc[:else]
+          end
+        else
+          tfunc
+        end
+      end
+    }
+  end
+
+  rule conditional_set
+    cond:(condition) s? '?' s? first:(conditional_assingment / set / ranges / eval / set_items) s? ':'? s? second:(conditional_assingment / set / ranges / eval / set_items)?
+    {
+      def value
+        {
+        :condition => (cond.methods.include?(:value) ? cond.value : nil),
+        :if => (first.methods.include?(:value) ? first.value : nil),
+        :else => (second.methods.include?(:value) ? second.value : nil)
+        }
+      end
+    }
+  end
 
   rule ternary
   '{' t:(conditional / clause) '}'
@@ -1010,7 +1042,7 @@ end
   end
 
   rule clause
-    first:(decimal / random_percent / mult_term / integer / integer_array / random_between / escaped_clause) rest:(op:operator cl:(decimal / random_percent / mult_term / integer / integer_array / random_between / escaped_clause))*
+    first:(mult_term / decimal / min_max / random_percent / escaped_clause / term_index) rest:(op:operator cl:(mult_term / decimal / min_max / random_percent / escaped_clause / term_index))*
     {
       def value
         if rest.empty?
@@ -1033,12 +1065,20 @@ end
   end
 
   rule mult_term
-    # TODO: Add i (index) as alternative value for x
-    a:(integer / integer_array / random_between)? b:('x')
+    a:(min_max)? b:('x')
     {
       def value
         ret = a.methods.include?(:value) ? a.value.to_s+"*"+b.text_value : b.text_value
         ret
+      end
+    }
+  end
+
+  rule term_index
+    'n'
+    {
+      def value
+        text_value
       end
     }
   end
@@ -1081,7 +1121,7 @@ end
   end
 
   rule pitch_classes
-    prefix:(prefix_list)? d:(normal_pitch_class / escaped_eval / random_pitch_class / random_between / integer_array)
+    prefix:(prefix_list)? d:(normal_pitch_class / random_pitch_class / random_between / integer_array)
     {
       def value
         prefixes = prefix.value.flatten.inject{|a,b| a.merge(b){|_,x,y| x + y}} if prefix.methods.include?(:value)
@@ -1192,7 +1232,7 @@ end
     {
       def value
         octave_value = o.value
-        {prefix: text_value, octave: octave_value}
+        {octave: octave_value}
       end
     }
   end

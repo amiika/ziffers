@@ -170,7 +170,7 @@ module Ziffers
 
   # Creates "scales" out of things
   def scalenator(val)
-    bools_to_intervals(parse_binary(val))
+    bools_to_intervals(parse_binary(val)).compact
   end
 
   # Tonnetz moves

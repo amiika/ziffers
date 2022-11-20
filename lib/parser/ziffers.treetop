@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (comment / s / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / eval / rest / slide / reset)*
+    (comment / s / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / rest / slide / reset)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.compact
@@ -283,7 +283,10 @@ grammar Ziffers
           v[:duration] = opt_duration.is_a?(Numeric) ? opt_duration : 0.25
         end
 
-        v[:release] = ((v[:duration]/(prefixes[:staccato]+2))+(v[:duration]/((prefixes[:staccato]+2))))/v[:duration] if prefixes[:staccato]
+        if prefixes[:staccato]
+          v[:stacc] = prefixes[:staccato]+1
+          v[:release] = 1.0 if !v[:release]
+        end
 
         v[:beats] = v[:duration]*4.0
 
@@ -473,10 +476,10 @@ grammar Ziffers
   end
 
   rule eval
-    '{' e:((decimal / integer / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '!' / '~')*) '}'
+    '{' e:(decimal / integer) '}'
     {
       def value
-        eval(e.text_value)
+        e.value
       end
     }
   end

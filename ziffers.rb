@@ -197,9 +197,12 @@ module Ziffers
         end
 
         if n.is_a?(Integer)
-          if defaults[:parse_chords]
+          if defaults[:parse_chord] == true
             n = n.to_s
-          else
+          elsif defaults[:parse_chord] == false
+            n = n.to_s
+            n = "{"+n+"}" if n.length>1
+          else # By default parse as sequence
             n = (n<0 ? "-"+n.to_s[1..].split("").join(" -") : n.to_s.split("").join(" "))
           end
         end
@@ -421,6 +424,7 @@ module Ziffers
     def play_ziff(ziff,defaults={},index,loop_i)
       cue ziff[:cue] if ziff[:cue]
       ziff[:port] = @@default_port if ziff[:channel] and !ziff[:port] and @@default_port
+      # TODO: Add midi velocity to here?: ziff[:vel_f] = ziff[:amp] if ziff[:port] and (!ziff[:vel] and !ziff[:vel_f])
       if ziff[:send] then
         send(ziff[:send],ziff)
       elsif ziff[:skip] then
@@ -528,7 +532,6 @@ module Ziffers
         if ziff[:slide] != nil then
           first = ziff[:slide].clone
           first[:note] = first.delete(:notes)[0]
-          first[:release] = (ziff[:duration]*ziff[:slide][:notes].length)*4
           first[:note_slide] = ziff[:note_slide] ? ziff[:note_slide] : 0.9
 
           if !first[:sample]
@@ -612,10 +615,9 @@ module Ziffers
       elsif melody.is_a?(Symbol) and melody == :r
         return zparse("r",opts,defaults)
       elsif melody.is_a?(Numeric) # zplay 1 OR zmidi 85
-        if defaults[:midi] or defaults[:parse_cc] then
+        if defaults[:midi] or defaults[:parse_cc] or (defaults[:parse_chord] and defaults[:parse_chord]==false) then
           opts[:note] = melody
         else
-          #defaults[:parse_chords]=false if !defaults.has_key?(:parse_chords)
           return zparse(melody,opts,defaults)
         end
       elsif melody.is_a?(Array)
@@ -1236,7 +1238,7 @@ module Ziffers
         # lambda val stored below. Not here!
       end
 
-      if ![:chord_channel,:harmonize,:scale,:run,:run_each,:apply,:mapping,:multi].include?(key)
+      if ![:chord_channel,:harmonize,:scale,:run,:run_each,:apply,:mapping,:multi,:adsr].include?(key)
         if val.is_a?(Array)
           val = val.ring[loop_i]
         elsif val.is_a? SonicPi::Core::RingVector
@@ -1284,8 +1286,16 @@ module Ziffers
       when :duration
         ziff[key] = val
         ziff[:beats] = ziff[key]*4
-      when :attack, :decay, :sustain, :release, :chord_release
-        ziff[key] = (ziff[:duration]*val)*4
+      when :attack, :decay, :sustain, :release, :chord_release, :adsr
+        if key==:adsr and val.is_a?(Array)
+          ziff[:attack] = val[0] if val[0]
+          ziff[:decay] = val[1] if val[1]
+          ziff[:sustain] = val[2] if val[2]
+          ziff[:release] = val[3] if val[3]
+        else
+          ziff[key] = val
+        end
+        ziff.update_ADSR!
       else # :synth, :amp, :release, :sustain, :decay, :attack, :pan, :res, :cutoff, etc
         ziff[key] = val
       end

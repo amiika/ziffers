@@ -12,6 +12,22 @@ module Ziffers
       end
     end
 
+    def port(port_value)
+      if !port_value
+        @@default_opts.delete(:port)
+      else
+        @@default_opts[:port] = port_value
+      end
+    end
+
+    def channel(channel_value)
+      if !channel_value
+        @@default_opts.delete(:channel)
+      else
+        @@default_opts[:channel] = channel_value
+      end
+    end
+
     def get_default_opts
       @@default_opts
     end
@@ -26,10 +42,6 @@ module Ziffers
 
     def set_default_opts(opts)
       @@default_opts.merge!(opts)
-    end
-
-    def port(port_string)
-      @@default_port = port_string
     end
 
     def merge_synth_defaults

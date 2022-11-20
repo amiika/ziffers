@@ -77,6 +77,26 @@ def test_cycles
 
 end
 
+def test_assingments
+  a = zparse "A=1 B=2 C=3 B C A B"
+  assert_equal(a.pcs,[2,3,1,2])
+  a = zparse "A=(1 2) B=1 B A"
+  assert_equal(a.pcs,[3,4,1,2])
+  a = zparse "A=2 B=3 {A>=B?A-B:A+B}"
+  assert_equal(a.pcs,[5])
+  a = zparse "A=0.1 B=0.2 {A>B?1:2}"
+  assert_equal(a.pcs,[2])
+end
+
+def test_functions
+  a = zparse "(3..0){n}"
+  assert_equal(a.pcs,[0,1,2])
+  a = zparse "(1..3){n*x}"
+  assert_equal(a.pcs,[0,2,6])
+  a = zparse "(1..3){2x}"
+  assert_equal(a.pcs,[2,4,6])
+end
+
 test_chords
 test_cycles
 

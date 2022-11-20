@@ -420,21 +420,26 @@ module Ziffers
 
     # https://oeis.org/A000265
     def frac2
-    Enumerator.new do |y|
-    1.step do |n|
-      n>>=1 while n%2==0
-      y << n
+      Enumerator.new do |y|
+      1.step do |n|
+        n>>=1 while n%2==0
+        y << n
+      end
+      end
     end
-    end
+
+    # http://oeis.org/A010060
+    def thue_morse(base=2,mod=base)
+      (0..Float::INFINITY).lazy.collect {|n| n.to_s(base).split("").map{|v| v.to_i}.reduce(0, :+) % mod } #.count('1') % base}
     end
 
     # https://oeis.org/A001316
     def dress(e=Float::INFINITY)
-      (0..e).lazy.collect {|n| A001316(n) }
+      (0..e).lazy.collect {|n| A001316_recursion(n) }
     end
 
     # Dress sequence https://oeis.org/A001316
-    def A001316(n)
+    def A001316_recursion(n)
       return n+1 if n <= 1
       A001316(n/2) << n%2
     end
@@ -456,13 +461,27 @@ module Ziffers
     new_val
   end
 
+    # Van Ecks sequence: http://oeis.org/A181391
+    def vanecks
+    Enumerator.new do |y|
+      last = 0
+      counts = {}
+      0.step do |i|
+        current = last
+        last = i - (counts[current] || i)
+        counts[current] = i
+        y << current
+      end
+    end
+  end
+
     # https://oeis.org/A030101
     def binrev(base=2)
-    Enumerator.new do |y|
-    0.step do |n|
-      y << n.to_s(base).reverse.to_i(base)
-    end
-    end
+      Enumerator.new do |y|
+      0.step do |n|
+        y << n.to_s(base).reverse.to_i(base)
+      end
+      end
     end
 
     # https://oeis.org/A000217
