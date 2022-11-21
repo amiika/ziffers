@@ -97,7 +97,28 @@ def test_functions
   assert_equal(a.pcs,[2,4,6])
 end
 
+def test_list_operations
+  a = zparse "(1 2 3)+(3 4 5)"
+  assert_equal(a.pcs,[4, 5, 6, 5, 6, 0, 6, 0, 1])
+  a = zparse "(1 2 3)-(3 4 5)"
+  assert_equal(a.pcs,[5, 6, 0, 4, 5, 6, 3, 4, 5])
+  a = zparse "(:(1 2 3)<+ ->(3 4 5):)"
+  assert_equal(a.pcs,[4, 5, 6, 5, 6, 0, 6, 0, 1, 5, 6, 0, 4, 5, 6, 3, 4, 5])
+  a = zparse "(1 2 3)*(3 4 5)"
+  assert_equal(a.pcs,[3, 6, 2, 4, 1, 5, 5, 3, 1])
+  a = zparse "(3 4 5)/(1 2 3)"
+  assert_equal(a.pcs,[3, 4, 5, 1, 2, 2, 1, 1, 1])
+  a = zparse "(1 2 3)%(3 4 5)"
+  assert_equal(a.pcs,[1, 2, 0, 1, 2, 3, 1, 2, 3])
+  a = zparse "(1 2 3)**(3 4 5)"
+  assert_equal(a.pcs,[1, 1, 6, 1, 2, 4, 1, 4, 5])
+  a = zparse "(q 2 e 4 8)<*>(0 2 4 3)"
+  assert_equal(a.pcs,[2, 4, 1, 4, 6, 3, 6, 1, 5, 5, 0, 4])
+end
+
+
 test_chords
 test_cycles
+test_list_operations
 
 print "All tests OK"

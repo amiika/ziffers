@@ -26,6 +26,10 @@ module Ziffers
         self[:hpcs].map {|h| h[:pc] }
       end
 
+      def dgrs
+        self[:hpcs].map {|h| h.dgr }
+      end
+
       def opcs
         self[:hpcs].map {|h| h[:pc]+(h[:octave] ? h[:octave]*h[:scale_length] : 0) }
       end

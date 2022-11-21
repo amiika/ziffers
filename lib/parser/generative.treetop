@@ -50,7 +50,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    set_scale:(prefix_scale)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? t:(transform)? a:(array_method)? o:(operation)* eval_f:(ternary)? select_range:(set_range)?
+    set_scale:(prefix_scale)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? a:(array_method)? o:(operation)* t:(transform)? eval_f:(ternary)? select_range:(set_range)?
     {
     def value
       reps = repeat_times.value if repeat_times.methods.include?(:value)
@@ -127,7 +127,8 @@ grammar GenerativeSyntax
           o.elements.each do |op|
             if op.methods.include?(:value) then
               op_values = ZiffArray.new(op.value.flatten.compact) if op.value.is_a?(Array)
-              case op.operator
+              op_operator = op.operator(set_id)
+              case op_operator
               when '**', '*', '/', '+', '-', '^', '%', '|', '&', '<<', '>>'
                 if op.value.kind_of?(Array)
                     set = op_values.map do |z|
@@ -138,14 +139,14 @@ grammar GenerativeSyntax
                             if z and c
                               if z.is_a?(Hash) and c.is_a?(Hash)
                                 if z[:pc] and c[:pc]
-                                  c_dup[:pc] = z[:pc].method(op.operator).(c[:pc])
+                                  c_dup[:pc] = c[:pc].method(op_operator).(z[:pc])
                                 elsif z[:hpcs] and c[:pc]
-                                  c_dup[:hpcs] = z_dup[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op.operator).(c[:pc]); h}
+                                  c_dup[:hpcs] = z_dup[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = c[:pc].method(op_operator).(h[:pc]); h}
                                   c_dup.delete(:pc)
                                 elsif c[:hpcs] and z[:pc]
-                                  c_dup[:hpcs] = c[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op.operator).(z[:pc]); h}
+                                  c_dup[:hpcs] = c[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op_operator).(z[:pc]); h}
                                 elsif c[:hpcs] and z[:hpcs]
-                                  c_dup[:hpcs] = c_dup[:hpcs].map {|ch| z[:hpcs].map{|zh| zh = Marshal.load(Marshal.dump(zh)) ; zh[:pc] = zh[:pc].method(op.operator).(ch[:pc]) ; zh }}.flatten
+                                  c_dup[:hpcs] = c_dup[:hpcs].map {|ch| z[:hpcs].map{|zh| zh = Marshal.load(Marshal.dump(zh)) ; zh[:pc] = ch[:pc].method(op_operator).(zh[:pc]) ; zh }}.flatten
                                 end
                               end
                             end
@@ -161,9 +162,9 @@ grammar GenerativeSyntax
                       v = Marshal.load(Marshal.dump(v))
                       if v.is_a?(Hash)
                         if v[:pc]
-                          v[:pc] = v[:pc].to_i.method(op.operator).(operation_value)
+                          v[:pc] = v[:pc].to_i.method(op_operator).(operation_value)
                         elsif v[:hpcs]
-                          v[:hpcs] = v[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op.operator).(operation_value); h }
+                          v[:hpcs] = v[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op_operator).(operation_value); h }
                         end
                       end
                       v
@@ -177,19 +178,21 @@ grammar GenerativeSyntax
                 set = set-op_values if op_values
               when '<*>'
                 if op_values
-                set = set.ois.map do |v|
-                  op_values.map do |z|
-                    z = Marshal.load(Marshal.dump(z))
-                    if z[:hpcs] and v.is_a?(Array)
-                      z[:hpcs] = v.map {|ival| z[:hpcs].map {|h|  ZiffHash[{pc: h[:pc]+ival}] }}.flatten
-                    elsif z[:pc] and v.is_a?(Array)
-                        z[:hpcs] = v.map {|ival| ZiffHash[{pc: z[:pc]+ival}] }
-                        z.delete(:pc)
-                    elsif z[:hpcs] and v.is_a?(Integer)
-                      z[:hpcs] = z[:hpcs].map {|h|  h[:pc] = h[:pc]+v ; h }
-                    else
-                       z[:pc] =  z[:pc]+v
-                     end
+                  set = op_values.ois.map do |v|
+                    set.map do |z|
+                      if z.is_a?(Hash)
+                        z = Marshal.load(Marshal.dump(z))
+                        if z[:hpcs] and v.is_a?(Array)
+                          z[:hpcs] = v.map {|ival| z[:hpcs].map {|h|  ZiffHash[{pc: h[:pc]+ival}] }}.flatten
+                        elsif z[:pc] and v.is_a?(Array)
+                          z[:hpcs] = v.map {|ival| ZiffHash[{pc: z[:pc]+ival}] }
+                          z.delete(:pc)
+                        elsif z[:hpcs] and v.is_a?(Integer)
+                          z[:hpcs] = z[:hpcs].map {|h|  h[:pc] = h[:pc]+v ; h }
+                        else
+                         z[:pc] =  z[:pc]+v
+                         end
+                      end
                      z
                     end
                   end
@@ -423,10 +426,18 @@ grammar GenerativeSyntax
   end
 
   rule operation
-    op:('**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:(min_max / set / array)
+    op:(cyclic_operators / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:(min_max / set / array)
     {
-    def operator
-      op.text_value
+    def operator(set_id)
+      if op.methods.include?(:value)
+        reps = (Thread.current[:tshared][:set_repeat_index] || 0)
+        operation_cycle_index = (Thread.current[:tshared][:operation_cycle_index] || 0) + 1
+        Thread.current[:tshared][:operation_cycle_index] = operation_cycle_index
+        val = op.value
+        val = resolve_cycle(val,"OP"+(reps>0?("R"+set_id.to_s):operation_cycle_index.to_s),reps) if val.is_a?(Hash) and val[:cycle]
+      else
+        op.text_value
+      end
     end
     def value
      if val.methods.include?(:value)
@@ -435,6 +446,18 @@ grammar GenerativeSyntax
       else
         val.text_value
       end
+    end
+    }
+  end
+
+  rule cyclic_operators
+  '<' ' '* first:(operator) following:(' ' i:operator)+ ' '* '>'
+    {
+    def value
+        r = following.elements.map {|v| v.i.value }
+        r.prepend(first.value)
+        r = r.compact
+        {:cycle=>r}
     end
     }
   end

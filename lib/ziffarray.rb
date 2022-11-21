@@ -450,14 +450,14 @@ module Ziffers
     def ois(r=nil)
       #arr = self.pitch_classes #.select {|v| v.is_a?(Integer)}.compact
       if self.length>0
-        pc_list = self.select {|v| v[:pc] }.compact
+        pc_list = self.filter{|z| z.is_a?(Hash) and z[:pc] }.select {|v| v[:pc] }.compact
         if !r
           r = pc_list[0][:pc] if pc_list[0]
         end
         if pc_list.length==0
           return self.map {|v| v.ois }
         else
-          return self.map {|v| (v[:pc] and v[:pc].is_a?(Integer)) ? pc_int(r, v[:pc]) : v.ois }
+          return self.filter{|z| z.is_a?(Hash) and z[:pc] }.map {|v| (v[:pc] and v[:pc].is_a?(Integer)) ? pc_int(r, v[:pc]) : v.ois }
         end
       else
         return nil

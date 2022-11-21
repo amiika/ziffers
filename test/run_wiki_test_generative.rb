@@ -68,7 +68,7 @@ def test_generative
     a = zparse "(1 2 3)<+>(3 6 3)" # Product of two sets
     assert_equal(a.pcs,[1, 3, 1, 6, 1, 3, 2, 3, 2, 6, 2, 3, 3, 3, 3, 6, 3, 3])
     a = zparse "(1 2 3)<*>(3 6 3)" # Two sets interval multiplication
-    assert_equal(a.pcs,[3, 6, 3, 4, 0, 4, 5, 1, 5])
+    assert_equal(a.pcs,[1, 2, 3, 4, 5, 6, 1, 2, 3])
     a = zparse "(1 2 3)<&>(3 6 3)" # Intersection of two sets
     assert_equal(a.pcs,[3])
     a = zparse "(1 2 3)<|>(3 6 3)" # Union of two sets
