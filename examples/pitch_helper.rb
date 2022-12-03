@@ -17,7 +17,7 @@ t_synth = :piano # Change synth
 
 # Code starts here
 notes = scale pitch_key, pitch_scale
-zplay "q (0..#{(notes.length-2)*number_of_octaves}).mirror", synth: t_synth, octave: pitch_octave, scale: pitch_scale, key: pitch_key if play_scale
+zplay "q (0..#{(notes.length-2)*number_of_octaves})<mirror>", synth: t_synth, octave: pitch_octave, scale: pitch_scale, key: pitch_key if play_scale
 
 live_loop :run_trainer do
   sleep speed

@@ -5,7 +5,7 @@ load "~/ziffers/ziffers.rb"
 def fibonacci
   Enumerator.new do |y|
     a = b = 1
-    loop do
+    while true
       y << a
       a, b = b, a + b
     end
@@ -15,5 +15,5 @@ end
 enum = fibonacci
 
 live_loop :fibonacci_chords do
-  zplay enum.next.to_s, duration: 0.5
+  zplay enum, duration: 0.5, parse_chord: true
 end

@@ -154,6 +154,7 @@ module Ziffers
         defaults = defaults.merge(opt_arrays)
 
         opts = get_default_opts.merge(opts)
+        defaults[:rules] = defaults.delete(:replace) if defaults[:replace]
 
         if n.is_a?(String)
           parsed_use = defaults.select{|k,v| k.length<2 and /[[:upper:]]/.match(k)} # Parse capital letters from the opts
@@ -177,10 +178,9 @@ module Ziffers
 
           n = zpreparse(n,defaults.delete(:parsekey)) if defaults[:parsekey]!=nil
 
-          defaults[:rules] = defaults.delete(:replace) if defaults[:replace]
-          if defaults[:rules] and !shared[:lsystemloop] then
+          if defaults[:rules] and !shared[:string_rewrite_loop] then
             gen = defaults[:gen] ? defaults[:gen] : 1
-            n = lsystem(n,opts,defaults,gen,nil)[gen-1]
+            n = string_rewrite_system(n,opts,defaults,gen,nil)[gen-1]
           end
 
           loop_name = shared[:loop_name]
@@ -204,6 +204,10 @@ module Ziffers
             n = "{"+n+"}" if n.length>1
           else # By default parse as sequence
             n = (n<0 ? "-"+n.to_s[1..].split("").join(" -") : n.to_s.split("").join(" "))
+          end
+          if defaults[:rules] and !shared[:string_rewrite_loop] then
+            gen = defaults[:gen] ? defaults[:gen] : 1
+            n = string_rewrite_system(n,opts,defaults,gen,nil)[gen-1]
           end
         end
 
@@ -378,6 +382,17 @@ module Ziffers
             in_thread do
               eval(ziff[:method])
             end
+        elsif ziff[:methods]
+            mlen = ziff[:methods].length
+            1.upto(mlen) do |i|
+              if i<mlen
+                in_thread do
+                  eval(ziff[:methods][mlen-i][:method])
+                end
+              else
+                eval(ziff[:methods][mlen-i][:method])
+              end
+            end
         end
 
         # TODO: Merge rate not working. Merges too much?
@@ -515,12 +530,22 @@ module Ziffers
                 normalize_ziff_methods(s,index,loop_i)
               else
                 normalize_ziff_methods(s,index,loop_i)
-                sample (s[:sample_dir] ? [s[:sample_dir], s[:sample]] : s[:sample]), clean_sample(s)
+                if respond_to?(s[:sample])
+                  in_thread do
+                    send(s[:sample])
+                  end
+                else
+                  sample (s[:sample_dir] ? [s[:sample_dir], s[:sample]] : s[:sample]), clean_sample(s)
+                end
               end
             end
           else # Sample
             normalize_ziff_methods(ziff,index,loop_i)
-            c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean_sample(ziff)
+            if respond_to?(ziff[:sample])
+              send(ziff[:sample])
+            else
+              c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean_sample(ziff)
+            end
           end
         elsif ziff[:note] or ziff[:notes]
           if ziff[:synth] then
@@ -710,7 +735,7 @@ module Ziffers
     def parse_rows(input)
       lines = input.split("\n").to_a.filter {|v| !v.strip.empty? }
       lines = lines.filter {|n| !n.start_with? "//" }
-      parameters = lines.map {|l| l.split("/ ") }
+      parameters = lines.map {|l| l.start_with?("/ ") ? l.split("/ ") : l.split(" / ") }
       rows = parameters.map{|p| p[0]}.filter {|v| !v.strip.empty? }.map {|l| l.split("|").filter {|v| !v.strip.empty? } }
       rows_length = rows.map(&:length).max
       rows = rows.map {|v| v.length<rows_length ? v+Array.new(rows_length-v.length){ nil } : v }
@@ -906,9 +931,9 @@ module Ziffers
           zplay parsed_melody, opts, defaults
         else
           if defaults[:rules] and !defaults[:gen] then
-            defaults[:lsystemloop] = true
+            defaults[:string_rewrite_loop] = true
             $zloop_states[name][:melody] = melody if !$zloop_states[name][:melody]
-            $zloop_states[name][:melody] = (lsystem($zloop_states[name][:melody], opts, defaults, 1, $zloop_states[name][:loop_i]))[0]
+            $zloop_states[name][:melody] = (string_rewrite_system($zloop_states[name][:melody], get_default_opts.merge(opts), defaults, 1, $zloop_states[name][:loop_i]))[0]
             zplay $zloop_states[name][:melody], opts, defaults
           else
             if loop_opts then
@@ -1041,20 +1066,28 @@ module Ziffers
       ziff.merge(opts) {|_,a,b| (a.is_a? Numeric) ? a * b : b }
     end
 
-    def lgen(ax,rules,gen)
+    def string_rewrite(ax,rules,gen)
       r = ax
-      n = lsystem ax, {}, rules, gen
-      r+n.join
+      n = string_rewrite_system ax, {}, {rules: rules}, gen
+      n[gen-1]
+    end
+
+    def string_generations(ax,rules,gen,joiner="")
+      r = ax
+      n = string_rewrite_system ax, {}, {rules: rules}, gen
+      r+joiner+n.join(joiner)
     end
 
     def regex_replace(ax,h)
-      (lsystem ax, {}, {rules: h})[0]
+      (string_rewrite_system ax, {}, {rules: h})[0]
     end
 
-    def lsystem(ax,opts,defaults,gen=1,loopGen=nil)
+    def string_rewrite_system(ax,opts,defaults,gen=1,loopGen=nil)
+      opts = get_default_opts.merge(opts)
+      ax = ax.to_s if !ax.is_a?(String)
       rules = defaults[:rules]
       gen.times.collect.with_index do |i|
-        i = loopGen if loopGen # If lsystem is used in loop instead of gens
+        i = loopGen if loopGen # If string_rewrite_systemis used in loop instead of gens
         ax = rules.each_with_object(ax.dup) do |(k,v),s|
           v = v[i] if (v.is_a? Array or v.is_a? SonicPi::Core::RingVector) # [nil,"1"].ring -> every other
           if v then

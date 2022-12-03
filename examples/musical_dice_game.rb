@@ -3,7 +3,7 @@ load "~/ziffers/ziffers.rb"
 # Musical dice game: https://en.wikipedia.org/wiki/Musikalisches_W%C3%BCrfelspiel
 # Very random version of musical dice game
 
-use_bpm 18
+use_bpm 100
 use_synth :piano
 use_random_seed 987654365787
 

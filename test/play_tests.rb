@@ -122,7 +122,7 @@ def testarraydegrees
   zplay [0,2,4,5,6,7].zip(0.1.step(2.0,0.1).to_a), duration: 0.125
 end
 
-def testlsystem
+def test_string_rewrite_system
   with_synth :beep do
     zplay "q 0", rules: {"0"=>"0 2","2"=>"5 3 2 0"}, gen: 3
     zplay "q?", rules: {"q?"=>"q? e ? ? ? q?"}, gen: 2, scale: :major_pentatonic
@@ -178,7 +178,7 @@ end
 testzplay
 testchords
 testcontrolchars
-testlsystem
+test_string_rewrite_system
 testrandom
 testslide
 testzsample

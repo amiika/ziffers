@@ -3,7 +3,7 @@ load "~/ziffers/ziffers.rb"
 # Musical dice game: https://opus-infinity.org/dice_games/mozart_waltz/
 # Still work in progress
 
-use_bpm 18
+use_bpm 100
 use_synth :piano
 use_random_seed 52335
 

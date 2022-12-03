@@ -1,5 +1,5 @@
 
-Ziffers.set_default_opts(synth: :hollow, sustain: 3.0, duration: 2.0, scale: :minor)
+Ziffers.set_default_opts(synth: :hollow, sustain: 3.0, duration: 0.5, scale: :minor)
 
 z1 "^0  r  ^2 r  r  r   r r   r", rotate: 1, store: true
 z2 " r _1   r r  r _6   r r  _0", rotate: 1, store: true

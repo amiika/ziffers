@@ -606,7 +606,7 @@ grammar GenerativeSyntax
 
   # Characters ignored by generative parsing and parsed using ziffers parser
   rule ignore
-    v:(ignore_comment / reset  / slide / arpeggio / ignore_function / ignore_params)
+    v:(ignore_comment / reset  / slide / arpeggio / ignore_multi_function / ignore_function / ignore_params)
     {
       def value
         v.value.to_s
@@ -654,8 +654,17 @@ grammar GenerativeSyntax
     }
   end
 
+  rule ignore_multi_function
+    mfs:(ignore_function)+
+    {
+      def value
+        mfs.elements.map {|v| v.value}.join
+      end
+    }
+  end
+
   rule ignore_function
-    ':' [a-zA-Z]+ [a-zA-Z0-9_]* ('(' [a-zA-Z0-9\,\s\.]* ')')?
+    duration? ':' [a-zA-Z]+ [a-zA-Z0-9_]* ('(' [a-zA-Z0-9\,\s\.]* ')')?
     {
       def value
         text_value

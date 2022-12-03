@@ -328,6 +328,8 @@ def test_rhythm
   assert_equal(a.pcs,[0,3,4,1,5])
   a = zparse "(0 1 2)<2,5>(<3 4> 5)"
   assert_equal(a.pcs,[0,3,5,1,4])
+  a = zparse "(0 1 2)<2,5>(<3 4> {12})"
+  assert_equal(a.pcs,[0,3,5,1,4])
 end
 
 test_melody

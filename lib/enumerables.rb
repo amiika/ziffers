@@ -339,8 +339,11 @@ module Ziffers
       end
     end
 
-    def collatz(n=987654321)
+    # Collatz conjecture (Also known as hailstone numbers)
+    # https://en.wikipedia.org/wiki/Collatz_conjecture
+    def collatz(orig=987654321)
       Enumerator.new do |enum|
+        n = orig
         while n > 1
           n = n % 2 == 0 ? n / 2 : 3 * n + 1
           enum.yield n

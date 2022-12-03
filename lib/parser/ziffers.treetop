@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (comment / s / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / call / rest / slide / reset)*
+    (comment / s / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / multi_call / call / rest / slide / reset)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.compact
@@ -141,6 +141,20 @@ grammar Ziffers
     }
   end
 
+  rule multi_call
+    calls:(call) 1..
+    {
+      def value
+        all_methods = calls.elements.map {|v| v.value }
+        if all_methods.length>1
+          ZiffHash[{methods: all_methods, duration: all_methods[0][:duration], beats: all_methods[0][:beats] }]
+        else
+          all_methods[0]
+        end
+      end
+    }
+  end
+
   rule call
     prefix:(prefix_duration)* method_call
     {
@@ -150,8 +164,12 @@ grammar Ziffers
 
         if prefixes and prefixes[:duration]
           v[:duration] = prefixes[:duration]
-          v[:beats] = v[:duration]*4.0
+        else
+          opt_duration = Thread.current[:topts][:duration]
+          v[:duration] = opt_duration.is_a?(Numeric) ? opt_duration : 0.25
         end
+
+        v[:beats] = v[:duration]*4.0
 
         ZiffHash[v]
       end
@@ -429,7 +447,11 @@ grammar Ziffers
             v[:run_each] = v.delete(:run) if v[:run] and v[:sample]
             v = apply_transformation(v, v[:apply] ? v[:apply] : {apply: v.except(:sample)})
           elsif v.is_a?(Symbol)
-            v = {sample: v}
+            if respond_to?(v[1..])
+              v = {method: v[1..]}
+            else
+              v = {sample: v}
+            end
           elsif v.is_a?(Proc)
             v = {method: v}
           end

@@ -99,11 +99,11 @@ end
 
 def test6
 
-  # Test lsystem
+  # Test string_rewrite_system
 
   # String replacement
-  #t6_1 = lsystem "0", {"0"=>"1", "1"=>"2", "2"=>"0"}, 4, nil
-  #assert_equal(t6_1,["1", "2", "0", "1"])
+  t6_1 = string_generations "0", {"0"=>"1", "1"=>"2", "2"=>"0"}, 4
+  assert_equal(t6_1,"01201")
 
   # Regexp with '' eval syntax
   t6z_1 = zparse "q0 e0 1 2 3", rules: {/(?<=q)[0-9]/=>"{$+1}"}, gen: 3
