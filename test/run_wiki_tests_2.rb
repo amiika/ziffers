@@ -30,6 +30,8 @@ def test_chords
   assert_equal(a.pcs,[[0, 2, 4, 0, 2, 4]])
   a = zparse "vii%-2 iii%-1 vi%-1 ii v i%1 iv%2", chord_duration: 0.25, key: :d, scale: :minor
   assert_equal(a.pcs,[[1, 3, 6], [6, 2, 4], [2, 5, 0], [1, 3, 5], [4, 6, 1], [2, 4, 0], [0, 3, 5]])
+  a = zparse "024%-2 356%-1 024%-1 134 356 468%1 357%2", chord_duration: 0.25, key: :d, scale: :minor
+  assert_equal(a.pcs,[[2, 4, 0], [6, 3, 5], [4, 0, 2], [1, 3, 4], [3, 5, 6], [6, 1, 4], [0, 3, 5]])
 
   # Arpeggios
   a = zparse "@(q 1 2 3 1) i ii iii iv v vi vii"

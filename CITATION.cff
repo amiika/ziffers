@@ -4,7 +4,7 @@ authors:
 - family-names: "Alonen"
   given-names: "Miika"
   orcid: "https://orcid.org/0000-0002-0065-0017"
-title: "Ziffers: Numbered musical notation for algorithmic composition"
-version: 2
-date-released: 2021-12-12
+title: "Ziffers: Numbered notation for algorithmic composition"
+version: 2.0
+date-released: 2022-12-12
 url: "https://github.com/amiika/ziffers"

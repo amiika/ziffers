@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / conditional_assingment / ranges / relative_duration / decimal_duration / roman / group  / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest /  s / bar / parens)*
+    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / conditional_assingment / ranges / decimal_duration / roman / group / relative_duration / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest / s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
@@ -90,26 +90,6 @@ grammar GenerativeSyntax
             set = resolved_set.method(method_call[0]).()
           end
           set = set.to_a.flatten if !set.is_a?(Array) # This is for enumerations like array permutation & combination
-        end
-
-        # Special shorthands for unique list and splitting chords to sequences or vice versa
-        if t.methods.include?(:value)
-          t.value.split("").each do |transform|
-            case transform
-            when "!"
-              set = set.compact.uniq
-            when "$"
-              set = set.compact.map{|v| (v[:hpcs] ? v[:hpcs].map{|h| h[:pc]} : v[:pc].to_s.split("")).map{|d| ZiffHash[{pc: d.to_i}] } }.flatten
-            when "&"
-              set = set.compact.map do |v|
-                if !v[:hpcs]
-                  v[:hpcs] = v[:pc].to_s.split("").map{|i| ZiffHash[{pc: i.to_i }] }
-                  v.delete(:pc)
-                end
-                v
-              end
-            end
-          end
         end
 
         # Suffle and take random or pick random
@@ -245,6 +225,26 @@ grammar GenerativeSyntax
           set = [set[*selection_range]]
         else
           set = [set[selection_range]]
+        end
+      end
+
+      # Special shorthands for unique list and splitting chords to sequences or vice versa
+      if t.methods.include?(:value)
+        t.value.split("").each do |transform|
+          case transform
+          when "!"
+            set = set.compact.uniq
+          when "$"
+            set = set.compact.map{|v| (v[:hpcs] ? v[:hpcs].map{|h| h[:pc]} : v[:pc].to_s.split("")).map{|d| ZiffHash[{pc: d.to_i}] } }.flatten
+          when "&"
+            set = set.compact.map do |v|
+              if !v[:hpcs]
+                v[:hpcs] = v[:pc].to_s.split("").map{|i| ZiffHash[{pc: i.to_i }] }
+                v.delete(:pc)
+              end
+              v
+            end
+          end
         end
       end
 
@@ -1337,12 +1337,34 @@ grammar GenerativeSyntax
    end
 
    rule duration
+     s:(single_duration)+
+     {
+     def value
+         s.elements.map {|v| v.value }.inject(0){|sum,x| sum+x}
+      end
+     }
+   end
+
+   rule single_duration
      s:(zchar) d:('.')*
      {
      def value
          sum = s.value
          sum = sum * (2.0-(1.0/(2*d.text_value.length))) if !d.text_value.empty?
+         # TODO: Support for negation? sum = s.value-(sum-s.value) if !negation.text_value.empty?
          sum
+      end
+     }
+   end
+
+   rule zchar
+     s:([mklpdcwyhnqaefsxtgujz])
+     {
+       def value
+        # sum = s.text_value.split('').inject(0){|sum,x| sum + Thread.current[:default_durs][x.to_sym]}
+        # sum.to_f
+        x = s.text_value
+        Thread.current[:default_durs][x.to_sym]
       end
      }
    end
@@ -1357,14 +1379,5 @@ grammar GenerativeSyntax
      }
    end
 
-   rule zchar
-     s:([mklpdcwyhnqaefsxtgujz]+)
-     {
-       def value
-         sum = s.text_value.split('').inject(0){|sum,x| sum + Thread.current[:default_durs][x.to_sym]}
-         sum.to_f
-      end
-     }
-   end
 
 end

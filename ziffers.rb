@@ -677,27 +677,27 @@ module Ziffers
     end
 
     # Looper for multi line notation
-    def ziffers(input, opts={}, shared={})
-      input = unroll_repeats input
-      merge_opts = {}
-      live_loop :ziffers do
-        zplay_multi_line(input, opts, shared, merge_opts)
-      end
-    end
-
-    def ziff(input, opts={}, shared={})
-      input = unroll_repeats input
+    def ziffers(input, opts={sleep_before: 2})
       parsed = parse_rows(input)
-      length = parsed[:rows][0].length
-      merge_opts = {}
-      length.times do |i|
-        merge_opts = zplay_multi_line(input,opts, shared, merge_opts)
+      sleep opts[:sleep_before] ? opts[:sleep_before] : 2
+      parsed.each_with_index do |z,i|
+        zloop ("z"+(i+1).to_s).to_sym, z, opts
       end
     end
 
-    def zplay_multi_line(input, opts={}, shared={},merge_opts={})
+    def ziff(input, opts={sleep_before: 2})
+      parsed = parse_rows(input)
+      sleep opts[:sleep_before] ? opts[:sleep_before] : 2
+      parsed.each do |z|
+        in_thread do
+          zplay z, opts
+        end
+      end
+    end
+
+    def zplay_multi_line_measures(input, opts={}, shared={},merge_opts={})
       idx = tick(:multi_line)
-      parsed = parse_rows(input)
+      parsed = parse_rows_by_measures(input)
       measures = parsed[:rows].transpose
       row_options = parsed[:options]
 
@@ -733,6 +733,27 @@ module Ziffers
     end
 
     def parse_rows(input)
+      lines = input.split("\n").to_a.filter {|v| !v.strip.empty? }
+      lines = lines.filter {|n| !n.start_with? "//" } # Filter out comments
+      parameters = lines.map {|l| l.start_with?("/ ") ? l.split("/ ") : l.split(" / ") } # Get parameters
+      shared_options = parameters.map.with_index {|p,i| p[0]=="" ? parse_params(p[1],{:loop_name=>("z"+i.to_s).to_sym}) : {}  }
+      last_opt = {}
+      shared_options = shared_options.each.collect do |v|
+        if v.keys.length!=0
+          last_opt = v
+          nil
+        else
+          last_opt
+        end
+      end
+      shared_options = shared_options.compact
+      options = parameters.map{|p| p[0].empty? ? false : (p[1] ? parse_params(p[1]) : {}) }.filter {|v| v!=false }
+      options = options.map.with_index {|v,i| shared_options[i].merge(v) }
+      parsed_rows = parameters.map{|p| p[0] }.filter {|v| !v.strip.empty? }.map.with_index{|v,i| zparse(v,options[i],{:loop_name=>("z"+i.to_s).to_sym}) }  # Get rows
+      parsed_rows
+    end
+
+    def parse_rows_by_measures(input)
       lines = input.split("\n").to_a.filter {|v| !v.strip.empty? }
       lines = lines.filter {|n| !n.start_with? "//" }
       parameters = lines.map {|l| l.start_with?("/ ") ? l.split("/ ") : l.split(" / ") }

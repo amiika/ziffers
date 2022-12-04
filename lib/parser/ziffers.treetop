@@ -63,19 +63,27 @@ grammar Ziffers
   end
 
   rule duration
-    s:(zchar / decimal) negation:('-')? d:('.')*
+    s:(single_duration)+
+    {
+    def value
+        s.elements.map {|v| v.value }.inject(0){|sum,x| sum+x}
+     end
+    }
+  end
+
+  rule single_duration
+    s:(zchar / decimal) d:('.')*
     {
     def value
         sum = s.value
         sum = sum * (2.0-(1.0/(2*d.text_value.length))) if !d.text_value.empty?
-        sum = s.value-(sum-s.value) if !negation.text_value.empty?
         sum
      end
     }
   end
 
   rule zchar
-  s:([mklpdcwyhnqaefsxtgujz]+)
+  s:([mklpdcwyhnqaefsxtgujz])
   {
     def value
       sum = s.text_value.split('').inject(0){|sum,x| sum + Thread.current[:default_durs][x.to_sym]}

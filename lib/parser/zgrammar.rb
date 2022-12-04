@@ -248,8 +248,16 @@ module Ziffers
       return nil if !text
       Thread.current[:ziffers_param_opts] = opts
 
-      lparser =  @@lparser
-      result = lparser.parse(text)
+      loop_name = opts[:loop_name]
+      if loop_name
+        @@thread_parsers[loop_name] = {} if !@@thread_parsers[loop_name]
+        @@thread_parsers[loop_name][:param_parser] = ParametersParser.new if !@@thread_parsers[loop_name][:param_parser]
+        lparser = @@thread_parsers[loop_name][:param_parser]
+        result = lparser.parse(text)
+      else
+        lparser =  @@lparser
+        result = lparser.parse(text)
+      end
 
       if !result
         zlog "PARAMS CRASH DEBUG: "
