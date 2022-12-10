@@ -318,7 +318,7 @@ def test_transformations
   assert_equal(g.pcs,[1, 4, 0, 2])
   h = a.swap 3
   assert_equal(h.pcs,[4, 2, 1, 0])
-  i = a.swap 1,3
+  i = a.swap [1,3]
   assert_equal(i.pcs,[2, 0, 1, 4])
   k = a.reflect
   assert_equal(k.pcs,[0, 2, 1, 4, 1, 2])

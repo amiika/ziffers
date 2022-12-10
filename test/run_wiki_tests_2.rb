@@ -118,9 +118,20 @@ def test_list_operations
   assert_equal(a.pcs,[2, 4, 1, 4, 6, 3, 6, 1, 5, 5, 0, 4])
 end
 
+def test_inline_scales_and_keys
+  a = zparse "<c3> 0 <d4> 1"
+  assert_equal(a.vals(:key),[:c3,:d4])
+  a = zparse "<a> 0 <b> 1"
+  assert_equal(a.vals(:scale),[:aeolian,:locrian])
+  a = zparse "<a3> 0 <minor_pentatonic> 1"
+  assert_equal(a.vals(:scale),[:major,:minor_pentatonic])
+  assert_equal(a.vals(:key),[:a3,:a3])
+end
+
 
 test_chords
 test_cycles
 test_list_operations
+test_inline_scales_and_keys
 
 print "All tests OK"

@@ -272,9 +272,9 @@ module Ziffers
       end
 
       # Update notes based on pitch class values
-      def update_note
+      def update_note(update_octave=true) # Update_octave=false used in generative parsing
         if self[:pc]
-          self.merge!(get_ziff(self[:pc], self[:key], self[:scale], (self[:octave] || 0),(self[:add] || 0)))
+          self.merge!(get_ziff(self[:pc], self[:key], self[:scale],(update_octave ? (self[:octave] || 0) : false),(self[:add] || 0)))
         elsif self[:hpcs]
           notes = []
           self[:hpcs].each do |d|

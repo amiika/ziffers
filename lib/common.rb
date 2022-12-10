@@ -14,6 +14,10 @@ module Ziffers
 
     # Get ziff object from degree. Same as get_note_from_dgr but returns hash object
     def get_ziff(dgr, zkey=:C, zscale=:major, oct=0, addition=0, semitones=1)
+      if !oct.is_a?(Integer) # Ignore octave. Used by generative parser
+        oct = 0
+        no_octaves = true
+      end
       pc_orig = dgr
       if dgr.is_a?(Float)
         split_dgr = dgr.divmod 1
@@ -48,6 +52,10 @@ module Ziffers
       end
 
       ziff = ZiffHash[{:note=>note_value>0 ? (note_value>231 ? 230 : note_value) : 0, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength, :add=>addition}]
+      if no_octaves # Ignore octave, used by generative parser
+        ziff[:pc] = pc_orig
+        ziff.delete(:octave)
+      end
       ziff[:delta_midi] = midi_bend_value if midi_bend_value
       return ziff
     end

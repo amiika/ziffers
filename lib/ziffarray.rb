@@ -241,7 +241,15 @@ module Ziffers
 
     alias r reflect
 
-    def swap(n,x=1)
+    def swap(n)
+      if n.is_a?(Array) # [index to swap,number of items]
+        return self if n.length<1
+        x = n[1] if n.length>1
+        n = n[0]
+      else
+        return self if !n.is_a?(Integer)
+        x = 1
+      end
       melody = self.deep_clone
       n = n % melody.length if n>=melody.length
       n2 = (n+x)>=melody.length ? ((n+x) % melody.length) : n+x

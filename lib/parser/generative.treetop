@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / conditional_assingment / ranges / decimal_duration / roman / group / relative_duration / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest / s / bar / parens)*
+    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / conditional_assingment / ranges / decimal_duration / roman / group / relative_duration / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest / s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
@@ -50,7 +50,7 @@ grammar GenerativeSyntax
   end
 
   rule set
-    set_scale:(prefix_scale)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? a:(array_method)? o:(operation)* t:(transform)? eval_f:(ternary)? select_range:(set_range)?
+    set_scale:(prefix_scale / prefix_key)? '(' ':'? content:(set_items) repeat_two:(':')? repeat_times:(integer)? ')' p:(('~' / '?') [1-9]*)? a:(array_method)? o:(operation)* t:(transform)? eval_f:(ternary)? select_range:(set_range)?
     {
     def value
       reps = repeat_times.value if repeat_times.methods.include?(:value)
@@ -284,11 +284,10 @@ grammar GenerativeSyntax
         intervals = first.value
         divisions = second.value
         nodes = val.value
-
         filtered_set = intervals.filter{|h| h.is_a?(Hash) and h[:pc] }
         divisions = divisions.map {|h| h[:pc]}.compact
         new_pcs = 1.upto(nodes).collect { |i| [i * divisions[i%divisions.length]] + filtered_set.map { |x| (i * divisions[i%divisions.length]) + x[:pc]+1 }}.flatten
-        new_hpcs = new_pcs.map.with_index{|pc,i| ziff = filtered_set[i%filtered_set.length].dup; ziff[:pc] = pc-1 ; ziff.update_note }
+        new_hpcs = new_pcs.map.with_index{|pc,i| ziff = filtered_set[i%filtered_set.length].dup; ziff[:pc] = pc-1 ; ziff.update_note(false) }
         ZiffArray.new(new_hpcs.flatten)
       end
     }
@@ -511,7 +510,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (ignore / ranges / repeat / use / control / escaped_multi_octave / escaped_multi_scale / decimal_duration / group / roman / cyclic / conditional_assingment / multi_escape / pitch_classes / multi_duration / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / decimal_duration / group / roman / cyclic / conditional_assingment / multi_escape / pitch_classes / multi_duration / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }.compact
@@ -520,7 +519,7 @@ grammar GenerativeSyntax
   end
 
   rule cyclic_items
-    (ignore / ranges / use / control / escaped_multi_octave / escaped_multi_scale / decimal_duration / group / roman / cyclic / conditional_assingment / multi_escape / pitch_classes / multi_duration / multioctave / rest / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
+    (ignore / ranges / use / control / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / decimal_duration / group / roman / cyclic / conditional_assingment / multi_escape / pitch_classes / multi_duration / multioctave / rest / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }.compact
@@ -529,7 +528,7 @@ grammar GenerativeSyntax
   end
 
   rule parens_subset
-    (ignore / use / control / ranges / escaped_multi_octave / escaped_multi_scale / group / roman / pitch_classes / multioctave / rest / s / random_between / parens)*
+    (ignore / use / control / ranges / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / group / roman / pitch_classes / multioctave / rest / s / random_between / parens)*
     {
     def value
       e = elements.map {|v| v.value }
@@ -816,6 +815,17 @@ grammar GenerativeSyntax
     }
   end
 
+  rule escaped_pitch
+  '{' integer '}'
+   {
+    def value
+      pc_scale = Thread.current[:topts][:scale]
+      pc_key = Thread.current[:topts][:key]
+      get_ziff(integer.value,pc_key,pc_scale,false)
+    end
+   }
+  end
+
   rule multi_escape
     asis:('=')? '{' e:(eval / multi_duration / decimal / min_max / random_decimal / random_percent / escaped_eval / s)+ '}'
     {
@@ -823,12 +833,18 @@ grammar GenerativeSyntax
         escaped = e.elements.map do |v|
           val = (v.value || v.text_value)
           if val.is_a?(Numeric) and val.to_s.length>1
-            val = asis.text_value=="=" ? val.to_s : "{"+val.to_s+"}"
+            if val.is_a?(Integer)
+              pc_scale = Thread.current[:topts][:scale]
+              pc_key = Thread.current[:topts][:key]
+              val = get_ziff(val,pc_key,pc_scale,false)
+            else
+              val = asis.text_value=="=" ? val.to_s : "{"+val.to_s+"}"
+            end
           else
             val.to_s
           end
         end
-        escaped.join("")
+        escaped
       end
     }
   end
@@ -1164,7 +1180,8 @@ grammar GenerativeSyntax
         pc_scale = prefixes[:scale] ? prefixes[:scale] : Thread.current[:topts][:scale]
         pc_key = Thread.current[:topts][:key]
 
-        v = {:pc=>dgr, :key=>pc_key, :scale=>pc_scale, :scale_length=>scale(pc_key,pc_scale).length-1}
+        v = get_ziff(dgr,pc_key,pc_scale,false)
+        #v = {:pc=>dgr, :key=>pc_key, :scale=>pc_scale, :scale_length=>scale(pc_key,pc_scale).length-1}
 
         v[:octave] = prefixes[:octave] if prefixes[:octave]
         v[:prefix] = prefixes[:prefix] if prefixes[:prefix]
@@ -1184,7 +1201,7 @@ grammar GenerativeSyntax
   end
 
   rule prefix_list
-    (prefix_array / escaped_prefix_duration / prefix_octave / prefix_duration / octave / escaped_octave / add / dynamics / staccato / prefix_scale)*
+    (prefix_array / escaped_prefix_duration / prefix_octave / prefix_duration / octave / escaped_octave / add / dynamics / staccato / prefix_scale / prefix_key)*
     {
     def value
       elements.map {|v| v.value }
@@ -1199,6 +1216,15 @@ grammar GenerativeSyntax
           cur_scale = s.text_value
           cur_scale = cur_scale.length<2 ? mode_to_scale(cur_scale) : cur_scale.to_sym
           {prefix: text_value, scale: cur_scale}
+      end
+    }
+  end
+
+  rule prefix_key
+    '<' s:(([a-g]) ([0-9])) '>'
+    {
+      def value
+          {prefix: text_value, key: s.text_value.to_sym}
       end
     }
   end
@@ -1218,7 +1244,7 @@ grammar GenerativeSyntax
   end
 
   rule prefix_duration
-    s:([mklpdcwyhnqaefsxtgujz]) d:('.')*
+    s:([mklpdcwyhnqaefsxtgujzo]) d:('.')*
     {
     def value
         sum = Thread.current[:default_durs][s.text_value.to_sym]
@@ -1291,6 +1317,17 @@ grammar GenerativeSyntax
     }
   end
 
+  rule escaped_multi_key
+    o:('<' sc:(([a-g]) ([0-9])) '>') s
+    {
+      def value
+        cur_key = o.sc.text_value.to_sym
+        Thread.current[:topts][:key] = cur_key
+        o.text_value
+      end
+    }
+  end
+
   rule add
     ('#' / 'b')
     {
@@ -1358,7 +1395,7 @@ grammar GenerativeSyntax
    end
 
    rule zchar
-     s:([mklpdcwyhnqaefsxtgujz])
+     s:([mklpdcwyhnqaefsxtgujzo])
      {
        def value
         # sum = s.text_value.split('').inject(0){|sum,x| sum + Thread.current[:default_durs][x.to_sym]}

@@ -1,7 +1,7 @@
 grammar Ziffers
 
   rule line
-    (comment / s / opt_list / continue / bar / relative_duration / multi_duration / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / multi_call / call / rest / slide / reset)*
+    (comment / s / opt_list / continue / bar / relative_duration / multi_duration / multi_key / multi_scale / arpeggio / chords / pitch_classes / control / multiuse / use / multi_escaped_opts / fixed_octave / numeric_octave / multi_call / call / rest / slide / reset)*
     {
       def value
         e = elements.collect {|v| v.value }.flatten.compact
@@ -83,7 +83,7 @@ grammar Ziffers
   end
 
   rule zchar
-  s:([mklpdcwyhnqaefsxtgujz])
+  s:([mklpdcwyhnqaefsxtgujzo])
   {
     def value
       sum = s.text_value.split('').inject(0){|sum,x| sum + Thread.current[:default_durs][x.to_sym]}
@@ -262,7 +262,7 @@ grammar Ziffers
   end
 
   rule pitch_classes
-    prefix:(escaped_prefix_duration / prefix_duration / octave / escaped_octave / add / dynamics / staccato / prefix_scale)* some_pitch_class:(normal_pitch_class / eval)
+    prefix:(escaped_prefix_duration / prefix_duration / octave / escaped_octave / add / dynamics / staccato / prefix_scale / prefix_key)* some_pitch_class:(normal_pitch_class / eval)
     {
       def value
         dgr = some_pitch_class.value
@@ -271,6 +271,8 @@ grammar Ziffers
         # Filter scales
         prefix_scales, prefixes = prefixes.partition {|v| v[:prefix_scale] }
         pc_scale = prefix_scales[0][:prefix_scale] if prefix_scales and prefix_scales[0]
+        prefix_keys, prefixes = prefixes.partition {|v| v[:prefix_key] }
+        pc_key = prefix_keys[0][:prefix_key] if prefix_keys and prefix_keys[0]
         # Sum other prefixes
         prefixes = prefixes.inject{|a,b| a.merge(b){|_,x,y| x + y}}
         prefixes = {} if !prefixes
@@ -295,7 +297,7 @@ grammar Ziffers
             oct = oct + Thread.current[:topts][:octave] if Thread.current[:topts][:octave]
           end
           addition = prefixes[:add] ? prefixes[:add] : 0
-          v = get_ziff dgr, Thread.current[:topts][:key], (pc_scale ? pc_scale :  Thread.current[:topts][:scale]), oct, addition, (Thread.current[:tshared][:semitones] ? Thread.current[:tshared][:semitones] : 1)
+          v = get_ziff dgr, (pc_key ? pc_key : Thread.current[:topts][:key]), (pc_scale ? pc_scale : Thread.current[:topts][:scale]), oct, addition, (Thread.current[:tshared][:semitones] ? Thread.current[:tshared][:semitones] : 1)
         end
 
         v.merge!(Thread.current[:topts]) { |key, important, default| important }
@@ -331,7 +333,7 @@ grammar Ziffers
   end
 
   rule prefix_duration
-    s:([mklpdcwyhnqaefsxtgujz]) d:('.')*
+    s:([mklpdcwyhnqaefsxtgujzo]) d:('.')*
     {
     def value
         sum = Thread.current[:default_durs][s.text_value.to_sym]
@@ -346,6 +348,15 @@ grammar Ziffers
     {
       def value
           {prefix_scale: e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym}
+      end
+    }
+  end
+
+  rule prefix_key
+    '<' e:(([a-g]) ([0-9])) '>'
+    {
+      def value
+          {prefix_key: e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym}
       end
     }
   end
@@ -365,6 +376,17 @@ grammar Ziffers
       def value
           val = e.text_value.length==1 ? mode_to_scale(e.text_value).to_sym : e.text_value.to_sym
           Thread.current[:topts][:scale] = val
+          nil
+      end
+    }
+  end
+
+  rule multi_key
+    '<' e:(([a-g]) ([0-9])) '>' s
+    {
+      def value
+          val = e.text_value.to_sym
+          Thread.current[:topts][:key] = val
           nil
       end
     }

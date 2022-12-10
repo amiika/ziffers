@@ -1199,9 +1199,9 @@ module Ziffers
       when :tonnetz then
         melody = melody.tonnetz(val.is_a?(Array) ? val[loop_i%val.length] : val)
       when :retrograde then
-        melody = melody.retrograde val
+        melody = melody.retrograde ((val.is_a?(Array) and !val.union([true,false]).difference([true,false]).any?) ? val[loop_i%val.length] : val)
       when :swap then
-        melody = melody.swap *val
+        melody = melody.swap(val.is_a?(Array) ? val[loop_i%val.length] : val)
       when :rotate then
         melody = melody.rotate(val.is_a?(Array) ? val[loop_i%val.length] : val)
       when :deal then
@@ -1322,19 +1322,19 @@ module Ziffers
           ziff[:beats] = val*4
         end
       when :transpose then
-        ziff = ziff.transpose val
+        ziff = ziff.transpose val if val
       when :inverse then
-        ziff = ziff.inverse val
+        ziff = ziff.inverse val if val
       when :augment
-        ziff = ziff.augment val
+        ziff = ziff.augment val if val
       when :flex
-        ziff = ziff.flex val
+        ziff = ziff.flex val if val
       when :silence
-        ziff = ziff.silence val
+        ziff = ziff.silence val if val
       when :harmonize
         ziff = ziff.harmonize val, ziff[:compound] ? ziff[:compound] : 0
       when :detune
-        ziff = ziff.detune val
+        ziff = ziff.detune val if val
       when :object_transform
         ziff = send(val,ziff,loop_i,note_i,melody_size)
       when :duration
