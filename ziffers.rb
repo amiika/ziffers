@@ -181,6 +181,7 @@ module Ziffers
           if defaults[:rules] and !shared[:string_rewrite_loop] then
             gen = defaults[:gen] ? defaults[:gen] : 1
             n = string_rewrite_system(n,opts,defaults,gen,nil)[gen-1]
+            sleep defaults[:rewrite_time] ? defaults[:rewrite_time] : 1
           end
 
           loop_name = shared[:loop_name]
@@ -954,7 +955,23 @@ module Ziffers
           if defaults[:rules] and !defaults[:gen] then
             defaults[:string_rewrite_loop] = true
             $zloop_states[name][:melody] = melody if !$zloop_states[name][:melody]
-            $zloop_states[name][:melody] = (string_rewrite_system($zloop_states[name][:melody], get_default_opts.merge(opts), defaults, 1, $zloop_states[name][:loop_i]))[0]
+            if !$zloop_states[name][:next_melody] # Play preparsed melody
+              rewritten = (string_rewrite_system($zloop_states[name][:melody], get_default_opts.merge(opts), defaults, 1, $zloop_states[name][:loop_i]))[0]
+              $zloop_states[name][:melody_string] = rewritten
+              $zloop_states[name][:melody] = zparse rewritten, opts, defaults.except(:rules)
+            else # Parse first time if the melody isnt preparsed yet
+              $zloop_states[name][:melody] = $zloop_states[name][:next_melody]
+              $zloop_states[name][:melody_string] = $zloop_states[name][:next_melody_string]
+            end
+            in_thread do # Parse next generation in separate thread
+              rewrite_loop_i = $zloop_states[name][:loop_i]+1
+              rewrite_melody = $zloop_states[name][:melody_string]
+              rewritten = (string_rewrite_system(rewrite_melody, get_default_opts.merge(opts), defaults, 1, rewrite_loop_i))[0]
+              $zloop_states[name][:next_melody_string] = rewritten
+              $zloop_states[name][:next_melody] = zparse rewritten, opts, defaults.except(:rules)
+              zlog "Parsed Gen "+($zloop_states[name][:loop_i]+1).to_s  if @@debug
+            end
+            zlog "Playing Gen "+$zloop_states[name][:loop_i].to_s if @@debug
             zplay $zloop_states[name][:melody], opts, defaults
           else
             if loop_opts then
@@ -1126,7 +1143,7 @@ module Ziffers
               else # If not using lambda
                 rep = g.length>1 ? v.gsub(/\$([1-9])/) {g[Regexp.last_match[1].to_i]} : v.gsub("$",m)
                 # parse_generative used here to eval ziffers syntax or pure math {$+4}
-                rep = parse_generative(rep,opts,defaults) if (defaults[:stable]==nil or (defaults[:stable]!=nil and defaults[:stable]==false))
+                rep = parse_generative(rep,opts,defaults.merge({substitution: true})) if (defaults[:stable]==nil or (defaults[:stable]!=nil and defaults[:stable]==false))
               end
               "{<{#{rep}}>}" # Escape
             else
@@ -1137,7 +1154,10 @@ module Ziffers
       end
       ax = ax.gsub(/{<{(.*?)}>}/) {$1}
       ax = parse_generative(ax,opts,defaults) if (defaults[:stable]!=nil and defaults[:stable]==false)
-      print "Gen #{i}: "+ax if @@debug
+      if @@debug
+        print "Gen #{i}: "+ax
+        zlog "Gen #{i}: "+ax
+      end
       ax
     end
   end

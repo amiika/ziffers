@@ -219,8 +219,16 @@ module Ziffers
       loop_name = shared[:loop_name]
       if loop_name
         @@thread_parsers[loop_name] = {} if !@@thread_parsers[loop_name]
-        @@thread_parsers[loop_name][:gen_parser] = GenerativeSyntaxParser.new if !@@thread_parsers[loop_name][:gen_parser]
-        rparser = @@thread_parsers[loop_name][:gen_parser]
+        if shared[:substitution]
+          @@thread_parsers[loop_name][:substitution_parser] = GenerativeSyntaxParser.new if !@@thread_parsers[loop_name][:substitution_parser]
+          rparser = @@thread_parsers[loop_name][:substitution_parser]
+        elsif shared[:string_rewrite_loop]
+          @@thread_parsers[loop_name][:rewrite_parser] = GenerativeSyntaxParser.new if !@@thread_parsers[loop_name][:rewrite_parser]
+          rparser = @@thread_parsers[loop_name][:rewrite_parser]
+        else
+          @@thread_parsers[loop_name][:gen_parser] = GenerativeSyntaxParser.new if !@@thread_parsers[loop_name][:gen_parser]
+          rparser = @@thread_parsers[loop_name][:gen_parser]
+        end
         result = rparser.parse(text)
       else
         rparser = @@rparser
@@ -232,8 +240,11 @@ module Ziffers
         zlog rparser.failure_reason
         zlog rparser.failure_line
         zlog rparser.failure_column
+        zlog "INPUT: "
         zlog text
+        zlog "OPTS: "
         zlog opts
+        zlog "DEFAULTS: "
         zlog shared
         raise "Invalid syntax after: "+parse_failure(rparser.failure_reason)
       end
