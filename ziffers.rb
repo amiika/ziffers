@@ -333,7 +333,7 @@ module Ziffers
         else
           zplayer(melody,opts,defaults,loop_i)
         end
-        print "Cycle index: "+loop_i.to_s if @@debug and loop_i>0
+        print "Loop index: "+loop_i.to_s if @@debug and loop_i>0
         break if !enum
 
         # Enumeration prosessing starts here
@@ -678,20 +678,28 @@ module Ziffers
     end
 
     # Looper for multi line notation
-    def ziffers(input, opts={sleep_before: 2})
-      parsed = parse_rows(input)
-      sleep opts[:sleep_before] ? opts[:sleep_before] : 2
-      parsed.each_with_index do |z,i|
-        zloop ("z"+(i+1).to_s).to_sym, z, opts
+    def ziffers(input, opts={})
+      start_time = Time.now
+      $run_counter = ($run_counter+1 || 0)
+      # Different randoms for each run
+      use_random_seed rand_i(10000)+$run_counter
+      parsed = parse_rows(input, true)
+      print parsed
+      parse_time = Time.now - start_time
+      sleep parse_time+1.0
+      parsed.each_with_index do |arr,i|
+        zloop ("z"+(i+1).to_s).to_sym, arr[0], arr[1]
       end
     end
 
-    def ziff(input, opts={sleep_before: 2})
-      parsed = parse_rows(input)
-      sleep opts[:sleep_before] ? opts[:sleep_before] : 2
-      parsed.each do |z|
+    def ziff(input, opts={})
+      start_time = Time.now
+      parsed = parse_rows(input,true)
+      parse_time = Time.now - start_time
+      sleep parse_time+1.0
+      parsed.each do |arr|
         in_thread do
-          zplay z, opts
+          zplay arr[0], opts
         end
       end
     end
@@ -733,7 +741,7 @@ module Ziffers
       merge_opts
     end
 
-    def parse_rows(input)
+    def parse_rows(input, preparsed=false)
       lines = input.split("\n").to_a.filter {|v| !v.strip.empty? }
       lines = lines.filter {|n| !n.start_with? "//" } # Filter out comments
       parameters = lines.map {|l| l.start_with?("/ ") ? l.split("/ ") : l.split(" / ") } # Get parameters
@@ -750,8 +758,17 @@ module Ziffers
       shared_options = shared_options.compact
       options = parameters.map{|p| p[0].empty? ? false : (p[1] ? parse_params(p[1]) : {}) }.filter {|v| v!=false }
       options = options.map.with_index {|v,i| shared_options[i].merge(v) }
-      parsed_rows = parameters.map{|p| p[0] }.filter {|v| !v.strip.empty? }.map.with_index{|v,i| zparse(v,options[i],{:loop_name=>("z"+i.to_s).to_sym}) }  # Get rows
-      parsed_rows
+      parsed_rows = parameters.map{|p| p[0] }.filter {|v| !v.strip.empty? }
+      if preparsed
+        parsed_rows = parsed_rows.map.with_index do |v,i|
+          z_loop_name = ("z"+(i+1).to_s).to_sym
+          parsed_melody = zparse(v,options[i])
+          [parsed_melody, options[i]]
+        end
+        parsed_rows
+      else
+        parsed_rows.map.with_index{|p,i| [p,options[i]] }
+      end
     end
 
     def parse_rows_by_measures(input)
@@ -892,8 +909,6 @@ module Ziffers
         defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
       end
 
-      #if melody.is_a?(Array) && melody[0].is_a?(Hash) then
-      #  defaults[:preparsed] = true
       if melody.is_a?(Enumerator) or ((defaults[:parse] or (has_combinatorics(defaults)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !defaults[:seed])
 
         if melody.is_a? Enumerator then
@@ -909,9 +924,19 @@ module Ziffers
 
       end
 
+      # Parse initial melody to loop states
+      if melody.is_a?(Array) && melody[0].is_a?(Hash)
+        $zloop_states[name][:melody] = melody # Melody is already parsed
+      else
+        $zloop_states[name][:melody_string] = melody
+        start_parse = Time.now
+        $zloop_states[name][:melody] = zparse melody, opts, defaults.except(:rules) if !$zloop_states[name][:melody]
+        parse_time = Time.now - start_parse
+        sleep parse_time+1.0 # Sleep parse time before starting loop
+      end
+
       # Defaults for enumerations in loops
       $zloop_states[name][:defaults] = defaults
-
       live_loop name, defaults.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
 
         if defaults[:stop] and ((defaults[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=defaults[:stop]) or ([true].include? defaults[:stop]) or (melody.is_a?(String) and (melody.start_with? "//" or melody.start_with? "# ")) then
@@ -954,16 +979,11 @@ module Ziffers
         else
           if defaults[:rules] and !defaults[:gen] then
             defaults[:string_rewrite_loop] = true
-            $zloop_states[name][:melody] = melody if !$zloop_states[name][:melody]
-            if !$zloop_states[name][:next_melody] # Play preparsed melody
-              rewritten = (string_rewrite_system($zloop_states[name][:melody], get_default_opts.merge(opts), defaults, 1, $zloop_states[name][:loop_i]))[0]
-              $zloop_states[name][:melody_string] = rewritten
-              $zloop_states[name][:melody] = zparse rewritten, opts, defaults.except(:rules)
-            else # Parse first time if the melody isnt preparsed yet
+            if $zloop_states[name][:next_melody] # If next gen is available use it
               $zloop_states[name][:melody] = $zloop_states[name][:next_melody]
               $zloop_states[name][:melody_string] = $zloop_states[name][:next_melody_string]
             end
-            in_thread do # Parse next generation in separate thread
+            in_thread do # Parse next generation in separate thread for the next time
               rewrite_loop_i = $zloop_states[name][:loop_i]+1
               rewrite_melody = $zloop_states[name][:melody_string]
               rewritten = (string_rewrite_system(rewrite_melody, get_default_opts.merge(opts), defaults, 1, rewrite_loop_i))[0]
@@ -973,12 +993,24 @@ module Ziffers
             end
             zlog "Playing Gen "+$zloop_states[name][:loop_i].to_s if @@debug
             zplay $zloop_states[name][:melody], opts, defaults
-          else
-            if loop_opts then
-                zplay loop_opts[:pattern] ? loop_opts[:pattern] : melody, opts, defaults.merge(loop_opts)
-            else
-                zplay melody, opts, defaults
+          else # Normal play
+            if loop_opts and loop_opts[:pattern]
+              cycle_pattern = loop_opts[:pattern]
+              $zloop_states[name][:melody] = zparse cycle_pattern, opts, defaults.merge({loop_i: next_loop_i})
             end
+
+            if $zloop_states[name][:melody_string] # If generative string
+              if $zloop_states[name][:next_melody] # If next melody is generated
+                $zloop_states[name][:melody] = $zloop_states[name][:next_melody]
+              end
+              in_thread do # Parse next loop values in separate thread
+                next_loop_i = $zloop_states[name][:loop_i]+1
+                melody_string = $zloop_states[name][:melody_string]
+                $zloop_states[name][:next_melody] = zparse melody_string, opts, defaults.merge({loop_i: next_loop_i})
+              end
+            end
+
+            zplay $zloop_states[name][:melody], opts, (loop_opts ? defaults.merge(loop_opts) : defaults)
           end
         end
         $zloop_states[name][:loop_i] += 1
