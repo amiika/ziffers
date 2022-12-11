@@ -128,10 +128,24 @@ def test_inline_scales_and_keys
   assert_equal(a.vals(:key),[:a3,:a3])
 end
 
+def test_eval
+  a = zparse "{10 12 13}"
+  assert_equal(a.pcs,[3,5,6])
+  a = zparse "={10 12 13}"
+  assert_equal(a.pcs,[[1,0],[1,2],[1,3]])
+  a = zparse "={1{2} 34}"
+  assert_equal(a.pcs,[[1,2],[3,4]])
+  a = zparse "{(1,100)<-3?3:5 (1,100)<-3?3:6}"
+  assert_equal(a.pcs,[5,6])
+  a = zparse "{(1,100)<-3?3:(1 2) (1,100)<-3?3:(3 4)}"
+  assert_equal(a.pcs,[1,2,3,4])
+end
+
 
 test_chords
 test_cycles
 test_list_operations
 test_inline_scales_and_keys
+test_eval
 
 print "All tests OK"

@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / conditional_assingment / ranges / decimal_duration / roman / group / relative_duration / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest / s / bar / parens)*
+    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / ranges / decimal_duration / roman / group / relative_duration / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest / s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
@@ -113,27 +113,26 @@ grammar GenerativeSyntax
                 if op.value.kind_of?(Array)
                     set = op_values.map do |z|
                         set.map  do |c|
-                            c_dup = Marshal.load(Marshal.dump(c))
-                            z_dup = Marshal.load(Marshal.dump(z))
-
-                            if z and c
-                              if z.is_a?(Hash) and c.is_a?(Hash)
-                                if z[:pc] and c[:pc]
-                                  c_dup[:pc] = c[:pc].method(op_operator).(z[:pc])
-                                elsif z[:hpcs] and c[:pc]
-                                  c_dup[:hpcs] = z_dup[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = c[:pc].method(op_operator).(h[:pc]); h}
-                                  c_dup.delete(:pc)
-                                elsif c[:hpcs] and z[:pc]
-                                  c_dup[:hpcs] = c[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op_operator).(z[:pc]); h}
-                                elsif c[:hpcs] and z[:hpcs]
-                                  c_dup[:hpcs] = c_dup[:hpcs].map {|ch| z[:hpcs].map{|zh| zh = Marshal.load(Marshal.dump(zh)) ; zh[:pc] = ch[:pc].method(op_operator).(zh[:pc]) ; zh }}.flatten
-                                end
+                            if z and c and z.is_a?(Hash) and c.is_a?(Hash)
+                              c_dup = Marshal.load(Marshal.dump(c))
+                              z_dup = Marshal.load(Marshal.dump(z))
+                              if z[:pc] and c[:pc]
+                                c_dup[:pc] = c[:pc].method(op_operator).(z[:pc])
+                              elsif z[:hpcs] and c[:pc]
+                                c_dup[:hpcs] = z_dup[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = c[:pc].method(op_operator).(h[:pc]); h}
+                                c_dup.delete(:pc)
+                              elsif c[:hpcs] and z[:pc]
+                                c_dup[:hpcs] = c[:hpcs].map {|h| h = Marshal.load(Marshal.dump(h)) ; h[:pc] = h[:pc].method(op_operator).(z[:pc]); h}
+                              elsif c[:hpcs] and z[:hpcs]
+                                c_dup[:hpcs] = c_dup[:hpcs].map {|ch| z[:hpcs].map{|zh| zh = Marshal.load(Marshal.dump(zh)) ; zh[:pc] = ch[:pc].method(op_operator).(zh[:pc]) ; zh }}.flatten
                               end
+                              c_dup
+                            else
+                              nil
                             end
-                            c_dup
                         end
                       end
-                    set = set.flatten
+                    set = set.flatten.compact
 
                 else
                     operation_value = op.value.to_i
@@ -510,7 +509,7 @@ grammar GenerativeSyntax
   end
 
   rule set_items
-    (ignore / ranges / repeat / use / control / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / decimal_duration / group / roman / cyclic / conditional_assingment / multi_escape / pitch_classes / multi_duration / multioctave / rest / s / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
+    (ignore / ranges / repeat / use / control / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / decimal_duration / group / roman / cyclic / multi_escape / pitch_classes / multi_duration / multioctave / rest / s / array / random_between / parens / bar / euclid / interpolate / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }.compact
@@ -519,7 +518,7 @@ grammar GenerativeSyntax
   end
 
   rule cyclic_items
-    (ignore / ranges / use / control / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / decimal_duration / group / roman / cyclic / conditional_assingment / multi_escape / pitch_classes / multi_duration / multioctave / rest / array / random_between / conditional_assingment / parens / bar / euclid / interpolate / zip_ring / set)*
+    (ignore / ranges / use / control / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / decimal_duration / group / roman / cyclic / multi_escape / pitch_classes / multi_duration / multioctave / rest / array / random_between / parens / bar / euclid / interpolate / zip_ring / set)*
     {
     def value
       elements.map {|v| v.value }.compact
@@ -663,7 +662,7 @@ grammar GenerativeSyntax
   end
 
   rule ignore_function
-    duration? ':' [a-zA-Z]+ [a-zA-Z0-9_]* ('(' [a-zA-Z0-9\,\s\.]* ')')?
+    duration? ':' [a-zA-Z] 2.. [a-zA-Z0-9_]* ('(' [a-zA-Z0-9\,\s\.]* ')')?
     {
       def value
         text_value
@@ -827,21 +826,32 @@ grammar GenerativeSyntax
   end
 
   rule multi_escape
-    asis:('=')? '{' e:(eval / multi_duration / decimal / min_max / random_decimal / random_percent / escaped_eval / s)+ '}'
+    d:(prefix_duration)? asis:('=')? '{' e:(multi_conditional_assingment / eval / multi_duration / decimal / min_max / random_decimal / random_percent / escaped_eval / s)+ '}'
     {
       def value
-        escaped = e.elements.map do |v|
-          val = (v.value || v.text_value)
-          if val.is_a?(Numeric) and val.to_s.length>1
+        dur = d.text_value if d.methods.include?(:value)
+        arr = e.elements.map {|v| v.value }
+        arr.shift(arr.index(&:itself) || arr.size).count # Remove leading nils
+        arr = arr.each_slice(2).map {|r| (r[0] and r[0].is_a?(Integer) and r[1] and r[1].is_a?(Integer)) ? (r[0].to_s+r[1].to_s).to_i : r }
+        escaped = arr.flatten.compact.map do |val|
+          if val.is_a?(Numeric)
             if val.is_a?(Integer)
               pc_scale = Thread.current[:topts][:scale]
               pc_key = Thread.current[:topts][:key]
-              val = get_ziff(val,pc_key,pc_scale,false)
+              if val.to_s.length>1 and asis.text_value=="="
+                val = get_ziff_chord(val,pc_key,pc_scale)
+                val[:prefix] = dur if dur
+                val
+              else
+                val = get_ziff(val,pc_key,pc_scale,false)
+                val[:prefix] = dur if dur
+                val
+              end
             else
               val = asis.text_value=="=" ? val.to_s : "{"+val.to_s+"}"
             end
           else
-            val.to_s
+            val
           end
         end
         escaped
@@ -1013,16 +1023,12 @@ grammar GenerativeSyntax
     }
   end
 
-  rule conditional_assingment
-    asis:('=')? '{' conditional_set '}'
+  rule multi_conditional_assingment
+    v:(conditional_set)
     {
       def value
-        content = eval_cond conditional_set.value
-        if (content.is_a?(Integer) and content.to_s.length>1 and asis.text_value!="=")
-          "{"+content.to_s+"}"
-        else
-          content
-        end
+        val = eval_cond v.value
+        val ? val : nil
       end
       def eval_cond(tfunc)
         if tfunc.is_a?(Hash)
@@ -1040,13 +1046,13 @@ grammar GenerativeSyntax
   end
 
   rule conditional_set
-    cond:(condition) s? '?' s? first:(conditional_assingment / set / ranges / eval / set_items) s? ':'? s? second:(conditional_assingment / set / ranges / eval / set_items)?
+    cond:(condition) s? '?' s? first:(multi_escape / set / ranges / eval / set_items) second:(s? ':' s? sval:(multi_escape / set / ranges / eval / set_items))?
     {
       def value
         {
         :condition => (cond.methods.include?(:value) ? cond.value : nil),
         :if => (first.methods.include?(:value) ? first.value : nil),
-        :else => (second.methods.include?(:value) ? second.value : nil)
+        :else => (!second.empty? and second.sval.methods.include?(:value) ? second.sval.value : nil)
         }
       end
     }

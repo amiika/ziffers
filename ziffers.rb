@@ -181,7 +181,7 @@ module Ziffers
           if defaults[:rules] and !shared[:string_rewrite_loop] then
             gen = defaults[:gen] ? defaults[:gen] : 1
             n = string_rewrite_system(n,opts,defaults,gen,nil)[gen-1]
-            sleep defaults[:rewrite_time] ? defaults[:rewrite_time] : 1
+            sleep defaults[:rewrite_time] ? defaults[:rewrite_time] : 1 if defaults[:normalized]
           end
 
           loop_name = shared[:loop_name]
