@@ -743,7 +743,7 @@ module Ziffers
 
     def parse_rows(input, preparsed=false)
       lines = input.split("\n").to_a.filter {|v| !v.strip.empty? }
-      lines = lines.filter {|n| !n.start_with? "//" } # Filter out comments
+      lines = lines.filter {|n| !n.strip.start_with? "//" } # Filter out comments
       parameters = lines.map {|l| l.start_with?("/ ") ? l.split("/ ") : l.split(" / ") } # Get parameters
       shared_options = parameters.map.with_index {|p,i| p[0]=="" ? parse_params(p[1],{:loop_name=>("z"+i.to_s).to_sym}) : {}  }
       last_opt = {}
