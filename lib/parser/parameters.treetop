@@ -110,10 +110,10 @@ grammar Parameters
   end
 
   rule array
-  '[' space? items:((decimal / random_decimal / symbol / integer / random_integer / boolean / hash / array) ','? space?)+ ']'
+  '[' space? items:(val:(decimal / random_decimal / symbol / integer / random_integer / boolean / hash / array) ','? space?)+ ']'
   {
     def value
-     items.elements.map {|v| v.value }
+     items.elements.map {|v| v.val.value }
     end
    }
   end

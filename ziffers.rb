@@ -762,7 +762,7 @@ module Ziffers
       if preparsed
         parsed_rows = parsed_rows.map.with_index do |v,i|
           z_loop_name = ("z"+(i+1).to_s).to_sym
-          parsed_melody = zparse(v,options[i])
+          parsed_melody = zparse(v,options[i].merge({loop_name: z_loop_name}))
           [parsed_melody, options[i]]
         end
         parsed_rows

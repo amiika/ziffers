@@ -205,7 +205,11 @@ module Ziffers
         ziffers = ZiffArray.new(measures.flatten)
       end
 
-      apply_array_transformations ziffers, opts, shared
+      if !shared[:loop_name]
+        apply_array_transformations ziffers, opts, shared
+      else
+        ziffers
+      end
     end
 
     def parse_generative(text, opts={}, shared={}, return_shared_opts=false)
