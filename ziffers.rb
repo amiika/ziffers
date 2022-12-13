@@ -188,7 +188,10 @@ module Ziffers
           if loop_name
             # Store generative options back to loop opts. Used currently only by cycle indexes.
             n = parse_generative n, opts, defaults, true
-            $zloop_states[loop_name][:defaults][:cycle_counters] = n[1][:cycle_counters] if n[1][:cycle_counters]
+            if n[1][:cycle_counters]
+              $zloop_states[loop_name][:defaults] = {} if !$zloop_states[loop_name][:defaults]
+              $zloop_states[loop_name][:defaults][:cycle_counters] = n[1][:cycle_counters]
+            end
             n = n[0]
           else
             n = parse_generative n, opts, defaults
@@ -232,7 +235,7 @@ module Ziffers
     end
 
     def clean(ziff)
-      ziff.slice(*[:note,:notes,:note_slide,:amp,:amp_slide,:pan,:pan_slide,:attack,:decay,:sustain,:release,:attack_level,:decay_level,:sustain_level,:env_curve,:slide,:pitch,:rate,:on,:cutoff,:res,:env_curve,:vibrato_rate,:vibrato_depth,:vibrato_delay,:vibrato_onset,:width,:freq_band,:room,:reverb_time,:ring,:detune1,:detune2,:noise,:dpulse_width,:pulse_width,:divisor,:norm,:clickiness,:mod_phase,:mod_range,:mod_pulse_width,:mod_phase_offset,:mod_invert_wave,:mod_wave,:detune,:stereo_width,:hard,:vel,:coef,:pluck_delay,:noise_amp,:max_delay_time,:lfo_width,:lfo_rate,:seed,:disable_wave,:range,:invert_wave,:wave,:phase_offset,:phase,:bass,:quint,:fundamental,:oct,:nazard,:blockflute,:tierce,:larigot,:sifflute,:rs_freq,:rs_freq_var,:rs_pitch_depth,:rs_delay,:rs_onset,:rs_pan_depth,:rs_amplitude_depth])
+      ziff.slice(*[:note,:notes,:note_slide,:amp,:amp_slide,:pan,:pan_slide,:attack,:decay,:sustain,:release,:attack_level,:decay_level,:sustain_level,:env_curve,:slide,:pitch,:rate,:on,:cutoff,:res,:env_curve,:vibrato_rate,:vibrato_depth,:vibrato_delay,:vibrato_onset,:width,:freq_band,:room,:reverb_time,:ring,:detune1,:detune2,:noise,:dpulse_width,:pulse_width,:sub_detune,:sub_amp,:divisor,:norm,:clickiness,:mod_phase,:mod_range,:mod_pulse_width,:mod_phase_offset,:mod_invert_wave,:mod_wave,:detune,:stereo_width,:hard,:vel,:coef,:pluck_delay,:noise_amp,:max_delay_time,:lfo_width,:lfo_rate,:seed,:disable_wave,:range,:invert_wave,:wave,:phase_offset,:phase,:bass,:quint,:fundamental,:oct,:nazard,:blockflute,:tierce,:larigot,:sifflute,:rs_freq,:rs_freq_var,:rs_pitch_depth,:rs_delay,:rs_onset,:rs_pan_depth,:rs_amplitude_depth])
     end
 
     def clean_sample(ziff)
@@ -742,9 +745,10 @@ module Ziffers
     end
 
     def parse_rows(input, preparsed=false)
-      lines = input.split("\n").to_a.filter {|v| !v.strip.empty? }
-      lines = lines.filter {|n| !n.strip.start_with? "//" } # Filter out comments
-      parameters = lines.map {|l| l.start_with?("/ ") ? l.split("/ ") : l.split(" / ") } # Get parameters
+      lines = input.split("\n")
+      lines = lines.map {|l| l.strip }.filter {|v| !v.empty? }
+      lines = lines.map{|l| l.split("//")[0] } # Ignore comments
+      parameters = lines.map {|l| l.start_with?("/ ") ? ["",l[2..]] : l.split(" / ") } # Get parameters
       shared_options = parameters.map.with_index {|p,i| p[0]=="" ? parse_params(p[1],{:loop_name=>("z"+i.to_s).to_sym}) : {}  }
       last_opt = {}
       shared_options = shared_options.each.collect do |v|
@@ -897,46 +901,53 @@ module Ziffers
 
       raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
       raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
-      if !$zloop_states[name] then # If first time
-        $zloop_states[name] = {}
-        $zloop_states[name][:loop_i] = 0
-      end
-      $zloop_states[name][:cycle] = defaults.delete(:cycle) if defaults[:cycle]
 
-      create_loop_opts(opts,$zloop_states[name])
+      if !defaults[:stop]
 
-      if defaults[:phase] then
-        defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
-      end
+        if !$zloop_states[name] then # If first time
+          $zloop_states[name] = {}
+          $zloop_states[name][:loop_i] = 0
+        end
 
-      if melody.is_a?(Enumerator) or ((defaults[:parse] or (has_combinatorics(defaults)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !defaults[:seed])
+        $zloop_states[name][:cycle] = defaults.delete(:cycle) if defaults[:cycle]
 
-        if melody.is_a? Enumerator then
-          enumeration = melody
+        create_loop_opts(opts,$zloop_states[name])
+
+        if defaults[:phase] then
+          defaults[:phase] = defaults[:phase].to_a if (defaults[:phase].is_a? SonicPi::Core::RingVector)
+        end
+
+        # Defaults for enumerations in loops
+        $zloop_states[name][:defaults] = defaults
+
+        if melody.is_a?(Enumerator) or ((defaults[:parse] or (has_combinatorics(defaults)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !defaults[:seed])
+
+          if melody.is_a? Enumerator then
+            enumeration = melody
+          else
+            parsed_melody = normalize_melody melody, opts, defaults
+            enumeration = parse_combinatorics parsed_melody, defaults
+          end
+
+          if enumeration then
+            $zloop_states[name][:enumeration] = enumeration
+          end
+
+        end
+
+        # Parse initial melody to loop states
+        if melody.is_a?(Array) && melody[0].is_a?(Hash)
+          $zloop_states[name][:melody] = melody # Melody is already parsed
         else
-          parsed_melody = normalize_melody melody, opts, defaults
-          enumeration = parse_combinatorics parsed_melody, defaults
-        end
-
-        if enumeration then
-          $zloop_states[name][:enumeration] = enumeration
+          $zloop_states[name][:melody_string] = melody
+          start_parse = Time.now
+          $zloop_states[name][:melody] = zparse melody, opts, defaults.except(:rules) if !$zloop_states[name][:melody]
+          parse_time = Time.now - start_parse
+          sleep parse_time+1.0 # Sleep parse time before starting loop
         end
 
       end
 
-      # Parse initial melody to loop states
-      if melody.is_a?(Array) && melody[0].is_a?(Hash)
-        $zloop_states[name][:melody] = melody # Melody is already parsed
-      else
-        $zloop_states[name][:melody_string] = melody
-        start_parse = Time.now
-        $zloop_states[name][:melody] = zparse melody, opts, defaults.except(:rules) if !$zloop_states[name][:melody]
-        parse_time = Time.now - start_parse
-        sleep parse_time+1.0 # Sleep parse time before starting loop
-      end
-
-      # Defaults for enumerations in loops
-      $zloop_states[name][:defaults] = defaults
       live_loop name, defaults.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
 
         if defaults[:stop] and ((defaults[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=defaults[:stop]) or ([true].include? defaults[:stop]) or (melody.is_a?(String) and (melody.start_with? "//" or melody.start_with? "# ")) then
@@ -993,13 +1004,13 @@ module Ziffers
             end
             zlog "Playing Gen "+$zloop_states[name][:loop_i].to_s if @@debug
             zplay $zloop_states[name][:melody], opts, defaults
-          else # Normal play
+          else # Normal loop
             if loop_opts and loop_opts[:pattern]
               cycle_pattern = loop_opts[:pattern]
               $zloop_states[name][:melody] = zparse cycle_pattern, opts, defaults.merge({loop_i: next_loop_i})
             end
 
-            if $zloop_states[name][:melody_string] # If generative string
+            if $zloop_states[name][:melody_string] and !defaults[:store] # If generative string
               if $zloop_states[name][:next_melody] # If next melody is generated
                 $zloop_states[name][:melody] = $zloop_states[name][:next_melody]
               end
@@ -1067,7 +1078,8 @@ module Ziffers
       if !$zloop_states then
         $zloop_states = {}
       else
-        $zloop_states = $zloop_states.select{|name| get_live_loops.include?(name)}
+        list_of_loops = get_live_loops
+        $zloop_states = $zloop_states.select{|name| list_of_loops.include?(name) }
       end
     end
 
@@ -1385,7 +1397,7 @@ module Ziffers
         ziff = ziff.silence val if val
       when :harmonize
         ziff = ziff.harmonize val, ziff[:compound] ? ziff[:compound] : 0
-      when :detune
+      when :pitch_detune
         ziff = ziff.detune val if val
       when :object_transform
         ziff = send(val,ziff,loop_i,note_i,melody_size)

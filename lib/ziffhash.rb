@@ -16,6 +16,13 @@ module Ziffers
         self[:pc]
       end
 
+      def evaluate_string_octave
+        return 0 if !self[:octave]
+        return self[:octave] if self[:octave].is_a?(Integer)
+        return self[:octave].split("").map {|v| v=="^" ? 1 : -1 }.inject(0){|a,b| a+b } if self[:octave].is_a?(String)
+        return 0
+      end
+
       # Pitch class number with octave
       def opc
         return self.opcs if self[:hpcs]
@@ -49,7 +56,16 @@ module Ziffers
       def multiply_chord_octaves!(oct)
         if self[:hpcs]
           dup = 1.upto(oct-1).collect do |i|
-            self[:hpcs].map {|h| h = h.dup ; h[:octave] = (h[:octave] || 0)+i ; h }
+            self[:hpcs].map  do |h|
+               h = ZiffHash[h.dup]
+               if !h[:octave]
+                 m_oct = 0
+               else
+                 m_oct = h[:octave].evaluate_string_octave
+               end
+               h[:octave] = (m_oct || 0)+i
+               h
+            end
           end
           self[:hpcs] = self[:hpcs]+dup.flatten
         end
@@ -59,8 +75,9 @@ module Ziffers
       def inv_chord!(val)
         arr = val<0 ? self[:hpcs].reverse : self[:hpcs]
         (val.abs).times do |i|
-          arr[i%self[:hpcs].length][:octave] = 0 if !arr[i%self[:hpcs].length][:octave]
-          arr[i%self[:hpcs].length][:octave] += (val<0 ? -1 : 1)
+          chord_pc = arr[i%self[:hpcs].length]
+          chord_pc[:octave] = chord_pc.evaluate_string_octave # Get exact octave
+          chord_pc[:octave] += (val<0 ? -1 : 1)
         end
         # NOTE: Rotate orders by note value ... but in some cases root order is assumed.
         self[:hpcs] = self[:hpcs].rotate(val)

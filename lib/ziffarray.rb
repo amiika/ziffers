@@ -572,7 +572,7 @@ module Ziffers
     alias rot rotate
 
     def merge_lengths(arr, loop_n=0)
-      ZiffArray.new(self.map.with_index{|x,i| x.clone_and_update_duration(arr[(i+loop_n)%arr.length]) })
+      ZiffArray.new(self.map.with_index{|x,i| x.clone_and_update_duration(arr[(i+loop_n)%arr.length])})
     end
 
     def modify_rhythm(val, loop_n=0, rhythm_map=nil)
@@ -590,6 +590,8 @@ module Ziffers
         end
       elsif val.is_a?(Integer)
         pattern = ints_to_lengths(val.to_s.split("").map{|v| v.to_i}, rhythm_map)
+      elsif val.is_a?(Float)
+        pattern = [val]
       elsif val.is_a?(Hash)
         rhythm_map = val[:durs] if val[:durs]
         numbers = val.slice(0,1,2,3,4,5,6,7,8,9,10,11)

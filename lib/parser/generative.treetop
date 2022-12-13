@@ -736,7 +736,16 @@ grammar GenerativeSyntax
           root = degree roman, Thread.current[:topts][:key], cur_scale
           shift = note_info(Thread.current[:topts][:key]).midi_note-60
           notes = chord(root, name).notes
-          pcs = notes.map {|n| h = midi_to_pc(n-shift,Thread.current[:topts][:key], cur_scale); h[:prefix] = "<"+mode.text_value+">" if !mode.empty?; h }
+          pcs = notes.map do |n|
+            h = midi_to_pc(n-shift,Thread.current[:topts][:key], cur_scale)
+            h[:prefix] = "<"+mode.text_value+">" if !mode.empty?
+            if h[:octave]==0
+              h.delete(:octave)
+            else
+              h[:octave] = (h[:octave]>0 ? "^"*h[:octave] : "_"*h[:octave].abs)
+            end
+            h
+          end
           pcs
         else # TODO: This is not working for some scales ... but not really sure if this is even fixable.
           pc_scale = (scale 0, cur_scale, num_octaves: 7).notes.to_a
@@ -744,7 +753,16 @@ grammar GenerativeSyntax
           take_notes = (rd.methods.include?(:value) ? rd.value : 3)
           chrom_pcs = trichords.take(take_notes)
           pcs = chrom_pcs.map {|idx| pc_scale.index(idx) }
-          pcs = pcs.map {|p| h = get_ziff(p,Thread.current[:topts][:key], cur_scale); h[:prefix] = "<"+mode.text_value+">" if !mode.empty?; h }
+          pcs = pcs.map do |p|
+            h = get_ziff(p,Thread.current[:topts][:key], cur_scale)
+            h[:prefix] = "<"+mode.text_value+">" if !mode.empty?
+            if h[:octave] == 0
+              h.delete(:octave)
+            else
+              h[:octave] = (h[:octave]>0 ? "^"*h[:octave] : "_"*h[:octave].abs)
+            end
+            h
+          end
         end
         v = {
           :roman=>roman,
