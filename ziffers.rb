@@ -1007,7 +1007,7 @@ module Ziffers
           else # Normal loop
             if loop_opts and loop_opts[:pattern]
               cycle_pattern = loop_opts[:pattern]
-              $zloop_states[name][:melody] = zparse cycle_pattern, opts, defaults.merge({loop_i: next_loop_i})
+              $zloop_states[name][:melody] = zparse cycle_pattern, opts, defaults.merge({loop_i: next_loop_i, normalized: false})
             end
 
             if $zloop_states[name][:melody_string] and !defaults[:store] # If generative string
@@ -1017,7 +1017,7 @@ module Ziffers
               in_thread do # Parse next loop values in separate thread
                 next_loop_i = $zloop_states[name][:loop_i]+1
                 melody_string = $zloop_states[name][:melody_string]
-                $zloop_states[name][:next_melody] = zparse melody_string, opts, defaults.merge({loop_i: next_loop_i})
+                $zloop_states[name][:next_melody] = zparse melody_string, opts, defaults.merge({loop_i: next_loop_i, normalized: false})
               end
             end
 
@@ -1372,7 +1372,11 @@ module Ziffers
         end
       when :octave
         if ziff[:octave]
-          ziff[:octave] += val
+          if val==false
+            ziff.delete(:octave)
+          else
+            ziff[:octave] += val
+          end
         else
           ziff[:octave] = val
         end
