@@ -316,7 +316,7 @@ def test_conditionals
     assert_equal(a.orig_pcs,[0,4,6,4,3,2,4,1,0,2,4,2,5,0,0])
 
     a = zparse "q ((0..2){((1,6)x**(1,3))(2x)})&"
-    assert_equal(a.orig_pcs,[0,4,[3,2]])
+    assert_equal(a.orig_pcs,[[0,4,3,2]])
 
     a = zparse "q ((0 1 0 1){((1,6)x**(1,3))(2x)})!"
     assert_equal(a.orig_pcs,[0,6])

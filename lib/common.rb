@@ -13,13 +13,22 @@ module Ziffers
     end
 
     def get_ziff_chord(dgrs, zkey, zscale, oct=0, add=0)
+      if dgrs.is_a?(Array)
+        dgr_list = dgrs.map{|dval| split_int_to_string_array(dval) }.flatten.compact
+      else
+        dgr_list = split_int_to_string_array(dgrs)
+      end
+      ziffs = dgr_list.each.collect {|d| h = get_ziff(d.to_i,zkey,zscale,false,add) }
+      ZiffHash[{hpcs: ziffs, key: zkey, scale: zscale}]
+    end
+
+    def split_int_to_string_array(dgrs)
       dgr_list= dgrs.to_s.split("")
       if dgr_list[0] == "-"
         dgr_list = dgr_list[1..]
         dgr_list[0] = "-"+dgr_list[0]
       end
-      ziffs = dgr_list.each.collect {|d| h = get_ziff(d.to_i,zkey,zscale,false,add) }
-      ZiffHash[{hpcs: ziffs, key: zkey, scale: zscale}]
+      dgr_list
     end
 
     # Get ziff object from degree. Same as get_note_from_dgr but returns hash object

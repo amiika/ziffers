@@ -204,8 +204,7 @@ module Ziffers
 
         ziffers = ZiffArray.new(measures.flatten)
       end
-
-      if !shared[:loop_name]
+      if !shared[:loop_name] or shared[:is_enum]
         apply_array_transformations ziffers, opts, shared
       else
         ziffers

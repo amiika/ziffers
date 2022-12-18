@@ -51,7 +51,20 @@ def test_methods
   assert_equal(a.vals(:method),[nil, "foo", "bar(2)", nil, "foo", "bar(2)", nil, "foo", "bar(2)", nil])
 end
 
+def play_loop_test
+  ziffers "
+  / stop: 1
+  0
+  3
+  "
+  ziff "
+  0
+  3
+  "
+end
+
 test_play
 test_methods
+play_multi_loop
 
 print "All tests OK"

@@ -106,11 +106,13 @@ grammar GenerativeSyntax
         if !o.empty? then
           o.elements.each do |op|
             if op.methods.include?(:value) then
-              op_values = ZiffArray.new(op.value.flatten.compact) if op.value.is_a?(Array)
+              operation_value = op.value
+              operation_value = resolve_cycle(operation_value,"SA"+set_id.to_s) if operation_value.is_a?(Hash) and operation_value[:cycle]
+              op_values = ZiffArray.new(operation_value.flatten.compact) if operation_value.is_a?(Array)
               op_operator = op.operator(set_id)
               case op_operator
               when '**', '*', '/', '+', '-', '^', '%', '|', '&', '<<', '>>'
-                if op.value.kind_of?(Array)
+                if op_values
                     set = op_values.map do |z|
                         set.map  do |c|
                             if z and c and z.is_a?(Hash) and c.is_a?(Hash)
@@ -128,15 +130,13 @@ grammar GenerativeSyntax
                               end
                               c_dup
                             else
-                              nil
+                              c # Duration, Octave, etc.
                             end
                         end
                       end
                     set = set.flatten.compact
 
                 else
-                    operation_value = op.value.to_i
-
                     set = set.map do |v|
                       v = Marshal.load(Marshal.dump(v))
                       if v.is_a?(Hash)
@@ -195,10 +195,10 @@ grammar GenerativeSyntax
           set = set.compact.map.with_index do |v,i|
             if v.is_a?(Hash)
               if v[:pc]
-                v[:pc] = eval_func(v[:pc],tfunc,i)
+                v[:pc] = eval_func(v[:pc],tfunc,i).to_i
               elsif v[:hpcs]
                 v[:hpcs] = v[:hpcs].map do |h|
-                  h[:pc] = eval_func(h[:pc],tfunc,i)
+                  h[:pc] = eval_func(h[:pc],tfunc,i).to_i
                 end
                 v
               end
@@ -234,15 +234,10 @@ grammar GenerativeSyntax
           when "!"
             set = set.compact.uniq
           when "$"
-            set = set.compact.map{|v| (v[:hpcs] ? v[:hpcs].map{|h| h[:pc]} : v[:pc].to_s.split("")).map{|d| ZiffHash[{pc: d.to_i}] } }.flatten
+            set = set.compact.map{|v| v.is_a?(Hash) ? (v[:hpcs] ? v[:hpcs].map{|h| h[:pc]} : v[:pc].to_s.split("")).map{|d| ZiffHash[{pc: d.to_i}] } : nil }.flatten.compact
           when "&"
-            set = set.compact.map do |v|
-              if !v[:hpcs]
-                v[:hpcs] = v[:pc].to_s.split("").map{|i| ZiffHash[{pc: i.to_i }] }
-                v.delete(:pc)
-              end
-              v
-            end
+            chord_pcs = set.compact.map{|v| v.is_a?(Hash) ? (v[:pc] || v[:hpcs].map{|c| c[:pc]}) : nil }.flatten.compact
+            set = [get_ziff_chord(chord_pcs,Thread.current[:topts][:key],Thread.current[:topts][:scale])]
           end
         end
       end
@@ -293,7 +288,7 @@ grammar GenerativeSyntax
   end
 
     rule euclid
-      '(' onbeat:(set_items) rb:(')<' / ')>') s:(min_max) ',' e:(min_max) ','? r:(min_max)? lb:('>' / '<') opt:('(' offbeat:(set_items) ')')?
+      '(' onbeat:(set_items) rb:(')<' / ')>') s:(min_max) ',' e:(min_max) rot:(',' r:(min_max))? lb:('>' / '<') opt:('(' offbeat:(set_items) ')')?
       {
       def value
         on_i = 0
@@ -333,7 +328,13 @@ grammar GenerativeSyntax
           end
           vals
         end
-        (!r.empty? and r.methods.include?(:value)) ? result.rotate(-r.value) : result
+        if (!rot.empty? and rot.r.methods.include?(:value))
+          rotate_value = rot.r.value
+          rotate_value = resolve_cycle(rotate_value,cycle_id+"CR") if rotate_value.is_a?(Hash) && rotate_value[:cycle]
+          result.rotate(-rotate_value)
+        else
+          result
+        end
       end
       }
     end
@@ -424,7 +425,7 @@ grammar GenerativeSyntax
   end
 
   rule operation
-    op:(cyclic_operators / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:(min_max / set / array)
+    op:(cyclic_operators / '**' / '*' / '+' / '-' / '/' / '^' / '%' / '|' / '&' / '<<' / '>>' / '#' / '@' / '<@>' / '<&>' / '<->' / '<+>' / '<*>' / '<|>') val:(min_max / set / array / cyclic)
     {
     def operator(set_id)
       if op.methods.include?(:value)
@@ -464,7 +465,13 @@ grammar GenerativeSyntax
     '[' parens_subset ']'
     {
       def value
-        s = parens_subset.elements.collect { |v| v.value }.filter_map {|v| v if v.is_a?(Hash)}
+        Thread.current[:tshared][:parens_cycle_index] = (Thread.current[:tshared][:parens_cycle_index] || 0) + 1
+        s = parens_subset.elements.collect do |v|
+          val = v.value
+          val = resolve_cycle(val,"P"+Thread.current[:tshared][:parens_cycle_index].to_s) if val.is_a?(Hash) and val[:cycle]
+          val
+        end
+        s = s.flatten.filter_map {|v| v if v.is_a?(Hash)}
         {:subset=>s, :subduration=>Thread.current[:topts][:duration]}
       end
     }
@@ -527,7 +534,7 @@ grammar GenerativeSyntax
   end
 
   rule parens_subset
-    (ignore / use / control / ranges / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / group / roman / pitch_classes / multioctave / rest / s / random_between / parens)*
+    (ignore / use / control / ranges / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / group / roman / cyclic / pitch_classes / multioctave / rest / s / random_between / parens)*
     {
     def value
       e = elements.map {|v| v.value }
@@ -644,7 +651,7 @@ grammar GenerativeSyntax
   end
 
   rule ignore_params
-    '{' (([a-zA-Z0-9])+ ':' s? ([a-zA-Z0-9\-\.])+ ','? s?)+ '}'
+    '{' (([a-zA-Z0-9])+ ':' s? ([a-zA-Z0-9\-\._])+ ','? s?)+ '}'
     {
       def value
         text_value
@@ -955,7 +962,7 @@ grammar GenerativeSyntax
       def value
         Thread.current[:tshared][:min_max_cycle_index] = (Thread.current[:tshared][:min_max_cycle_index] || 0) + 1
         val = v.value
-        val = (val[:pc] || val[:note] || 0) if val.is_a?(Hash)
+        val = (val[:pc] || val[:note]) if val.is_a?(Hash) and (val[:pc] or val[:note])
         val = resolve_cycle(val,"M"+Thread.current[:tshared][:min_max_cycle_index].to_s) if val.is_a?(Hash) and val[:cycle]
         val
       end

@@ -216,7 +216,6 @@ module Ziffers
         end
 
         n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9]+)/) {|m| "#{$1}{#{$2}}" } if defaults[:midi] or defaults[:parse_cc] # Hack for midi
-
         parsed = parse_ziffers(n, opts, defaults)
         print "P: "+parsed.to_z if @@debug
         parsed
@@ -341,6 +340,8 @@ module Ziffers
 
         # Enumeration prosessing starts here
         defaults[:loop_i] = loop_i
+
+        break if defaults[:stop] or (defaults[:stop].is_a?(Integer) and defaults[:stop]<loop_i)
 
         begin
             melody = enum.next
@@ -627,8 +628,7 @@ module Ziffers
     end
 
     def normalize_melody(melody, opts, defaults)
-      defaults[:normalized] = true
-
+      defaults[:normalized] = defaults[:is_enum] ? false : true
       if melody.is_a?(Proc)
         loop_i = defaults[:loop_name] ? $zloop_states[defaults[:loop_name]][:loop_i] : 0
         case melody.arity
@@ -687,7 +687,6 @@ module Ziffers
       # Different randoms for each run
       use_random_seed rand_i(10000)+$run_counter
       parsed = parse_rows(input, true)
-      print parsed
       parse_time = Time.now - start_time
       sleep parse_time+1.0
       parsed.each_with_index do |arr,i|
@@ -747,7 +746,7 @@ module Ziffers
     def parse_rows(input, preparsed=false)
       lines = input.split("\n")
       lines = lines.map {|l| l.strip }.filter {|v| !v.empty? }
-      lines = lines.map{|l| l.split("//")[0] } # Ignore comments
+      lines = lines.map{|l| l.split("//")[0] }.filter {|v| !v.empty?} # Ignore comments
       parameters = lines.map {|l| l.start_with?("/ ") ? ["",l[2..]] : l.split(" / ") } # Get parameters
       shared_options = parameters.map.with_index {|p,i| p[0]=="" ? parse_params(p[1],{:loop_name=>("z"+i.to_s).to_sym}) : {}  }
       last_opt = {}
@@ -902,7 +901,7 @@ module Ziffers
       raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
       raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
 
-      if !defaults[:stop]
+      if !defaults[:stop] or defaults[:stop].is_a?(Integer)
 
         if !$zloop_states[name] then # If first time
           $zloop_states[name] = {}
@@ -921,7 +920,6 @@ module Ziffers
         $zloop_states[name][:defaults] = defaults
 
         if melody.is_a?(Enumerator) or ((defaults[:parse] or (has_combinatorics(defaults)) and !$zloop_states[name][:enumeration]) and (melody.is_a?(String) and !melody.start_with? "//") and !defaults[:seed])
-
           if melody.is_a? Enumerator then
             enumeration = melody
           else
@@ -931,20 +929,17 @@ module Ziffers
 
           if enumeration then
             $zloop_states[name][:enumeration] = enumeration
+            defaults[:is_enum] = true
           end
-
-        end
-
-        # Parse initial melody to loop states
-        if melody.is_a?(Array) && melody[0].is_a?(Hash)
-          $zloop_states[name][:melody] = melody # Melody is already parsed
         else
-          $zloop_states[name][:melody_string] = melody
-          start_parse = Time.now
-          $zloop_states[name][:melody] = zparse melody, opts, defaults.except(:rules) if !$zloop_states[name][:melody]
-          parse_time = Time.now - start_parse
-          sleep parse_time+1.0 # Sleep parse time before starting loop
-        end
+          # Parse initial melody to loop states
+          if melody.is_a?(Array) && melody[0].is_a?(Hash)
+            $zloop_states[name][:melody] = melody # Melody is already parsed
+          else
+            $zloop_states[name][:melody_string] = melody
+            $zloop_states[name][:melody] = zparse melody, opts, defaults.except(:rules) if !$zloop_states[name][:melody]
+          end
+      end
 
       end
 

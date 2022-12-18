@@ -82,8 +82,8 @@ def test_generative
     assert_equal(a.pcs,[1, 2, 3, 4, 3, 2])
     a = zparse "q ((-3..4){(3x+2)(3x^3)})$" # $ Splits generated integers 1432 -> 1 4 3 2
     assert_equal(a.pcs,[1, 4, 2, 1, 2, 6, 0, 4, 0, 1, 1, 0, 2, 1, 0])
-    a = zparse "q ((-3..4){(3x+2)(3x^3)})&" # $ Splits generated integers 1432 -> 1 4 3 2
-    assert_equal(a.pcs,[[1, 4], [2, 1], 2, 6, 0, [4, 0], [1, 1, 0], [2, 1, 0]])
+    a = zparse "q ((-3..4){(3x+2)(3x^3)})&" # & Combine as a chord
+    assert_equal(a.pcs,[[1, 4, 2, 1, 2, 6, 0, 4, 0, 1, 1, 0, 2, 1, 0]])
     a = zparse "q ((-3..4){(3x+2)(3x^3)})$!" # Unique set and reflect can be combined
     assert_equal(a.pcs,[1, 4, 2, 6, 0, 1])
 
@@ -94,15 +94,15 @@ def test_generative
     a = zparse "(((10,50),(100,1000)))&" # Generates random chord between random numbers
     assert_equal(a.pcs.length,1)
     a = zparse "(((10,50),(100,1000)))$" # Generates random list from random numbers
-    assert_equal(a.pcs.length,3)
+    assert_equal(a.pcs.length,2)
     a = zparse "10..12" # Sequence: =10 =11 =12
     assert_equal(a.pcs,[3,4,5])
     a = zparse "(10..12)&" # Sequence: 10 11 12
-    assert_equal(a.pcs,[[1, 0], [1, 1], [1, 2]])
+    assert_equal(a.pcs,[[1, 0, 1, 1, 1, 2]])
     a = zparse "(10..12)$" # Sequence: 1 0 1 1 1 2
     assert_equal(a.pcs,[1, 0, 1, 1, 1, 2])
     a = zparse "q (100..200+8)&" # Sequence of chords: 100 108 116 124 132 140 148 156 164 172 180 188 196
-    assert_equal(a.pcs.length,13)
+    assert_equal(a.pcs.length,1)
     a = zparse "1..7" # Sequence: 1 2 3 4 5 6 7
     assert_equal(a.pcs.length,7)
 
@@ -136,9 +136,9 @@ def test_generative
 
     # Assign
     a = zparse "A=(1..3 {(1,3)+2}) q A A A"
-    assert_equal(a.pcs,[1, 2, 3, 5, 1, 2, 3, 5, 1, 2, 3, 5])
+    assert_equal(a.pcs,[1, 2, 3, 3, 1, 2, 3, 3, 1, 2, 3, 3])
     a = zparse "A=(3 2 (1,5) 3) B=(? (1,3) 3) q A B A B"
-    assert_equal(a.pcs,[3, 2, 4, 3, 5, 3, 3, 3, 2, 4, 3, 5, 3, 3])
+    assert_equal(a.pcs,[3, 2, 1, 3, 0, 1, 3, 3, 2, 1, 3, 0, 1, 3])
 
   end
 end
