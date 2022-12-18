@@ -87,7 +87,7 @@ Here is a cheatsheet you can copy to Sonic Pi editor:
 ## Requirements
 
 - [Sonic Pi](https://sonic-pi.net/)
-- Clone using git or download [latest release](https://github.com/amiika/ziffers/releases)
+- Clone using git or download [latest release](https://github.com/amiika/ziffers/releases/latest)
 
 ## Install ziffers
 
@@ -109,4 +109,4 @@ Syntax and methods are documented in [Ziffers wiki](https://github.com/amiika/zi
 
 # Help & Contributions
 
-Post [issue](https://github.com/amiika/ziffers/issues) or fixes using merge request.
+For bugs post an [issue](https://github.com/amiika/ziffers/issues) or a fix using merge request. Use [discussions](https://github.com/amiika/ziffers/discussions) for general questions and feature requests.
