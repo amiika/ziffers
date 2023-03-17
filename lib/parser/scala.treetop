@@ -1,0 +1,146 @@
+grammar Scala
+
+  rule lines
+    (clause / s)+ {
+      def value
+        cents = elements.map { |item| item.value.is_a?(Integer) ? ratio_to_cents(item.value) : item.value }
+        cents.compact
+      end
+    }
+  end
+
+  rule clause
+    first:(atom) rest:(s* op:operator s* cl:(atom / sub_operations / operation))*
+    {
+      def value
+        if rest.empty?
+          first.value
+        else
+          r = rest.elements.map {|v| v.op.value+v.cl.value.to_s }
+          val = first.value.to_s+r.flatten.reject {|e| e.to_s.empty? }.join("")
+          eval(val)
+        end
+      end
+    }
+  end
+
+  rule atom
+    op_val:(ratio / number / monzo) {
+      def value
+        op_val.value
+      end
+    }
+  end
+
+  rule number
+    num:(decimal / int) {
+      def value
+        num.value
+      end
+    }
+  end
+
+  rule decimal
+    '-'? [0-9]+ '.' [0-9]*
+    {
+      def value
+       text_value.to_f
+      end
+     }
+  end
+
+  rule int
+    '-'? [0-9]+
+    {
+      def value
+        text_value.to_i
+      end
+    }
+  end
+
+  rule ratio
+    rat:(frac_ratio / edo_ratio / edji_ratio / decimal_ratio) {
+      def value
+        zlog "IN RATIO?"
+        rat.value
+      end
+    }
+  end
+
+  rule frac_ratio
+    n:(int) "/" d:(int) {
+      def value
+        zlog "IN RATIOADAsDSAD?"
+        ratio = n.value.to_f / d.value.to_f
+        ratio_to_cents(ratio)
+      end
+    }
+  end
+
+  rule edo_ratio
+    n:(int) "\\" d:(int) {
+      def value
+        ratio = 2 ** (n.value.to_f / d.value.to_f)
+        ratio_to_cents(ratio)
+      end
+    }
+  end
+
+  rule edji_ratio
+    n:(int) "\\" d:(int) "<" pn:(int) "/"? pd:(int)? ">" {
+      def value
+        if pd and pd.methods.include?(:value)
+          power = pn.value.to_f / pd.value.to_f
+        else
+          power = pn.value.to_f
+        end
+        ratio = power ** (n.value.to_f / d.value.to_f)
+        ratio_to_cents(ratio)
+      end
+    }
+  end
+
+  rule decimal_ratio
+    s:(int) "," n:(int) {
+      def value
+        ratio = "#{s.value}.#{n.value}".to_f
+        ratio_to_cents(ratio)
+      end
+    }
+  end
+
+  rule monzo
+    "[" vals:(int / s)+ ">" {
+      def value
+        monzos = vals.elements.map{|v| v.value }.compact
+        monzo_to_cents(monzos)
+      end
+    }
+  end
+
+  rule operator
+    op:('**' / '*' / '+' / '-' / '^' / '%' / '|' / '&' / '<<' / '>>')
+    {
+      def value
+        op.text_value
+      end
+    }
+  end
+
+  rule sub_operations
+    "(" op:operation ")" {
+      def value
+        op.value
+      end
+    }
+  end
+
+  rule s
+    [ \t\f\r\n] {
+      def value
+        nil
+      end
+    }
+  end
+
+end

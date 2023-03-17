@@ -1,5 +1,6 @@
 
 require_relative "../defaults.rb"
+require_relative "./scala.rb"
 
 '''
 # For testing and debugging
@@ -16,11 +17,13 @@ module Ziffers
     Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'generative.treetop')))
     Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'parameters.treetop')))
     Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'repeats.treetop')))
+    Treetop.load(File.expand_path(File.join(File.dirname(__FILE__), 'scala.treetop')))
 
     @@zparser = ZiffersParser.new
     @@rparser = GenerativeSyntaxParser.new
     @@lparser = ParametersParser.new
     @@repeatparser = RepeatsParser.new
+    @@scalaparser = ScalaParser.new
     @@thread_parsers = {} # Build separate parser for each thread
 
     def resolve_subsets(subs,divSleep)
@@ -299,6 +302,23 @@ module Ziffers
         zlog repeatparser.failure_column
         zlog text
         raise "Invalid syntax after: "+parse_failure(repeatparser.failure_reason)
+      end
+      result.value
+    end
+
+    def parse_scala(text)
+      return nil if !text
+
+      scalaparser = @@scalaparser
+      result = scalaparser.parse(text)
+
+      if !result
+        zlog "REPEATS CRASH DEBUG: "
+        zlog scalaparser.failure_reason
+        zlog scalaparser.failure_line
+        zlog scalaparser.failure_column
+        zlog text
+        raise "Invalid syntax after: "+parse_failure(scalaparser.failure_reason)
       end
       result.value
     end

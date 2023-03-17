@@ -3,9 +3,9 @@ load "~/ziffers/ziffers.rb"
 Ziffers.debug
 
 def test_play
-
+  
   # Multistaff
-
+  
   a = parse_rows "
 / synth: :pretty_bell
 [:q 2 2 2 4 q. 4 e 3 h 2 q 2 1 2 4 q. 2 e 1 h 0 :] [: 4 e 5 4 3 2 h 3 e 4 3 2 1 h 2 e 3 2 1 0 q. 1 e _ 4 h 4 q ^ 0 1 2 3 h 2 1 :]
@@ -14,7 +14,7 @@ def test_play
 [: q 0 0 2 2 1 _ 4 h ^ 0 q 0 _ 4 ^ 0 _ 2 4 4 h ^ 0 :] [: h 0 q _ 5 ^ 0 h 1 q _ 4 6 h ^ 0 q _ 3 5 6 r 4 r 2 4 r 3 h 0 4 :] / octave: -1
 "
   assert_equal(a.length,4)
-
+  
   a = parse_rows "
 / synth: :kalimba
 h H X / X: :bd_808, H: {sample: :drum_cowbell, amp: 0.025}
@@ -24,7 +24,7 @@ h2 h. 4 q 4 h 4 q 5 4 h 3 5 4 4 2 q 4 5 h 5 5 4 6 5 4 h. 3 q 4 h 3 4 _6 0 1 2 q 
 h0 q 0 _ 6 h 5 4 5 3 q 5 6 h ^0 4 ^ 0 0 1 1 w. _4 h 0 h. _ 3 q 3 h 1 q 2 3 h 4 5 4 ^0 4 5 3 4 w. ^ 0
 "
   assert_equal(a.length,5)
-
+  
   a = parse_rows "
 / synth: :piano
 |[: q 2 2 1 0  | h _ 6 5  | q 2 2 #3 #4  | h 5 #4  | q 5 ^ 0 q. _ 6 e 5  | w 5 :] | \
@@ -43,7 +43,7 @@ h0 q 0 _ 6 h 5 4 5 3 q 5 6 h ^0 4 ^ 0 0 1 1 w. _4 h 0 h. _ 3 q 3 h 1 q 2 3 h 4 5
 | q __ 5 #4 5 5  | h __ 4 5  | q __ 5 5 4 0  | q __ 0 0 h 1  | h __ 2 e 5 6 q ^ 0  | e __ 3 4 q 5 1 3  | w ___ 5  |
 "
   assert_equal(a.length,4)
-
+  
 end
 
 def test_methods
@@ -65,6 +65,6 @@ end
 
 test_play
 test_methods
-play_multi_loop
+play_loop_test
 
 print "All tests OK"

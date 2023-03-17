@@ -31,7 +31,18 @@ class SonicPi::Scale
       name = name.to_sym
       intervals = SCALE[name]
     end
+
+    unless intervals
+      begin
+        cents = parse_scala name
+        intervals = cents_to_semitones cents
+      rescue Exception
+        raise InvalidScaleError, "Invalid scale: #{name.inspect}"
+      end
+    end
+
     raise InvalidScaleError, "Unknown scale name: #{name.inspect}" unless intervals
+
     intervals = intervals * num_octaves
     current = SonicPi::Note.resolve_midi_note(tonic)
     res = [current]
