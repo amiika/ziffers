@@ -67,7 +67,11 @@ module Ziffers
         bend_target = 1200 * Math.log2(bend_diff)
         # http://hyperphysics.phy-astr.gsu.edu/hbase/Music/cents.html
         # https://www.cs.cmu.edu/~rbd/doc/cmt/part7.html
-        midi_bend_value = 8192 + (8191 * (bend_target/(100*semitones))).to_i
+        begin
+          midi_bend_value = 8192 + (8191 * (bend_target/(100*semitones))).to_i
+        rescue FloatDomainError
+          midi_bed_value = 8192
+        end
       end
 
       ziff = ZiffHash[{:note=>note_value>0 ? (note_value>231 ? 230 : note_value) : 0, :pc=>dgr-1, :pc_orig=>pc_orig, :key=>zkey, :scale=>zscale, :octave=>oct, :scale_length=>scaleLength, :add=>addition}]
