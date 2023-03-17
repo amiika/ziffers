@@ -56,7 +56,7 @@ Here is a cheatsheet you can copy to Sonic Pi editor:
 # Chords: 0 024 2 246
 # Note lengths: w 0 h 1 q 2 e 3 s 4
 # Subdivision: [1 2 [3 4]]
-# Decimal durations: 0.25 0 1 [0.333]2 3
+# Decimal durations: 0.25 0 1 <0.333>2 3
 # Octaves: ^ 0 ^ 1 _ 2 _ 3
 # Escaped octave: <2> 1 <1>1<-2>3
 # Roman chords: i ii iii+4 iv+5 v+8 vi+10 vii+20

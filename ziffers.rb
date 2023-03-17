@@ -1,4 +1,4 @@
-
+require_relative "load_libs.rb"
 require_relative "./lib/enumerables.rb"
 require_relative "./lib/monkeypatches.rb"
 require_relative "./lib/parser/zgrammar.rb"
