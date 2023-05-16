@@ -23,19 +23,6 @@ rules: {
   "6"=>"2"
 }, synth: :pretty_bell
 ```
-or complex drumlines with custom sample or midi mapping:
-```
-breakbeat = "| HB H | HS (H B)   | (HB S) (HB S)   | HS (H B S)  |
-             | HB H | HS (H B S) | (H H) (S r B)   | HS (H H)    |"
-
-samples = {
-  B: :bd_tek,
-  S: :drum_snare_soft,
-  H: {sample: :drum_cymbal_closed, amp: 0.2}
-}
-
-z1 breakbeat, use: samples, duration: 0.25
-```
 or play infinite sequences. Easy as:
 ```
 zplay pi, rhythm: "q q h q q h h q ee h q ee"
