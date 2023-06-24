@@ -76,10 +76,6 @@ Here is a cheatsheet you can copy to Sonic Pi editor:
 - [Sonic Pi](https://sonic-pi.net/)
 - Clone using git or download [latest release](https://github.com/amiika/ziffers/releases/latest)
 
-### Using ziffers with latest beta
-
-  Use beta5 branch for latest Sonic Pi Beta 5 (Patreons only)
-
 ## Install ziffers
 
 Install Ziffers to your Sonic Pi by cloning this project into your home directory (this makes referencing easier as most of the examples use ~ shorthand to require stuff). Ziffers can then be required to your Sonic Pi project using:
