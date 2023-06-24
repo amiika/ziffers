@@ -140,7 +140,7 @@ grammar Ziffers
       v[:arpeggio] = Thread.current[:tarp] if Thread.current[:tarp]
       v = ZiffHash[v]
       v.update_ADSR!
-      if !Thread.current[:tshared][:normalized]
+      if !Thread.current[:tshared][:normalized] and !Thread.current[:tshared][:loop_name]
         v = apply_transformation v, Thread.current[:tshared], 0, Thread.current[:counter]
         Thread.current[:counter] = Thread.current[:counter]+1
       end
@@ -322,7 +322,7 @@ grammar Ziffers
 
         v = ZiffHash[v]
         v.update_ADSR!
-        if !Thread.current[:tshared][:normalized] # If directly from zparse
+        if !Thread.current[:tshared][:normalized] and !Thread.current[:tshared][:loop_name] # If directly from zparse
           v = apply_transformation v, Thread.current[:tshared], 0, Thread.current[:counter]+(Thread.current[:tshared][:loop_i] ? Thread.current[:tshared][:loop_i] : 0)
           Thread.current[:counter] = Thread.current[:counter]+1
         end
