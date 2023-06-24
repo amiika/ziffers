@@ -445,6 +445,16 @@ module Ziffers
         end
       end
 
+      def intervals(val, defaults)
+        ziff = self.deep_clone
+        ziff[:pc_intervals] = val+ziff[:pc_orig]
+        ziff[:pc] = ziff[:pc_intervals]
+        ziff[:octave] = defaults[:octave] || 0
+        ziff.update_note
+        defaults[:intervals] = ziff[:pc_intervals]
+        return ziff
+      end
+
       def flex(ratio)
         ziff = self.deep_clone
         if ziff[:duration] then

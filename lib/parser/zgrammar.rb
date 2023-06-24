@@ -1,4 +1,5 @@
 
+require "treetop"
 require_relative "../defaults.rb"
 require_relative "./scala.rb"
 

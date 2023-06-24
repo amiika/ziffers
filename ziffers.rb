@@ -1,4 +1,4 @@
-
+require_relative "load_libs.rb"
 require_relative "./lib/enumerables.rb"
 require_relative "./lib/monkeypatches.rb"
 require_relative "./lib/parser/zgrammar.rb"
@@ -279,7 +279,7 @@ module Ziffers
       if !loop_name
         # Extract common options to defaults
 
-       defaults = defaults.merge(opts)
+       defaults = defaults.merge(opts) # {|key, important, default| important } ?
        opts = defaults.slice(*@@slice_opts_keys)
 
         # TODO: Add global parameter for this
@@ -292,8 +292,11 @@ module Ziffers
       defaults[:loop_i] = loop_i
       defaults[:loop_n] = loop_i
 
-      if defaults[:store] and loop_name and $zloop_states[loop_name][:parsed_melody]
-        melody = $zloop_states[defaults[:loop_name]][:parsed_melody]
+      if defaults[:store] and (loop_name and $zloop_states[loop_name][:parsed_melody] or $zloop_states[loop_name][:intervals])
+        if $zloop_states[loop_name][:intervals]
+          defaults[:intervals] = $zloop_states[loop_name][:intervals]
+        end
+        melody = $zloop_states[loop_name][:parsed_melody]
         melody = normalize_melody(melody, opts, defaults)
       elsif melody.is_a? Enumerator then
         enum = melody
@@ -325,8 +328,9 @@ module Ziffers
       end
 
       loop do
-        # Default opts for enums
-        defaults = defaults.merge($zloop_states[loop_name][:defaults]) if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
+
+        # Default opts for enums & merge old defaults for intervals mode
+        defaults = defaults.merge($zloop_states[loop_name][:defaults]) {|key, important, default| important } if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
 
         if !opts[:port] and defaults[:run] then
           block_with_effects normalize_effects(defaults[:run]) do
@@ -380,7 +384,6 @@ module Ziffers
           next
         end
 
-
         ziff = apply_transformation(ziff, defaults, loop_i, index, melody.length)
 
         if ziff[:method] then
@@ -433,6 +436,9 @@ module Ziffers
       end
       # Save loop state
       if defaults[:store] and defaults[:loop_name] then
+        if defaults[:intervals]
+          $zloop_states[defaults[:loop_name]][:intervals] = defaults[:intervals]
+        end
         $zloop_states[defaults[:loop_name]][:parsed_melody] = melody
         if @@debug then
           print "Stored:"
@@ -682,6 +688,7 @@ module Ziffers
 
     # Looper for multi line notation
     def ziffers(input, opts={})
+      print "GGEGEG"
       start_time = Time.now
       $run_counter = ($run_counter+1 || 0)
       # Different randoms for each run
@@ -689,6 +696,7 @@ module Ziffers
       parsed = parse_rows(input, true)
       parse_time = Time.now - start_time
       sleep parse_time+1.0
+      zloop :z0, "qr", parsed[0][1] # Metronome loop
       parsed.each_with_index do |arr,i|
         zloop ("z"+(i+1).to_s).to_sym, arr[0], arr[1]
       end
@@ -1016,7 +1024,10 @@ module Ziffers
               end
             end
 
-            zplay $zloop_states[name][:melody], opts, (loop_opts ? defaults.merge(loop_opts) : defaults)
+            cur_opts = (loop_opts ? opts.merge(loop_opts).slice(*@@slice_opts_keys) : opts)
+            cur_defaults = (loop_opts ? defaults.merge(loop_opts) : defaults)
+
+            zplay $zloop_states[name][:melody], cur_opts, cur_defaults
           end
         end
         $zloop_states[name][:loop_i] += 1
@@ -1384,6 +1395,8 @@ module Ziffers
           ziff[:duration] = val
           ziff[:beats] = val*4
         end
+      when :intervals then
+        ziff = ziff.intervals(val,defaults) if val
       when :transpose then
         ziff = ziff.transpose val if val
       when :inverse then
@@ -1445,6 +1458,19 @@ module Ziffers
 
     zoff
     zstop
+  end
+
+  # Stops live_loop thread(s) with certain name
+  def stop_thread loop_name
+
+    threads = @named_subthreads.map do |name, thread|
+      thread if name.to_s.include?("live_loop_"+loop_name.to_s)
+    end.compact
+
+    threads.each do |t|
+      t.thread.kill
+    end
+
   end
 
   # Learn method for MIDI CC or SYSEX messages. Listens to given sync port and sends backs the recorded result.
