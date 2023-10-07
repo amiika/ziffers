@@ -429,7 +429,7 @@ module Ziffers
           play_ziff(ziff,defaults,index,loop_i)
         end
 
-        if !ziff[:skip] and !(ziff[:notes] and ziff[:arpeggio])
+        if !ziff[:skip] and !ziff[:slide] and !(ziff[:notes] and ziff[:arpeggio])
           sleep ziff[:beats]
           midi_pitch_bend delta_midi: 8192, **ziff.slice(:port,:channel,:vel,:vel_f) if ziff[:port] and ziff[:delta_midi] and (melody[index+1] and !melody[index+1][:delta_midi])
         end
@@ -568,23 +568,22 @@ module Ziffers
         if ziff[:slide] != nil then
           first = ziff[:slide].clone
           first[:note] = first.delete(:notes)[0]
-          first[:note_slide] = ziff[:note_slide] ? ziff[:note_slide] : 0.9
+          first[:note_slide] = ziff[:note_slide] ? ziff[:note_slide] : 1.0
+          first[:sustain] = ziff[:beats]*0.5
 
           if !first[:sample]
             c = first[:synth] ? (synth first[:synth], clean(first)) : (play clean(first))
           else
             c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean_sample(ziff)
           end
-
-          slide_beats = (ziff[:duration]/ziff[:slide][:notes].length)*4
+          
+          slide_beats = ziff[:beats]/ziff[:slide][:notes].length
           sleep slide_beats
-          rest = ziff[:slide][:notes]
-          rest.each_with_index do |cnote,i|
-             slide_ziff = ziff[:slide].clone
-             slide_ziff[:note] = slide_ziff[:notes][i]
-             slide_ziff[:pc] = slide_ziff[:pcs][i]
-             slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
-
+          rest = ziff[:slide][:hpcs][1..]
+          print rest
+          rest.each_with_index do |rziff,i|
+              slide_ziff = rziff.clone
+              slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
               cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:pcs)
               control c, cc
               sleep slide_beats

@@ -598,8 +598,8 @@ end
       cho = ZiffHash[c.value.merge!(Thread.current[:topts])]
         v = {
           :slide=>cho,
-          :duration=>cho[:duration]*cho[:pcs].length,
-          :beats=>(cho[:duration]*cho[:pcs].length)*4
+          :duration=>cho[:duration],
+          :beats=>cho[:duration]*4
         }
         v.merge!(Thread.current[:topts])
         v[:note_slide] = e.v.text_value.to_f if !e.empty?
