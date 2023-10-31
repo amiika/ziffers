@@ -271,5 +271,73 @@ def voice_lead(chord_a, chord_b)
   b_voicing.compact
 end
 
+def show_scale(key, scaleSym, port, channel=1, num_octs=10, from=28, to=108)
+  key = (midi_notes key)[0]%12
+  scaleNotes = (scale key, scaleSym, num_octaves: num_octs).to_a
+  scaleNotes = scaleNotes.select {|n| n>=from and n<=to }
+  scaleNotes.each do |note|
+    midi_note_on note, channel: channel, port: port, velocity: 1
+  end
+end
+
+def number_to_pc_set(number)
+  if number < 0 || number > 4095
+    print  "Input number must be odd and between 0 and 4095. Using major (2741) instead."
+    number = 2741
+  end
+  
+  print "Warning! Even numbers dont produce a real scale!" if number.even?
+  
+  binary_str = number.to_s(2).rjust(12, '0')
+  arr = binary_str.split('').map(&:to_i)
+  
+  arr.each_with_index.reduce([]) do |acc, (bit, i)|
+    if bit == 1
+      [11 - i] + acc
+    else
+      acc
+    end
+  end
+end
+
+def pc_set_to_intervals(pcs)
+  pcs.map.with_index do |pc, i|
+    r = (pcs[(i + 1) % pcs.length] - pc) % 12
+    r < 0 ? r + 12 : r
+  end
+end
+
+def intervals_to_pc_set(intervals)
+  pcs = []
+  pc = 0
+  
+  intervals.each do |interval|
+    pc = (pc + interval) % 12
+    pcs << pc
+  end
+  
+  pcs.unshift(pcs.pop)
+  
+  pcs
+end
+
+def number_to_scale(number)
+  pc_set_to_intervals(number_to_pc_set(number))
+end
+
+def scale_to_number(scale)
+  pc_set_to_number(intervals_to_pc_set(scale))
+end
+
+def pc_set_to_number(pcs)
+  number = 0
+  
+  pcs.each do |pc|
+    number |= (1 << pc)
+  end
+  
+  number
+end
+
 end
 end

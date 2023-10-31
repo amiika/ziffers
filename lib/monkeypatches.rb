@@ -27,6 +27,9 @@ class SonicPi::Scale
     if name.is_a?(Array)
       intervals = name
       name = :custom
+    elsif name.is_a?(Integer)
+      intervals = number_to_scale name
+      name = :custom
     else
       name = name.to_sym
       intervals = SCALE[name]
