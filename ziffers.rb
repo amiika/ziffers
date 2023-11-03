@@ -326,12 +326,10 @@ module Ziffers
           defaults[:run] = [{with_bpm: defaults.delete(:bpm)}]
         end
       end
-
+      
       loop do
-
         # Default opts for enums & merge old defaults for intervals mode
-        defaults = defaults.merge($zloop_states[loop_name][:defaults]) {|key, important, default| important } if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
-
+        defaults = $zloop_states[loop_name][:defaults].merge(defaults) {|key, important, default| important } if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
         if !opts[:port] and defaults[:run] then
           block_with_effects normalize_effects(defaults[:run]) do
             zplayer(melody,opts,defaults,loop_i)
@@ -580,7 +578,6 @@ module Ziffers
           slide_beats = ziff[:beats]/ziff[:slide][:notes].length
           sleep slide_beats
           rest = ziff[:slide][:hpcs][1..]
-          print rest
           rest.each_with_index do |rziff,i|
               slide_ziff = rziff.clone
               slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
@@ -687,7 +684,6 @@ module Ziffers
 
     # Looper for multi line notation
     def ziffers(input, opts={})
-      print "GGEGEG"
       start_time = Time.now
       $run_counter = ($run_counter+1 || 0)
       # Different randoms for each run
@@ -894,7 +890,7 @@ module Ziffers
 
     # Original looper
     def zloop(name, melody, opts={}, defaults={})
-
+      
       defaults[:loop_name] = name
 
       defaults = defaults.merge(opts)
@@ -907,7 +903,9 @@ module Ziffers
 
       raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
       raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
-
+      
+      $zloop_states[name][:defaults] = defaults if defaults[:stop] and melody.is_a?(Enumerator) and $zloop_states[name]
+      
       if !defaults[:stop] or defaults[:stop].is_a?(Integer)
 
         if !$zloop_states[name] then # If first time
@@ -951,7 +949,7 @@ module Ziffers
       end
 
       live_loop name, defaults.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
-
+        
         if defaults[:stop] and ((defaults[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=defaults[:stop]) or ([true].include? defaults[:stop]) or (melody.is_a?(String) and (melody.start_with? "//" or melody.start_with? "# ")) then
           $zloop_states.delete(name)
           stop
