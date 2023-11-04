@@ -248,6 +248,16 @@ module Ziffers
       midi md, opts
     end
 
+    def play_midi_on_out(md, opts)
+      midi_pitch_bend **opts.slice(:delta_midi, :channel, :port) if opts[:delta_midi]
+      midi_note_on md, opts
+    end
+
+    def play_midi_off_out(md, opts)
+      midi_pitch_bend **opts.slice(:delta_midi, :channel, :port) if opts[:delta_midi]
+      midi_note_off md, opts
+    end
+
     def normalize_ziff_methods(ziff,index,loop_i)
       ziff.each do |key,val|
         if val.is_a?(SonicPi::Core::RingVector) or val.kind_of?(Array) then
@@ -568,8 +578,10 @@ module Ziffers
           first[:note] = first.delete(:notes)[0]
           first[:note_slide] = ziff[:note_slide] ? ziff[:note_slide] : 1.0
           first[:sustain] = ziff[:beats]*0.5
-
-          if !first[:sample]
+          
+          if first[:port]
+            play_midi_on_out(first[:note], first.slice(:port, :channel))
+          elsif !first[:sample]
             c = first[:synth] ? (synth first[:synth], clean(first)) : (play clean(first))
           else
             c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean_sample(ziff)
@@ -579,12 +591,22 @@ module Ziffers
           sleep slide_beats
           rest = ziff[:slide][:hpcs][1..]
           rest.each_with_index do |rziff,i|
-              slide_ziff = rziff.clone
-              slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
-              cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:pcs)
-              control c, cc
+            slide_ziff = rziff.clone  
+              if first[:port]
+                play_midi_on_out(slide_ziff[:note], slide_ziff.slice(:port, :channel))
+              else
+                slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
+                cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:pcs)
+                control c, cc
+              end
               sleep slide_beats
-          end
+            end
+
+            rest.each do |rziff|
+              play_midi_off_out(rziff[:note], rziff.slice(:port, :channel))
+            end
+
+          play_midi_off_out(first[:note], first.slice(:port, :channel))
         end
       end
     end
@@ -1381,7 +1403,13 @@ module Ziffers
             ziff[:octave] += val
           end
         else
-          ziff[:octave] = val
+          if ziff[:hpcs] or ziff[:slide]
+            (ziff[:hpcs] || ziff[:slide][:hpcs]).each do |zn|
+              zn[:octave] += val
+            end
+          else
+            ziff[:octave] = val
+          end
         end
         ziff.update_note
       when :cc, :channel, :port

@@ -292,14 +292,21 @@ module Ziffers
       def update_note(update_octave=true) # Update_octave=false used in generative parsing
         if self[:pc]
           self.merge!(get_ziff(self[:pc], self[:key], self[:scale],(update_octave ? (self[:octave] || 0) : false),(self[:add] || 0)))
-        elsif self[:hpcs]
+        elsif self[:hpcs] || self[:slide]
           notes = []
-          self[:hpcs].each do |d|
+          (self[:hpcs] || self[:slide][:hpcs]).each do |d|
             pc = d[:pc]
-            notes.push(get_note_from_dgr(pc, d[:key], d[:scale], (d[:octave] || 0)) + (self[:add] || 0))
+            newnote = get_note_from_dgr(pc, d[:key], d[:scale], (d[:octave] || 0)) + (self[:add] || 0)
+            notes.push(newnote)
+            d[:note] = newnote if self[:slide]
           end
-          self[:pcs] = self[:hpcs].map {|h| h[:pc] }
-          self[:notes] = notes
+          if self[:slide]
+            self[:slide][:pcs] = (self[:hpcs] || self[:slide][:hpcs]).map {|h| h[:pc] }
+            self[:slide][:notes] = notes
+          else
+            self[:pcs] = (self[:hpcs] || self[:slide][:hpcs]).map {|h| h[:pc] }
+            self[:notes] = notes
+          end
         end
       end
 
