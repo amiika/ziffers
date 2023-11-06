@@ -253,9 +253,9 @@ module Ziffers
         zlog opts
         zlog "DEFAULTS: "
         zlog shared
-        raise "Invalid syntax after: "+parse_failure(rparser.failure_reason)
+        Thread.current[:tshared][:error] = "Invalid syntax after: "+parse_failure(rparser.failure_reason)
       end
-      return_shared_opts ? [result.value,Thread.current[:tshared]] : result.value
+      return_shared_opts ? [(result ? result.value : nil),Thread.current[:tshared]] : result.value
     end
 
     def parse_failure(text)

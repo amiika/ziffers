@@ -188,6 +188,11 @@ module Ziffers
           if loop_name
             # Store generative options back to loop opts. Used currently only by cycle indexes.
             n = parse_generative n, opts, defaults, true
+            if n[1][:error]
+              # TODO: This is a quick fix for raise error bug where Sonic Pi loses focus.
+              $zloop_states[loop_name].delete(:melody_string)
+              raise loop_name.to_s + ": "+n[1][:error]
+            end
             if n[1][:cycle_counters]
               $zloop_states[loop_name][:defaults] = {} if !$zloop_states[loop_name][:defaults]
               $zloop_states[loop_name][:defaults][:cycle_counters] = n[1][:cycle_counters]
@@ -415,7 +420,7 @@ module Ziffers
         #ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
 
         if defaults[:fade] or defaults[:fade_in] or defaults[:fade_out]
-          #tick_reset(:adjust_amp)
+          tick_reset(:adjust_amp) if defaults[:fade_reset]
           fade = defaults[:fade] ? defaults.delete(:fade) : defaults[:fade_in] ? 0.0..1.0 : 1.0..0.0
           fade_from = fade.begin
           fade_to = fade.end
@@ -429,8 +434,8 @@ module Ziffers
           ziff[:amp] = defaults[:adjust_amp][t_index] ? defaults[:adjust_amp][t_index] : defaults[:adjust_amp][defaults[:adjust_amp].length-1]
         end
 
-        # Map amp to velocity
-        if ziff[:port] and !ziff[:vel_f] 
+        # TODO: Better function to map amp to velocity
+        if ziff[:port]
           if ziff[:amp]
             if ziff[:amp] > 0.5
               ziff[:vel_f] = 0.5 + ((ziff[:amp]>3.25?3.25:ziff[:amp]) - 0.5) / (3.25 - 0.5) * 0.5
@@ -976,8 +981,8 @@ module Ziffers
           if melody.is_a?(Array) && melody[0].is_a?(Hash)
             $zloop_states[name][:melody] = melody # Melody is already parsed
           else
-            $zloop_states[name][:melody_string] = melody
             $zloop_states[name][:melody] = zparse melody, opts, defaults.except(:rules) if !$zloop_states[name][:melody]
+            $zloop_states[name][:melody_string] = melody
           end
       end
 
