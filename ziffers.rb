@@ -248,6 +248,16 @@ module Ziffers
       midi md, opts
     end
 
+    def play_midi_on_out(md, opts)
+      midi_pitch_bend **opts.slice(:delta_midi, :channel, :port) if opts[:delta_midi]
+      midi_note_on md, opts
+    end
+
+    def play_midi_off_out(md, opts)
+      midi_pitch_bend **opts.slice(:delta_midi, :channel, :port) if opts[:delta_midi]
+      midi_note_off md, opts
+    end
+
     def normalize_ziff_methods(ziff,index,loop_i)
       ziff.each do |key,val|
         if val.is_a?(SonicPi::Core::RingVector) or val.kind_of?(Array) then
@@ -326,12 +336,10 @@ module Ziffers
           defaults[:run] = [{with_bpm: defaults.delete(:bpm)}]
         end
       end
-
+      
       loop do
-
         # Default opts for enums & merge old defaults for intervals mode
-        defaults = defaults.merge($zloop_states[loop_name][:defaults]) {|key, important, default| important } if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
-
+        defaults = $zloop_states[loop_name][:defaults].merge(defaults) {|key, important, default| important } if loop_name and $zloop_states[loop_name] and $zloop_states[loop_name][:defaults]
         if !opts[:port] and defaults[:run] then
           block_with_effects normalize_effects(defaults[:run]) do
             zplayer(melody,opts,defaults,loop_i)
@@ -583,8 +591,10 @@ module Ziffers
           first[:note] = first.delete(:notes)[0]
           first[:note_slide] = ziff[:note_slide] ? ziff[:note_slide] : 1.0
           first[:sustain] = ziff[:beats]*0.5
-
-          if !first[:sample]
+          
+          if first[:port]
+            play_midi_on_out(first[:note], first.slice(:port, :channel))
+          elsif !first[:sample]
             c = first[:synth] ? (synth first[:synth], clean(first)) : (play clean(first))
           else
             c = sample (ziff[:sample_dir] ? [ziff[:sample_dir], ziff[:sample]] : ziff[:sample]), clean_sample(ziff)
@@ -594,12 +604,22 @@ module Ziffers
           sleep slide_beats
           rest = ziff[:slide][:hpcs][1..]
           rest.each_with_index do |rziff,i|
-              slide_ziff = rziff.clone
-              slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
-              cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:pcs)
-              control c, cc
+            slide_ziff = rziff.clone  
+              if first[:port]
+                play_midi_on_out(slide_ziff[:note], slide_ziff.slice(:port, :channel))
+              else
+                slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
+                cc = clean(slide_ziff).except(:attack,:release,:sustain,:decay,:notes,:pcs)
+                control c, cc
+              end
               sleep slide_beats
-          end
+            end
+
+            rest.each do |rziff|
+              play_midi_off_out(rziff[:note], rziff.slice(:port, :channel))
+            end
+
+          play_midi_off_out(first[:note], first.slice(:port, :channel))
         end
       end
     end
@@ -699,7 +719,6 @@ module Ziffers
 
     # Looper for multi line notation
     def ziffers(input, opts={})
-      print "GGEGEG"
       start_time = Time.now
       $run_counter = ($run_counter+1 || 0)
       # Different randoms for each run
@@ -906,7 +925,7 @@ module Ziffers
 
     # Original looper
     def zloop(name, melody, opts={}, defaults={})
-
+      
       defaults[:loop_name] = name
 
       defaults = defaults.merge(opts)
@@ -919,7 +938,9 @@ module Ziffers
 
       raise "First parameter should be loop name as a symbol!" if !name.is_a?(Symbol)
       raise "Third parameter should be options as hash object!" if !opts.kind_of?(Hash)
-
+      
+      $zloop_states[name][:defaults] = defaults if defaults[:stop] and melody.is_a?(Enumerator) and $zloop_states[name]
+      
       if !defaults[:stop] or defaults[:stop].is_a?(Integer)
 
         if !$zloop_states[name] then # If first time
@@ -963,7 +984,7 @@ module Ziffers
       end
 
       live_loop name, defaults.slice(:init,:auto_cue,:delay,:sync,:sync_bpm,:seed) do
-
+        
         if defaults[:stop] and ((defaults[:stop].is_a? Numeric) and $zloop_states[name][:loop_i]>=defaults[:stop]) or ([true].include? defaults[:stop]) or (melody.is_a?(String) and (melody.start_with? "//" or melody.start_with? "# ")) then
           $zloop_states.delete(name)
           stop
@@ -1395,7 +1416,13 @@ module Ziffers
             ziff[:octave] += val
           end
         else
-          ziff[:octave] = val
+          if ziff[:hpcs] or ziff[:slide]
+            (ziff[:hpcs] || ziff[:slide][:hpcs]).each do |zn|
+              zn[:octave] += val
+            end
+          else
+            ziff[:octave] = val
+          end
         end
         ziff.update_note
       when :cc, :channel, :port
