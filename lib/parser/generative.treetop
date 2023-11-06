@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / ranges / decimal_duration / group / cyclic / set / roman / relative_duration / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest / s / bar / parens)*
+    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / ranges / decimal_duration / group / cyclic / set / roman / relative_duration / random_decimal / multi_escape / multi_duration / pitch_classes / array / multioctave / rest / s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
@@ -1417,7 +1417,7 @@ grammar GenerativeSyntax
    end
 
    rule single_duration
-     s:(zchar) d:('.')*
+     s:(zchar / fraction) d:('.')*
      {
      def value
          sum = s.value
@@ -1426,6 +1426,15 @@ grammar GenerativeSyntax
          sum
       end
      }
+   end
+
+   rule fraction
+    a:([0-9]+) "/" b:([0-9]+)
+    {
+    def value
+      return a.text_value.to_f/b.text_value.to_f
+    end
+    }
    end
 
    rule zchar
