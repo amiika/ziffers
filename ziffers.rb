@@ -407,18 +407,31 @@ module Ziffers
         #ziff = opts.merge(merge_rate(ziff, defaults)) if defaults[:preparsed]
 
         if defaults[:fade] or defaults[:fade_in] or defaults[:fade_out]
-          tick_reset(:adjust_amp)
+          #tick_reset(:adjust_amp)
           fade = defaults[:fade] ? defaults.delete(:fade) : defaults[:fade_in] ? 0.0..1.0 : 1.0..0.0
           fade_from = fade.begin
           fade_to = fade.end
           fade_in_cycles = defaults.delete(:fade_in) || defaults.delete(:fade_out)
           fader = defaults.delete(:fader)
-          defaults[:adjust_amp] = tweak((fader ? fader : :quart), fade_from, fade_to, fade_in_cycles ? fade_in_cycles*melody.length : melody.length)
+          defaults[:adjust_amp] = tweak((fader ? fader : :quart), fade_from, fade_to, fade_in_cycles ? fade_in_cycles*melody.length : melody.length).to_a
         end
 
         if defaults[:adjust_amp] then
           t_index = tick(:adjust_amp)
           ziff[:amp] = defaults[:adjust_amp][t_index] ? defaults[:adjust_amp][t_index] : defaults[:adjust_amp][defaults[:adjust_amp].length-1]
+        end
+
+        # Map amp to velocity
+        if ziff[:port] and !ziff[:vel_f] 
+          if ziff[:amp]
+            if ziff[:amp] > 0.5
+              ziff[:vel_f] = 0.5 + ((ziff[:amp]>3.25?3.25:ziff[:amp]) - 0.5) / (3.25 - 0.5) * 0.5
+            else
+              ziff[:vel_f] = ziff[:amp]
+            end
+          else
+            ziff[:vel_f] = 0.5
+          end
         end
 
         if ziff[:run_each] then
@@ -580,7 +593,6 @@ module Ziffers
           slide_beats = ziff[:beats]/ziff[:slide][:notes].length
           sleep slide_beats
           rest = ziff[:slide][:hpcs][1..]
-          print rest
           rest.each_with_index do |rziff,i|
               slide_ziff = rziff.clone
               slide_ziff[:pitch] = (scale 0, slide_ziff[:scale], num_octaves: 2)[slide_ziff[:pc]]+(slide_ziff[:octave] ? (ziff[:octave]*12) : 0) if slide_ziff[:sample]!=nil && slide_ziff[:pc]!=nil
