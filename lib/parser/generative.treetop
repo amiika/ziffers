@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / cyclic / set / ranges / decimal_duration / roman / group / relative_duration / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest / s / bar / parens)*
+    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / ranges / decimal_duration / group / cyclic / set / roman / relative_duration / random_decimal / multi_escape / pitch_classes / array / multi_duration / multioctave / rest / s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
@@ -485,10 +485,11 @@ grammar GenerativeSyntax
          r = !p.text_value.empty? ? p.text_value.to_i : 2
          rep_value = l.value
          rep_value = rep_value.map {|v| (v.is_a?(Hash) and v[:subset]) ? resolve_subsets(v[:subset], v[:subduration]/v[:subset].length) : v }
+         Thread.current[:tshared][:repeat_cycle_index] = (Thread.current[:tshared][:repeat_cycle_index] || 0) + 1
          r.times do |i|
           rep = rep_value.each_with_object([]).with_index do |(v,o),ri|
             if v.is_a?(Hash) and v[:cycle]
-              o.push(resolve_cycle(v,"R"+((Thread.current[:tshared][:repeat_cycle_index] || 0) + 1).to_s+"_"+ri.to_s,r))
+              o.push(resolve_cycle(v,"R"+(Thread.current[:tshared][:repeat_cycle_index]).to_s+"_"+ri.to_s,r))
             else
               o.push(v)
             end
@@ -960,10 +961,12 @@ grammar GenerativeSyntax
     v:(assigned_variable / integer / integer_array / random_between / cyclic_min_max / random_pitch_class)
     {
       def value
-        Thread.current[:tshared][:min_max_cycle_index] = (Thread.current[:tshared][:min_max_cycle_index] || 0) + 1
         val = v.value
+        if val.is_a?(Hash) and val[:cycle]
+          Thread.current[:tshared][:min_max_cycle_index] = (Thread.current[:tshared][:min_max_cycle_index] || 0) + 1
+          val = resolve_cycle(val,"M"+Thread.current[:tshared][:min_max_cycle_index].to_s)
+        end
         val = (val[:pc] || val[:note]) if val.is_a?(Hash) and (val[:pc] or val[:note])
-        val = resolve_cycle(val,"M"+Thread.current[:tshared][:min_max_cycle_index].to_s) if val.is_a?(Hash) and val[:cycle]
         val
       end
     }
@@ -1200,7 +1203,7 @@ grammar GenerativeSyntax
   end
 
   rule pitch_classes
-    prefix:(prefix_list)? d:(normal_pitch_class / random_pitch_class / random_between / integer_array)
+    prefix:(prefix_list)? d:(normal_pitch_class / min_max / random_pitch_class / random_between / integer_array)
     {
       def value
         prefixes = prefix.value.flatten.inject{|a,b| a.merge(b){|_,x,y| x + y}} if prefix.methods.include?(:value)
