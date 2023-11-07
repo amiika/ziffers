@@ -220,7 +220,7 @@ module Ziffers
           end
         end
 
-        n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9]+)/) {|m| "#{$1}{#{$2}}" } if defaults[:midi] or defaults[:parse_cc] or defaults[:xen] # Hack for midi
+        n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9]+)(?=(?:\s|$))/) {|m| "#{$1}{#{$2}}" } if defaults[:midi] or defaults[:parse_cc] or defaults[:xen] # Hack for midi & cc & xen 
         parsed = parse_ziffers(n, opts, defaults)
         print "P: "+parsed.to_z if @@debug
         parsed

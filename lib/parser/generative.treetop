@@ -1,7 +1,7 @@
 grammar GenerativeSyntax
 
   rule base
-    (enclosed_set / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / ranges / decimal_duration / group / cyclic / set / roman / relative_duration / random_decimal / multi_escape / multi_duration / pitch_classes / array / multioctave / rest / s / bar / parens)*
+    (enclosed_set / multi_duration / ignore /  assign_value / assign_set / control / use / escaped_multi_octave / escaped_multi_key / escaped_multi_scale / repeat / euclid / interpolate / zip_ring / ranges / decimal_duration / group / cyclic / set / roman / relative_duration / random_decimal / multi_escape / pitch_classes / array / multioctave / rest / s / bar / parens)*
     {
       def value
         e = elements.collect {|v| v.value }.compact.map.with_index do |v,i|
@@ -1398,11 +1398,11 @@ grammar GenerativeSyntax
    end
 
    rule multi_duration
-     s:(duration)
+     s:(duration / fraction)
      {
      def value
        Thread.current[:topts][:duration] = s.value
-       s.text_value
+       s.value.is_a?(String) ? s.value : s.text_value
      end
      }
    end
@@ -1417,7 +1417,7 @@ grammar GenerativeSyntax
    end
 
    rule single_duration
-     s:(zchar / fraction) d:('.')*
+     s:(zchar) d:('.')*
      {
      def value
          sum = s.value
@@ -1429,10 +1429,23 @@ grammar GenerativeSyntax
    end
 
    rule fraction
-    a:([0-9]+) "/" b:([0-9]+)
+    a:(min_max) "/" b:(min_max) d:('.')*
     {
     def value
-      return a.text_value.to_f/b.text_value.to_f
+      a_val = a.value
+      b_val = b.value
+
+      if a_val.is_a?(Hash) and a_val[:cycle]
+        Thread.current[:tshared][:afrac_cycle_index] = (Thread.current[:tshared][:afrac_cycle_index] || 0) + 1
+        a_val = resolve_cycle(a_val,"AFM"+Thread.current[:tshared][:afrac_cycle_index].to_s)
+      end
+
+      if b_val.is_a?(Hash) and b_val[:cycle]
+        Thread.current[:tshared][:bfrac_cycle_index] = (Thread.current[:tshared][:bfrac_cycle_index] || 0) + 1
+        b_val = resolve_cycle(b_val,"BFM"+Thread.current[:tshared][:bfrac_cycle_index].to_s)
+      end
+
+      return a_val.to_s+"/"+b_val.to_s+d.text_value
     end
     }
    end
