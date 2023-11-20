@@ -72,13 +72,22 @@ grammar Ziffers
   end
 
   rule single_duration
-    s:(zchar / decimal) d:('.')*
+    s:(zchar / decimal / fraction) d:('.')*
     {
     def value
         sum = s.value
         sum = sum * (2.0-(1.0/(2*d.text_value.length))) if !d.text_value.empty?
         sum
      end
+    }
+  end
+
+  rule fraction
+    a:([0-9]+) "/" b:([0-9]+)
+    {
+    def value
+      return a.text_value.to_f/b.text_value.to_f
+    end
     }
   end
 
