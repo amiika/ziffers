@@ -169,6 +169,7 @@ module Ziffers
         zlog text
         zlog opts
         zlog shared
+        return {error: "Invalid syntax after: "+parse_failure(zparser.failure_reason)} if loop_name
         raise "Invalid syntax after: "+parse_failure(zparser.failure_reason)
       end
 

@@ -22,8 +22,6 @@ load "~/ziffers/lib/defaults.rb"
 load "~/ziffers/lib/pc_sets.rb"
 '''
 
-print "Ziffers 2.0"
-
 module Ziffers
 
     include Ziffers::Enumerables
@@ -222,6 +220,10 @@ module Ziffers
 
         n = n.gsub(/(^|\s|[a-z\^_\'´`])([0-9]+)/) {|m| "#{$1}{#{$2}}" } if defaults[:midi] or defaults[:parse_cc] or defaults[:xen] # Hack for midi
         parsed = parse_ziffers(n, opts, defaults)
+        if parsed.kind_of?(Hash) and parsed[:error]
+          print parsed[:error]
+          stop 
+        end
         print "P: "+parsed.to_z if @@debug
         parsed
       else
