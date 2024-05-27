@@ -498,6 +498,20 @@ module Ziffers
     end
     end
 
+    # https://oeis.org/A001006
+    def motzkin_numbers
+      Enumerator.new do |y|
+        a, b, c = 1, 1, 1
+        y << a
+        y << b
+        (2..Float::INFINITY).each do |i|
+          c, b, a = ((2 * i + 1) * c + (3 * i - 3) * a) /
+          (i + 2), a, c
+          y << c
+        end
+      end
+    end
+
     # Markov source code from https://github.com/samaaron/sonic-pi/issues/1029
     class Markov
       def initialize(source, order=1, start=nil)
