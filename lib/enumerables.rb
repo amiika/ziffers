@@ -512,10 +512,12 @@ module Ziffers
       end
     end
 
-    ## Plane figurate numbers
+    ## 1. Plane figurate numbers
     def polygonal_numbers(m)
-        (1..Float::INFINITY).lazy.collect do
-            |delta| ((m - 2) * delta ** 2 - (m - 4) * delta) / 2
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << ((m - 2) * delta ** 2 - (m - 4) * delta) / 2
+            end
         end
     end
 
@@ -580,6 +582,49 @@ module Ziffers
         Enumerator.new do |y|
             (1..Float::INFINITY).each do |delta|
                 y << 1 + (k * (7 * delta ** 2 - 11 * delta + 4)) / 2
+            end
+        end
+    end
+
+    ## 2. Space figurate numbers
+
+    def m_pyramidal_numbers(m = 3)
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (3 * delta ** 2 + delta **
+                 3 * (m - 2) - delta * (m - 5)) / 6
+            end
+        end
+    end
+
+    def tetrahedral_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (delta * (delta + 1) * (delta + 2)) / 6
+            end
+        end
+    end
+
+    def cubic_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << delta ** 3
+            end
+        end
+    end
+
+    def octahedral_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (delta * (2 * delta ** 2 + 1)) / 3
+            end
+        end
+    end
+
+    def dodecahedral_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (delta * (3 * delta -1) * (3 * delta - 2)) / 2
             end
         end
     end
