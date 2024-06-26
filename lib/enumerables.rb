@@ -498,6 +498,137 @@ module Ziffers
     end
     end
 
+    # https://oeis.org/A001006
+    def motzkin_numbers
+      Enumerator.new do |y|
+        a, b, c = 1, 1, 1
+        y << a
+        y << b
+        (2..Float::INFINITY).each do |i|
+          c, b, a = ((2 * i + 1) * c + (3 * i - 3) * a) /
+          (i + 2), a, c
+          y << c
+        end
+      end
+    end
+
+    ## 1. Plane figurate numbers
+    def polygonal_numbers(m)
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << ((m - 2) * delta ** 2 - (m - 4) * delta) / 2
+            end
+        end
+    end
+
+    def centered_pol_numbers(k)
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (k * delta ** 2 - k * delta + 2) / 2
+            end
+        end
+    end
+
+    def pronic_numbers
+        (1..Float::INFINITY).lazy.collect { |delta| delta * (delta + 1)}
+    end
+
+    def cross_numbers
+        (1..Float::INFINITY).lazy.collect { |delta| 4 * delta - 3}
+    end
+
+    def gnomic_numbers
+        (1..Float::INFINITY).lazy.collect { |delta| 2 * delta - 1}
+    end
+
+    def aztec_diamond_numbers
+        (1..Float::INFINITY).lazy.collect { |delta| (2 * delta) * (delta + 1)}
+    end
+
+    ## polygram_numbers = centered star polygonal numbers
+    def polygram_numbers(m)
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << m  * delta ** 2 - m * delta + 1
+            end
+        end
+    end
+
+    def truncated_triangular_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (3 * delta ** 2) - (3 * delta) + 1
+            end
+        end
+    end
+
+    def truncated_square_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (7 * delta ** 2) - (10 * delta) + 4
+            end
+        end
+    end
+
+    def truncated_pronic_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (7 * delta ** 2) - (7 * delta) + 2
+            end
+        end
+    end
+
+    def truncated_center_pol_numbers(k)
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << 1 + (k * (7 * delta ** 2 - 11 * delta + 4)) / 2
+            end
+        end
+    end
+
+    ## 2. Space figurate numbers
+
+    def m_pyramidal_numbers(m = 3)
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (3 * delta ** 2 + delta **
+                 3 * (m - 2) - delta * (m - 5)) / 6
+            end
+        end
+    end
+
+    def tetrahedral_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (delta * (delta + 1) * (delta + 2)) / 6
+            end
+        end
+    end
+
+    def cubic_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << delta ** 3
+            end
+        end
+    end
+
+    def octahedral_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (delta * (2 * delta ** 2 + 1)) / 3
+            end
+        end
+    end
+
+    def dodecahedral_numbers
+        Enumerator.new do |y|
+            (1..Float::INFINITY).each do |delta|
+                y << (delta * (3 * delta -1) * (3 * delta - 2)) / 2
+            end
+        end
+    end
+
     # Markov source code from https://github.com/samaaron/sonic-pi/issues/1029
     class Markov
       def initialize(source, order=1, start=nil)
